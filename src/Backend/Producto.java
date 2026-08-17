@@ -15,6 +15,7 @@ public class Producto {
         this.categoria = categoria;
         this.id= id;
     }
+    public String getId(){ return id; }
 
 
     public String getNombre() {
@@ -54,11 +55,9 @@ public class Producto {
     }
     @Override
     public String toString() {
-        return "Backend.Producto [" +
-                "nombre='" + nombre + '\'' +
+        return "nombre='" + nombre + '\'' +
                 ", precio=" + precio +
                 ", stock=" + stock +
-                ", categoria='" + categoria + '\'' +
-                ']';
+                ", categoria='" + categoria + '\'';
     }
 }

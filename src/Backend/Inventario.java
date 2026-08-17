@@ -13,6 +13,37 @@ public class Inventario {
         contadorId = 1;
     }
 
+    public Producto buscarProductoPorId(String idBuscado) {
+        for (Producto p : listaProductos) {
+            if (p.getId().equalsIgnoreCase(idBuscado)) {
+                return p; // Retorna el producto si lo encuentra
+            }
+        }
+        return null; // Retorna null si no encontró nada con ese ID
+    }
+
+    public Producto buscarProductoPorNombre(String nombreBuscado) {
+        for (Producto p : listaProductos) {
+            if (p.getNombre().equalsIgnoreCase(nombreBuscado)) {
+                return p; // Retorna el producto si lo encuentra
+            }
+        }
+        return null; // Retorna null si no existe
+    }
+
+
+    public void imprimirTodosConsola() {
+        if (listaProductos.isEmpty()) {
+            System.out.println("El inventario está vacío.");
+        } else {
+            System.out.println("--- LISTA DE PRODUCTOS ---");
+            for (Producto p : listaProductos) {
+                // Al llamar a "p", Java usa automáticamente el metodo ToString
+                System.out.println(p);
+            }
+        }
+    }
+
 
 
     public void registrarProducto(String nombre, double precio, int stock, String categoria) {

@@ -19,8 +19,8 @@ public class Main {
                 crearProducto(scanner, inventario);
             } else if (opcion == 2) {
                 System.out.println("Opcion no disponible aun.");
-            }  else if (opcion == 3) {
-                modificarProducto(scanner, inventario);
+            } else if (opcion == 3) {
+                System.out.println("Opcion no disponible aun.");
             } else if (opcion == 4) {
                 System.out.println("Opcion no disponible aun.");
             } else if (opcion == 5) {
@@ -73,60 +73,6 @@ public class Main {
         int numero = scanner.nextInt();
         scanner.nextLine();
         return numero;
-    }
-    public static void modificarProducto(Scanner scanner, Inventario inventario) {
-
-        System.out.print("Ingrese el ID del producto: ");
-        String id = scanner.nextLine();
-
-        Producto producto = inventario.buscarProductoPorId(id);
-
-        if (producto == null) {
-            System.out.println("Producto no encontrado.");
-            return;
-        }
-
-        System.out.println();
-        System.out.println("=== MODIFICAR PRODUCTO ===");
-        System.out.println("1. Nombre");
-        System.out.println("2. Precio");
-        System.out.println("3. Stock");
-        System.out.println("4. Categoria");
-
-        System.out.print("Seleccione lo que desea modificar: ");
-        int opcion = pedirEntero(scanner);
-
-        if (opcion == 1) {
-
-            System.out.print("Nuevo nombre: ");
-            String nuevoNombre = scanner.nextLine();
-            producto.setNombre(nuevoNombre);
-
-        } else if (opcion == 2) {
-
-            System.out.print("Nuevo precio: ");
-            double nuevoPrecio = pedirDouble(scanner);
-            producto.setPrecio(nuevoPrecio);
-
-        } else if (opcion == 3) {
-
-            System.out.print("Nuevo stock: ");
-            int nuevoStock = pedirEntero(scanner);
-            producto.setStock(nuevoStock);
-
-        } else if (opcion == 4) {
-
-            System.out.print("Nueva categoria: ");
-            String nuevaCategoria = scanner.nextLine();
-            producto.setCategoria(nuevaCategoria);
-
-        } else {
-
-            System.out.println("Opcion invalida.");
-            return;
-        }
-
-        System.out.println("Producto actualizado correctamente.");
     }
 
     // Lee un numero decimal desde teclado y valida que sea correcto

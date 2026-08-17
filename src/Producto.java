@@ -1,14 +1,17 @@
 public class Producto {
+
     private String nombre;
     private double precio;
     private int stock;
     private String categoria;
+    private String id;
 
-    public Producto(String nombre, double precio, int stock, String categoria) {
+    public Producto(String nombre, double precio, int stock, String categoria, String id) {
         this.nombre = nombre;
         this.precio = precio;
         this.stock = stock;
         this.categoria = categoria;
+        this.id= id;
     }
 
     public String getNombre() {

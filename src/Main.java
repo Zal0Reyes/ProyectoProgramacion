@@ -57,11 +57,8 @@ public class Main {
         System.out.print("Categoria: ");
         String categoria = scanner.nextLine();
 
-        Producto producto = new Producto(nombre, precio, stock, categoria);
-        inventario.agregarProducto(producto);
+        inventario.registrarProducto(nombre, precio, stock, categoria);
 
-        System.out.println("Producto agregado correctamente.");
-        System.out.println(producto);
     }
 
     // Lee un numero entero desde teclado y valida que sea correcto

@@ -18,7 +18,7 @@ public class Main {
             if (opcion == 1) {
                 crearProducto(scanner, inventario);
             } else if (opcion == 2) {
-                System.out.println("Opcion no disponible aun.");
+                inventario.imprimirTodosConsola();
             } else if (opcion == 3) {
                 System.out.println("Opcion no disponible aun.");
             } else if (opcion == 4) {
@@ -44,6 +44,11 @@ public class Main {
         System.out.println("4. Eliminar producto");
         System.out.println("5. Salir");
     }
+
+
+
+
+
 
     // Solicita los datos de un producto y lo agrega al inventario
     public static void crearProducto(Scanner scanner, Inventario inventario) {

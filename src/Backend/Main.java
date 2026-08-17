@@ -20,9 +20,12 @@ public class Main {
             }else if (opcion == 2) {
                 inventario.imprimirTodosConsola();
             } else if (opcion == 3) {
-            modificarProducto(scanner, inventario);
+                modificarProducto(scanner, inventario);
             } else if (opcion == 4) {
-                System.out.println("Opcion no disponible aun.");
+                System.out.print("Id de producto a eliminar: ");
+                String idbuscado = scanner.nextLine();
+                inventario.eliminarProductoPorId(idbuscado);
+
             } else if (opcion == 5) {
                 System.out.println("Saliendo...");
                 salir = true;
@@ -30,7 +33,6 @@ public class Main {
                 System.out.println("Opcion invalida.");
             }
         }
-
         scanner.close();
     }
 

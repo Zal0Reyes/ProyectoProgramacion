@@ -44,7 +44,26 @@ public class Inventario {
         }
     }
 
+    public boolean eliminarProductoPorId(String idBuscado) {
+        // Usamos un ciclo 'for' tradicional con índice (i)
+        for (int i = 0; i < listaProductos.size(); i++) {
+            // Obtenemos el producto en la posición 'i'
 
+            Producto p = listaProductos.get(i);
+
+            // Comparamos el ID (ignorando mayúsculas/minúsculas)
+            if (p.getId().equalsIgnoreCase(idBuscado)) {
+
+                // Si coincide, lo eliminamos de la lista usando su índice
+                listaProductos.remove(i);
+                System.out.print("Producto Eliminado");
+                return true; // Retornamos true porque se eliminó con éxito
+
+            }
+        }
+
+        return false; // Si termina el ciclo y no encontró nada, retorna false
+    }
 
     public void registrarProducto(String nombre, double precio, int stock, String categoria) {
 

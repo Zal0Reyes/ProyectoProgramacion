@@ -72,17 +72,6 @@ public class Inventario {
         System.out.println("Nuevo producto agregado: " + nombre + " con ID: " + nuevoId);
     }
 
-    public Producto buscarProductoPorId(String id) {
-
-        for (Producto p : listaProductos) {
-
-            if (p.getId().equalsIgnoreCase(id)) {
-                return p;
-            }
-        }
-
-        return null;
-    }
 
     public List<Producto> getProductos() {
         return listaProductos;

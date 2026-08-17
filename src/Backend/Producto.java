@@ -50,12 +50,10 @@ public class Producto {
         this.categoria = categoria;
     }
 
-    public String getId() {
-        return id;
-    }
     @Override
     public String toString() {
-        return "nombre='" + nombre + '\'' +
+        return "ID='" + id + '\'' +
+                ", nombre='" + nombre + '\'' +
                 ", precio=" + precio +
                 ", stock=" + stock +
                 ", categoria='" + categoria + '\'';

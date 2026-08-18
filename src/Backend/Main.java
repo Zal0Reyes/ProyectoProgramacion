@@ -1,5 +1,7 @@
 package Backend;
 
+import Frontend.VistaPrincipalTienda;
+
 import java.util.Scanner;
 
 public class Main {
@@ -7,6 +9,11 @@ public class Main {
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
         Inventario inventario = new Inventario();
+
+        VistaPrincipalTienda ventanaPrincipal = new VistaPrincipalTienda(inventario);
+        ventanaPrincipal.mostrar();
+
+
 
         boolean salir = false;
 

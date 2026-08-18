@@ -106,9 +106,16 @@ public class Main {
 
         } else if (opcion == 4) {
 
-            System.out.print("Nueva categoria: ");
-            String nuevaCategoria = scanner.nextLine();
-            producto.setCategoria(nuevaCategoria);
+            System.out.print("ID de producto a eliminar: ");
+            String idBuscado = scanner.nextLine();
+
+            boolean eliminado = inventario.eliminarProductoPorId(idBuscado);
+
+            if (eliminado) {
+                System.out.println("Producto eliminado correctamente.");
+            } else {
+                System.out.println("Producto no encontrado.");
+            }
 
         } else {
             System.out.println("Opcion invalida.");

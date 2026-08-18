@@ -90,6 +90,58 @@ public class Inventario {
         System.out.println("Nuevo producto agregado: " + nombre + " con ID: " + nuevoId);
     }
 
+    public List<Producto> filtrarPorCategoria(String categoria) {
+
+        List<Producto> productosCategoria = new ArrayList<>();
+
+        for (Producto p : listaProductos) {
+
+            if (p.getCategoria().equalsIgnoreCase(categoria)) {
+                productosCategoria.add(p);
+            }
+        }
+
+        return productosCategoria;
+    }
+
+    public double calcularPrecioPromedioPorCategoria(String categoria) {
+
+        List<Producto> productosCategoria = filtrarPorCategoria(categoria);
+
+        if (productosCategoria.isEmpty()) {
+            return -1;
+        }
+
+        double sumaPrecios = 0;
+
+        for (Producto p : productosCategoria) {
+            sumaPrecios = sumaPrecios + p.getPrecio();
+        }
+
+        return sumaPrecios / productosCategoria.size();
+    }
+
+    public Producto buscarMenorStockPorCategoria(String categoria) {
+
+        List<Producto> productosCategoria = filtrarPorCategoria(categoria);
+
+        if (productosCategoria.isEmpty()) {
+            return null;
+        }
+
+        Producto productoMenorStock = productosCategoria.get(0);
+
+        for (Producto p : productosCategoria) {
+
+            if (p.getStock() < productoMenorStock.getStock()) {
+                productoMenorStock = p;
+            }
+        }
+
+        return productoMenorStock;
+    }
+
+
 
     public List<Producto> getProductos() {
         return listaProductos;

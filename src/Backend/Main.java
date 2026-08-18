@@ -113,9 +113,9 @@ public class Main {
 
         } else if (opcion == 4) {
 
-            System.out.print("Nueva categoria: ");
-            String nuevaCategoria = scanner.nextLine();
-            producto.setCategoria(nuevaCategoria);
+        System.out.print("Nueva categoria: ");
+        String nuevaCategoria = scanner.nextLine();
+        producto.setCategoria(nuevaCategoria);
 
         } else {
             System.out.println("Opcion invalida.");

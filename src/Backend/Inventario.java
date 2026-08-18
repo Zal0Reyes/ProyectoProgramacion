@@ -56,7 +56,6 @@ public class Inventario {
 
                 // Si coincide, lo eliminamos de la lista usando su índice
                 listaProductos.remove(i);
-                System.out.print("Producto Eliminado");
                 return true; // Retornamos true porque se eliminó con éxito
 
             }

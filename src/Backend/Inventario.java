@@ -5,7 +5,7 @@ import java.util.List;
 
 public class Inventario {
     // Lista donde se almacenan todos los productos
-    private final List<Producto> listaProductos;
+    private final ArrayList<Producto> listaProductos;
     private int contadorId;
 
     public Inventario() {
@@ -13,36 +13,6 @@ public class Inventario {
         contadorId = 1;
     }
 
-    public Producto buscarProductoPorId(String idBuscado) {
-        for (Producto p : listaProductos) {
-            if (p.getId().equalsIgnoreCase(idBuscado)) {
-                return p; // Retorna el producto si lo encuentra
-            }
-        }
-        return null; // Retorna null si no encontró nada con ese ID
-    }
-
-    public Producto buscarProductoPorNombre(String nombreBuscado) {
-        for (Producto p : listaProductos) {
-            if (p.getNombre().equalsIgnoreCase(nombreBuscado)) {
-                return p; // Retorna el producto si lo encuentra
-            }
-        }
-        return null; // Retorna null si no existe
-    }
-
-
-    public void imprimirTodosConsola() {
-        if (listaProductos.isEmpty()) {
-            System.out.println("El inventario está vacío.");
-        } else {
-            System.out.println("--- LISTA DE PRODUCTOS ---");
-            for (Producto p : listaProductos) {
-                // Al llamar a "p", Java usa automáticamente el metodo ToString
-                System.out.println(p);
-            }
-        }
-    }
 
     public boolean eliminarProductoPorId(String idBuscado) {
         // Usamos un ciclo 'for' tradicional con índice (i)
@@ -90,9 +60,9 @@ public class Inventario {
         System.out.println("Nuevo producto agregado: " + nombre + " con ID: " + nuevoId);
     }
 
-    public List<Producto> filtrarPorCategoria(String categoria) {
+    public ArrayList<Producto> filtrarPorCategoria(String categoria) {
 
-        List<Producto> productosCategoria = new ArrayList<>();
+        ArrayList<Producto> productosCategoria = new ArrayList<>();
 
         for (Producto p : listaProductos) {
 
@@ -104,9 +74,13 @@ public class Inventario {
         return productosCategoria;
     }
 
+
+    //         ----- CALCULOS BASICOS----
+
+
     public double calcularPrecioPromedioPorCategoria(String categoria) {
 
-        List<Producto> productosCategoria = filtrarPorCategoria(categoria);
+        ArrayList<Producto> productosCategoria = filtrarPorCategoria(categoria);
 
         if (productosCategoria.isEmpty()) {
             return -1;
@@ -143,7 +117,7 @@ public class Inventario {
 
 
 
-    public List<Producto> getProductos() {
+    public ArrayList<Producto> getProductos() {
         return listaProductos;
     }
 

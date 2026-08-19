@@ -5,11 +5,11 @@ import Backend.Inventario;
 import javax.swing.*;
 
 public abstract class BaseFrame extends JFrame {
-    protected Inventario sistema;
+    protected Inventario inventario;
 
-    public BaseFrame(String titulo, Inventario sistema){
+    public BaseFrame(String titulo, Inventario inventario){
         super(titulo);
-        this.sistema = sistema;
+        this.inventario = inventario;
 
         setSize(1000,700);
         setLocationRelativeTo(null); //Centra la ventana

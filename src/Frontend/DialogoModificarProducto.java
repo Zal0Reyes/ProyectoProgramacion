@@ -24,15 +24,9 @@ public class DialogoModificarProducto extends JDialog {
     public DialogoModificarProducto(JFrame parent, Producto producto) {
         super(parent, "Detalles del Producto", true); // 'true' la hace Modal (bloquea la ventana de atrás)
         this.producto = producto;
-
-        configurarUI();
-        cargarDatosActuales();
-
-        pack(); // Ajusta el tamaño al contenido
-        setLocationRelativeTo(parent); // Centra el diálogo sobre la ventana principal
     }
 
-    private void configurarUI() {
+    public void mostrar() {
         // Panel principal con márgenes blancos
         JPanel panelPrincipal = new JPanel(new BorderLayout(0, 20));
         panelPrincipal.setBackground(Color.WHITE);
@@ -100,6 +94,12 @@ public class DialogoModificarProducto extends JDialog {
         panelPrincipal.add(panelBotonesContenedor, BorderLayout.SOUTH);
 
         add(panelPrincipal);
+
+        cargarDatosActuales();
+
+        pack(); // Ajusta el tamaño al contenido
+        setLocationRelativeTo(getOwner()); // Centra el diálogo sobre la ventana principal
+        setVisible(true); // Muestra la ventana
     }
 
     private void cargarDatosActuales() {
@@ -109,6 +109,7 @@ public class DialogoModificarProducto extends JDialog {
         txtCategoria.setText(producto.getCategoria());
         txtId.setText(producto.getId());
     }
+
     private void borrarProducto() {
         // Mostramos un mensaje de advertencia antes de borrar
         int confirmacion = JOptionPane.showConfirmDialog(this,
@@ -123,6 +124,7 @@ public class DialogoModificarProducto extends JDialog {
             dispose(); // Cerramos la ventana
         }
     }
+
     private void guardarCambios() {
         try {
             // Validamos que precio y stock sean números válidos

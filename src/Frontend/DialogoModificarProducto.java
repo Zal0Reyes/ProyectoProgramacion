@@ -1,85 +1,151 @@
 package Frontend;
 
+import Backend.Inventario;
 import Backend.Producto;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
-import javax.swing.border.LineBorder;
 import java.awt.*;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 
 public class DialogoModificarProducto extends JDialog {
 
     private Producto producto;
-    private boolean guardadoExitoso = false; // Para saber si refrescar la vista principal
-    private boolean productoBorrado = false; //Para saber si borrar un producto
+    private Inventario inventario;
+    private boolean guardadoExitoso = false;
+    private boolean productoBorrado = false;
 
     // Componentes del formulario
     private JTextField txtNombre;
     private JTextField txtPrecio;
     private JTextField txtStock;
-    private JTextField txtCategoria;
+    private JComboBox<String> cbCategoria;
     private JTextField txtId;
 
-    public DialogoModificarProducto(JFrame parent, Producto producto) {
-        super(parent, "Detalles del Producto", true); // 'true' la hace Modal (bloquea la ventana de atrás)
+    public DialogoModificarProducto(JFrame parent, Producto producto, Inventario inventario) {
+        super(parent, "Detalles del Producto", true);
         this.producto = producto;
+        this.inventario = inventario;
+
+        // Ajustamos tamaño para acomodar las 5 filas y los 3 botones
+        setSize(480, 440);
+        setLocationRelativeTo(parent);
+        setResizable(false);
     }
 
     public void mostrar() {
-        // Panel principal con márgenes blancos
-        JPanel panelPrincipal = new JPanel(new BorderLayout(0, 20));
-        panelPrincipal.setBackground(Color.WHITE);
-        panelPrincipal.setBorder(new EmptyBorder(25, 30, 25, 30));
+        setLayout(new BorderLayout());
+        getContentPane().setBackground(new Color(245, 247, 250)); // Mismo fondo que la vista principal
 
-        // --- TÍTULO ---
-        JLabel lblTitulo = new JLabel("Modificar Producto");
-        lblTitulo.setFont(new Font("SansSerif", Font.BOLD, 22));
+        // ==========================================
+        // --- CABECERA DE LA VENTANA ---
+        // ==========================================
+        JPanel panelCabecera = new JPanel();
+        panelCabecera.setBackground(new Color(255, 204, 51)); // Mismo amarillo
+        panelCabecera.setBorder(new EmptyBorder(15, 0, 15, 0));
+
+        JLabel lblTitulo = new JLabel("📝 Modificar Producto");
+        lblTitulo.setFont(new Font("SansSerif", Font.BOLD, 20));
         lblTitulo.setForeground(new Color(40, 40, 40));
-        lblTitulo.setHorizontalAlignment(SwingConstants.CENTER);
-        panelPrincipal.add(lblTitulo, BorderLayout.NORTH);
+        panelCabecera.add(lblTitulo);
 
-        // --- FORMULARIO 8 5 filas y 2 columnas) ---
-        JPanel panelFormulario = new JPanel(new GridLayout(5, 2, 15, 15));
-        panelFormulario.setBackground(Color.WHITE);
+        add(panelCabecera, BorderLayout.NORTH);
+
+        // ==========================================
+        // --- PANEL DE FORMULARIO ---
+        // ==========================================
+        JPanel panelFormulario = new JPanel(new GridLayout(5, 2, 10, 20));
+        panelFormulario.setOpaque(false); // Transparente para que se vea el fondo
+        panelFormulario.setBorder(BorderFactory.createEmptyBorder(25, 30, 15, 30));
 
         txtNombre = crearTextField();
         txtPrecio = crearTextField();
         txtStock = crearTextField();
-        txtCategoria = crearTextField();
 
+        // --- COMPONENTE CATEGORÍA ---
+        JPanel panelCategoria = new JPanel(new BorderLayout(5, 0));
+        panelCategoria.setOpaque(false);
+
+        cbCategoria = new JComboBox<>(inventario.getCategoriasDisponibles());
+        cbCategoria.setFont(new Font("SansSerif", Font.PLAIN, 14));
+        cbCategoria.setBackground(Color.WHITE);
+        cbCategoria.setEditable(false);
+
+        JPanel panelBotonesCat = new JPanel(new GridLayout(1, 2, 5, 0));
+        panelBotonesCat.setOpaque(false);
+
+        JButton btnNuevaCategoria = crearBotonAccionPequeño("➕", new Color(46, 204, 113));
+        JButton btnBorrarCategoria = crearBotonAccionPequeño("➖", new Color(231, 76, 60));
+
+        btnNuevaCategoria.addActionListener(e -> {
+            String nuevaCategoria = JOptionPane.showInputDialog(this,
+                    "Ingrese el nombre de la nueva categoría:",
+                    "Nueva Categoría", JOptionPane.PLAIN_MESSAGE);
+
+            if (nuevaCategoria != null && !nuevaCategoria.trim().isEmpty()) {
+                String categoriaLimpia = nuevaCategoria.trim();
+                inventario.agregarCategoriaSiNoExiste(categoriaLimpia);
+                actualizarCategorias(categoriaLimpia);
+            }
+        });
+
+        btnBorrarCategoria.addActionListener(e -> {
+            if (cbCategoria.getSelectedItem() != null) {
+                String categoriaSeleccionada = cbCategoria.getSelectedItem().toString();
+                int confirmacion = JOptionPane.showConfirmDialog(this,
+                        "¿Estás seguro de eliminar la categoría '" + categoriaSeleccionada + "'?",
+                        "Confirmar Eliminación", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+
+                if (confirmacion == JOptionPane.YES_OPTION) {
+                    boolean sePudoBorrar = inventario.eliminarCategoria(categoriaSeleccionada);
+                    if (sePudoBorrar) {
+                        actualizarCategorias(null);
+                    } else {
+                        JOptionPane.showMessageDialog(this,
+                                "No se puede eliminar la categoría porque hay productos que la están utilizando.",
+                                "Error", JOptionPane.ERROR_MESSAGE);
+                    }
+                }
+            }
+        });
+
+        panelBotonesCat.add(btnNuevaCategoria);
+        panelBotonesCat.add(btnBorrarCategoria);
+        panelCategoria.add(cbCategoria, BorderLayout.CENTER);
+        panelCategoria.add(panelBotonesCat, BorderLayout.EAST);
+
+        // ID (Bloqueado visualmente para que encaje con la estética)
         txtId = crearTextField();
         txtId.setEditable(false);
-        txtId.setBackground(new Color(245, 245, 245)); // Color grisáceo para indicar que está bloqueado
-        txtId.setForeground(Color.GRAY);
+        txtId.setBackground(new Color(235, 235, 235));
+        txtId.setForeground(new Color(120, 120, 120));
+        txtId.setFocusable(false); // Evita que parpadee el cursor ahí
 
-        // Añadir etiquetas y campos a la grilla
-        agregarCampoFormulario(panelFormulario, "Nombre:", txtNombre);
+        // Añadir etiquetas y campos
+        agregarCampoFormulario(panelFormulario, "Nombre del Producto:", txtNombre);
         agregarCampoFormulario(panelFormulario, "Precio ($):", txtPrecio);
         agregarCampoFormulario(panelFormulario, "Stock Unidades:", txtStock);
-        agregarCampoFormulario(panelFormulario, "Categoría:", txtCategoria);
+        agregarCampoFormulario(panelFormulario, "Categoría:", panelCategoria);
         agregarCampoFormulario(panelFormulario, "ID:", txtId);
 
-        panelPrincipal.add(panelFormulario, BorderLayout.CENTER);
+        add(panelFormulario, BorderLayout.CENTER);
 
-        // --- BOTONES ---
-        // Usamos un BorderLayout para separar los botones
+        // ==========================================
+        // --- PANEL DE BOTONES PRINCIPALES ---
+        // ==========================================
         JPanel panelBotonesContenedor = new JPanel(new BorderLayout());
-        panelBotonesContenedor.setBackground(Color.WHITE);
-        panelBotonesContenedor.setBorder(new EmptyBorder(10, 0, 0, 0));
+        panelBotonesContenedor.setOpaque(false);
+        panelBotonesContenedor.setBorder(new EmptyBorder(10, 30, 20, 30));
 
-        // Botón Borrar (Izquierda)
-        JPanel panelIzquierda = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
-        panelIzquierda.setBackground(Color.WHITE);
-        JButton btnBorrar = crearBoton("Borrar Producto", new Color(231, 76, 60), Color.WHITE); // Color Rojo
+        // Botón Borrar a la Izquierda
+        JButton btnBorrar = crearBotonPrincipal("Borrar", new Color(231, 76, 60), 110);
         btnBorrar.addActionListener(e -> borrarProducto());
-        panelIzquierda.add(btnBorrar);
+        panelBotonesContenedor.add(btnBorrar, BorderLayout.WEST);
 
-        // Botones Cancelar y Guardar (Derecha)
-        JPanel panelDerecha = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 0));
-        panelDerecha.setBackground(Color.WHITE);
-        JButton btnCancelar = crearBoton("Cancelar", new Color(220, 220, 220), Color.DARK_GRAY);
-        JButton btnGuardar = crearBoton("Guardar Cambios", new Color(46, 204, 113), Color.WHITE);
+        // Botones Cancelar y Guardar a la Derecha
+        JPanel panelDerecha = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        panelDerecha.setOpaque(false);
+
+        JButton btnCancelar = crearBotonPrincipal("Cancelar", new Color(149, 165, 166), 110);
+        JButton btnGuardar = crearBotonPrincipal("Guardar", new Color(41, 128, 185), 110);
 
         btnCancelar.addActionListener(e -> dispose());
         btnGuardar.addActionListener(e -> guardarCambios());
@@ -87,58 +153,62 @@ public class DialogoModificarProducto extends JDialog {
         panelDerecha.add(btnCancelar);
         panelDerecha.add(btnGuardar);
 
-        // Agregamos ambos paneles al contenedor principal de botones
-        panelBotonesContenedor.add(panelIzquierda, BorderLayout.WEST);
         panelBotonesContenedor.add(panelDerecha, BorderLayout.EAST);
 
-        panelPrincipal.add(panelBotonesContenedor, BorderLayout.SOUTH);
+        add(panelBotonesContenedor, BorderLayout.SOUTH);
 
-        add(panelPrincipal);
-
+        // Cargamos los datos después de dibujar la ventana
         cargarDatosActuales();
 
-        pack(); // Ajusta el tamaño al contenido
-        setLocationRelativeTo(getOwner()); // Centra el diálogo sobre la ventana principal
-        setVisible(true); // Muestra la ventana
+        setVisible(true);
     }
 
     private void cargarDatosActuales() {
         txtNombre.setText(producto.getNombre());
-        txtPrecio.setText(String.valueOf(producto.getPrecio()));
+        // Forzamos que el precio se muestre sin notación científica y en formato entendible
+        txtPrecio.setText(String.format("%.2f", producto.getPrecio()).replace(",", "."));
         txtStock.setText(String.valueOf(producto.getStock()));
-        txtCategoria.setText(producto.getCategoria());
         txtId.setText(producto.getId());
+
+        cbCategoria.setSelectedItem(producto.getCategoria());
     }
 
     private void borrarProducto() {
-        // Mostramos un mensaje de advertencia antes de borrar
         int confirmacion = JOptionPane.showConfirmDialog(this,
                 "¿Estás seguro de que deseas eliminar este producto?",
                 "Confirmar Eliminación",
                 JOptionPane.YES_NO_OPTION,
                 JOptionPane.WARNING_MESSAGE);
 
-        // Si el usuario elige "Sí"
         if (confirmacion == JOptionPane.YES_OPTION) {
-            productoBorrado = true; // Activamos la bandera
-            dispose(); // Cerramos la ventana
+            productoBorrado = true;
+            dispose();
         }
     }
 
     private void guardarCambios() {
         try {
-            // Validamos que precio y stock sean números válidos
             double nuevoPrecio = Double.parseDouble(txtPrecio.getText());
             int nuevoStock = Integer.parseInt(txtStock.getText());
+            String categoriaSeleccionada = cbCategoria.getSelectedItem() != null ? cbCategoria.getSelectedItem().toString() : "";
 
-            // Actualizamos el objeto Producto
-            producto.setNombre(txtNombre.getText());
+            if (nuevoPrecio < 0 || nuevoStock < 0) {
+                JOptionPane.showMessageDialog(this, "El precio y el stock no pueden ser negativos.", "Error de Validación", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            if (txtNombre.getText().trim().isEmpty() || categoriaSeleccionada.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "El nombre y la categoría no pueden estar vacíos.", "Error de Validación", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            producto.setNombre(txtNombre.getText().trim());
             producto.setPrecio(nuevoPrecio);
             producto.setStock(nuevoStock);
-            producto.setCategoria(txtCategoria.getText());
+            producto.setCategoria(categoriaSeleccionada);
 
             guardadoExitoso = true;
-            dispose(); // Cerramos el diálogo con éxito
+            dispose();
 
         } catch (NumberFormatException ex) {
             JOptionPane.showMessageDialog(this, "Por favor, ingrese valores numéricos válidos para Precio y Stock.", "Error de Formato", JOptionPane.ERROR_MESSAGE);
@@ -149,50 +219,57 @@ public class DialogoModificarProducto extends JDialog {
         return guardadoExitoso;
     }
 
-    // --- MÉTODOS DE DISEÑO (ESTILO) ---
+    public boolean isProductoBorrado() {
+        return productoBorrado;
+    }
 
-    private void agregarCampoFormulario(JPanel panel, String textoLabel, JTextField textField) {
+    // --- MÉTODOS AUXILIARES DE DISEÑO ---
+
+    private void actualizarCategorias(String itemASeleccionar) {
+        cbCategoria.setModel(new DefaultComboBoxModel<>(inventario.getCategoriasDisponibles()));
+        if (itemASeleccionar != null) {
+            cbCategoria.setSelectedItem(itemASeleccionar);
+        }
+    }
+
+    private void agregarCampoFormulario(JPanel panel, String textoLabel, JComponent componente) {
         JLabel label = new JLabel(textoLabel);
         label.setFont(new Font("SansSerif", Font.BOLD, 14));
         label.setForeground(new Color(80, 80, 80));
         panel.add(label);
-        panel.add(textField);
+        panel.add(componente);
     }
 
     private JTextField crearTextField() {
         JTextField txt = new JTextField();
         txt.setFont(new Font("SansSerif", Font.PLAIN, 14));
-        // Crea un borde sutil y añade un padding (espaciado interno) para que el texto no pegue a los bordes
         txt.setBorder(BorderFactory.createCompoundBorder(
-                new LineBorder(new Color(200, 200, 200)),
-                new EmptyBorder(5, 10, 5, 10)
+                BorderFactory.createLineBorder(new Color(200, 200, 200)),
+                BorderFactory.createEmptyBorder(5, 8, 5, 8)
         ));
         return txt;
     }
 
-    private JButton crearBoton(String texto, Color fondo, Color textoColor) {
+    private JButton crearBotonPrincipal(String texto, Color colorFondo, int ancho) {
         JButton btn = new JButton(texto);
         btn.setFont(new Font("SansSerif", Font.BOLD, 14));
-        btn.setBackground(fondo);
-        btn.setForeground(textoColor);
+        btn.setForeground(Color.WHITE);
+        btn.setBackground(colorFondo);
         btn.setFocusPainted(false);
         btn.setBorderPainted(false);
+        btn.setPreferredSize(new Dimension(ancho, 40));
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btn.setBorder(new EmptyBorder(10, 20, 10, 20));
-
-        // Efecto Hover simple
-        btn.addMouseListener(new MouseAdapter() {
-            public void mouseEntered(MouseEvent e) {
-                btn.setBackground(fondo.darker());
-            }
-            public void mouseExited(MouseEvent e) {
-                btn.setBackground(fondo);
-            }
-        });
         return btn;
     }
 
-    public boolean isProductoBorrado() {
-        return productoBorrado;
+    private JButton crearBotonAccionPequeño(String icono, Color colorFondo) {
+        JButton btn = new JButton(icono);
+        btn.setFont(new Font("SansSerif", Font.BOLD, 12));
+        btn.setForeground(Color.WHITE);
+        btn.setBackground(colorFondo);
+        btn.setFocusPainted(false);
+        btn.setBorderPainted(false);
+        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        return btn;
     }
 }

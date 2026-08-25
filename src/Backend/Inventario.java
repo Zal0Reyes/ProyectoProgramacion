@@ -12,16 +12,56 @@ import java.util.List;
 public class Inventario {
     // Lista donde se almacenan todos los productos
     private final ArrayList<Producto> listaProductos;
+    private final List<String> categoriasDisponibles;
     private int contadorId;
+
+
     private static final String ARCHIVO_CSV = "inventario.csv";
+    private static final String ARCHIVO_CATEGORIAS_CSV = "categorias.csv";
 
     public Inventario() {
         this.listaProductos = new ArrayList<>();
+        this.categoriasDisponibles = new ArrayList<>();
         contadorId = 1;
+        cargarCategoriasDesdeCSV();
         cargarDesdeCSV();
     }
 
 
+    // --- MÉTODOS DE CATEGORÍAS ---
+
+
+    public String[] getCategoriasDisponibles() {
+        return categoriasDisponibles.toArray(new String[0]);
+    }
+
+    public void agregarCategoriaSiNoExiste(String nuevaCategoria) {
+        boolean existe = false;
+        for (String cat : categoriasDisponibles) {
+            if (cat.equalsIgnoreCase(nuevaCategoria)) {
+                existe = true;
+                break;
+            }
+        }
+        if (!existe && !nuevaCategoria.trim().isEmpty()) {
+            categoriasDisponibles.add(nuevaCategoria);
+            guardarCategoriasEnCSV();
+        }
+    }
+
+    public boolean eliminarCategoria(String categoriaAEliminar) {
+        for (Producto p : listaProductos) {
+            if (p.getCategoria().equalsIgnoreCase(categoriaAEliminar)) {
+                return false;
+            }
+        }
+        categoriasDisponibles.remove(categoriaAEliminar);
+        guardarCategoriasEnCSV();
+        return true;
+    }
+
+
+    //             ------------- METODOS PRODUCTOS ---------------
     public boolean eliminarProductoPorId(String idBuscado) {
         // Usamos un ciclo 'for' tradicional con índice (i)
         for (int i = 0; i < listaProductos.size(); i++) {
@@ -194,5 +234,44 @@ public class Inventario {
     public ArrayList<Producto> getProductos() {
         return listaProductos;
     }
+    // ==========================================
+    // --- PERSISTENCIA DE CATEGORÍAS ---
+    // ==========================================
 
+    public void guardarCategoriasEnCSV() {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(ARCHIVO_CATEGORIAS_CSV))) {
+            writer.write("categoria\n"); // Cabecera del archivo
+
+            for (String cat : categoriasDisponibles) {
+                writer.write(cat + "\n");
+            }
+        } catch (IOException e) {
+            System.out.println("No se pudo guardar el archivo de categorías: " + e.getMessage());
+        }
+    }
+
+    public void cargarCategoriasDesdeCSV() {
+        File archivo = new File(ARCHIVO_CATEGORIAS_CSV);
+
+        // Si el archivo NO existe, creamos el archivo
+        if (!archivo.exists()) {
+            guardarCategoriasEnCSV(); // Las guardamos de inmediato para la próxima vez
+            return;
+        }
+
+        // Si el archivo SÍ existe, lo leemos
+        try (BufferedReader reader = new BufferedReader(new FileReader(archivo))) {
+            String linea = reader.readLine(); // Ignora la cabecera ("categoria")
+
+            while ((linea = reader.readLine()) != null) {
+                String categoriaLeida = linea.trim();
+
+                if (!categoriaLeida.isEmpty()) {
+                    this.categoriasDisponibles.add(categoriaLeida);
+                }
+            }
+        } catch (IOException e) {
+            System.out.println("No se pudo leer el archivo de categorías: " + e.getMessage());
+        }
+    }
 }

@@ -45,7 +45,13 @@ public class VistaPrincipalTienda extends BaseFrame {
         JButton btnAgregar = crearBotonMenu("➕", new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                mostrarDialogoAgregar();
+                DialogoAgregarProducto dialogo = new DialogoAgregarProducto(VistaPrincipalTienda.this, inventario);
+                dialogo.mostrar();
+
+                if (dialogo.isGuardadoExitoso()) {
+                    actualizarVistaProductos();
+                    JOptionPane.showMessageDialog(VistaPrincipalTienda.this, "Producto agregado exitosamente.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
+                }
             }
         });
         barraLateral.add(btnAgregar);
@@ -252,38 +258,8 @@ public class VistaPrincipalTienda extends BaseFrame {
         return panelEstadisticas;
     }
 
-    // --- MÉTODOS DE DIÁLOGO Y TARJETAS ---
+    // ---  TARJETAS ---
 
-    private void mostrarDialogoAgregar() {
-        JTextField txtNombre = new JTextField();
-        JTextField txtPrecio = new JTextField();
-        JTextField txtStock = new JTextField();
-        JTextField txtCategoria = new JTextField();
-
-        Object[] mensaje = {
-                "Nombre del Producto:", txtNombre,
-                "Precio:", txtPrecio,
-                "Stock:", txtStock,
-                "Categoria:", txtCategoria,
-        };
-
-        int opcion = JOptionPane.showConfirmDialog(this, mensaje, "Agregar Nuevo Producto", JOptionPane.OK_CANCEL_OPTION);
-
-        if (opcion == JOptionPane.OK_OPTION) {
-            try {
-                String nombre = txtNombre.getText();
-                int stock = Integer.parseInt(txtStock.getText());
-                double precio = Double.parseDouble(txtPrecio.getText());
-                String categoria = txtCategoria.getText();
-
-                inventario.registrarProducto(nombre, precio, stock, categoria);
-                actualizarVistaProductos();
-
-            } catch (NumberFormatException ex) {
-                JOptionPane.showMessageDialog(this, "Por favor ingrese un precio válido (solo números).", "Error", JOptionPane.ERROR_MESSAGE);
-            }
-        }
-    }
 
     private JPanel crearTarjetaProducto(Producto producto) {
         // --- CONFIGURACIÓN BASE TARJETA ---
@@ -307,7 +283,7 @@ public class VistaPrincipalTienda extends BaseFrame {
 
             @Override
             public void mouseClicked(MouseEvent e) {
-                DialogoModificarProducto dialogo = new DialogoModificarProducto(VistaPrincipalTienda.this, producto);
+                DialogoModificarProducto dialogo = new DialogoModificarProducto(VistaPrincipalTienda.this, producto, inventario);
                 dialogo.mostrar();
 
                 if (dialogo.isProductoBorrado()) {
@@ -323,11 +299,17 @@ public class VistaPrincipalTienda extends BaseFrame {
             }
         });
 
-        // --- IMAGEN PLACEHOLDER ---
-        PanelRedondeado imgPlaceholder = new PanelRedondeado(15);
-        imgPlaceholder.setBackground(new Color(235, 235, 235));
-        imgPlaceholder.setPreferredSize(new Dimension(100, 140));
-        tarjeta.add(imgPlaceholder, BorderLayout.CENTER);
+        // --- IMAGEN DE LA TARGETA ---
+        JLabel lblImagen = new JLabel();
+        lblImagen.setHorizontalAlignment(SwingConstants.CENTER);
+
+        lblImagen.setText(producto.getNombre().substring(0, 1).toUpperCase());
+        lblImagen.setFont(new Font("SansSerif", Font.BOLD, 48));
+        lblImagen.setForeground(new Color(150, 150, 150));
+        lblImagen.setOpaque(true);
+        lblImagen.setBackground(new Color(235, 235, 235));
+
+        tarjeta.add(lblImagen, BorderLayout.CENTER);
 
         // --- TEXTOS DE LA TARJETA ---
         JPanel panelTextos = new JPanel(new GridLayout(2, 1, 0, 5));

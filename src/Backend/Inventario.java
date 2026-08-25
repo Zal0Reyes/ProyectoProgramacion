@@ -1,5 +1,11 @@
 package Backend;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -7,10 +13,12 @@ public class Inventario {
     // Lista donde se almacenan todos los productos
     private final ArrayList<Producto> listaProductos;
     private int contadorId;
+    private static final String ARCHIVO_CSV = "inventario.csv";
 
     public Inventario() {
         this.listaProductos = new ArrayList<>();
         contadorId = 1;
+        cargarDesdeCSV();
     }
 
 
@@ -26,6 +34,7 @@ public class Inventario {
 
                 // Si coincide, lo eliminamos de la lista usando su índice
                 listaProductos.remove(i);
+                guardarEnCSV();
                 return true; // Retornamos true porque se eliminó con éxito
 
             }
@@ -43,6 +52,7 @@ public class Inventario {
                 System.out.println("El producto '" + nombre + "' ya existe. Actualizando stock...");
                 // Le sumamos la cantidad nueva al stock actual
                 p.setStock(p.getStock() + stock);
+                guardarEnCSV();
                 return;
             }
         }
@@ -56,6 +66,7 @@ public class Inventario {
         // Crear y guardar el producto
         Producto nuevoProducto = new Producto(nombre ,precio ,stock ,categoria ,nuevoId);
         listaProductos.add(nuevoProducto);
+        guardarEnCSV();
 
         System.out.println("Nuevo producto agregado: " + nombre + " con ID: " + nuevoId);
     }
@@ -116,6 +127,55 @@ public class Inventario {
     }
 
 
+
+    public void guardarEnCSV() {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(ARCHIVO_CSV))) {
+            writer.write("id,nombre,precio,stock,categoria\n");
+
+            for (Producto p : listaProductos) {
+                writer.write(p.getId() + "," + p.getNombre() + "," + p.getPrecio() + "," + p.getStock() + "," + p.getCategoria() + "\n");
+            }
+
+        } catch (IOException e) {
+            System.out.println("No se pudo guardar el archivo CSV: " + e.getMessage());
+        }
+    }
+
+    public void cargarDesdeCSV() {
+        File archivo = new File(ARCHIVO_CSV);
+
+        if (!archivo.exists()) {
+            return;
+        }
+
+        try (BufferedReader reader = new BufferedReader(new FileReader(archivo))) {
+            String linea = reader.readLine(); // Ignora la cabecera
+
+            while ((linea = reader.readLine()) != null) {
+                String[] datos = linea.split(",", 5);
+
+                if (datos.length < 5) {
+                    continue;
+                }
+
+                String id = datos[0].trim();
+                String nombre = datos[1].trim();
+                double precio = Double.parseDouble(datos[2].trim());
+                int stock = Integer.parseInt(datos[3].trim());
+                String categoria = datos[4].trim();
+
+                listaProductos.add(new Producto(nombre, precio, stock, categoria, id));
+
+                int numeroId = Integer.parseInt(id.replace("P", ""));
+                if (numeroId >= contadorId) {
+                    contadorId = numeroId + 1;
+                }
+            }
+
+        } catch (IOException | NumberFormatException e) {
+            System.out.println("No se pudo leer el archivo CSV: " + e.getMessage());
+        }
+    }
 
     public ArrayList<Producto> getProductos() {
         return listaProductos;

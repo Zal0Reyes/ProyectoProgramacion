@@ -10,6 +10,8 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 public class VistaPrincipalTienda extends BaseFrame {
 
@@ -47,6 +49,16 @@ public class VistaPrincipalTienda extends BaseFrame {
             }
         });
         barraLateral.add(btnAgregar);
+
+        // BOTÓN ESTADÍSTICAS EN VENTANA SEPARADA
+        barraLateral.add(Box.createRigidArea(new Dimension(0, 30)));
+        JButton btnEstadisticas = crearBotonMenu("📊", new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                mostrarDialogoEstadisticas();
+            }
+        });
+        barraLateral.add(btnEstadisticas);
 
         // BOTÓN CONFIGURACIÓN
         barraLateral.add(Box.createRigidArea(new Dimension(0, 30)));
@@ -161,6 +173,85 @@ public class VistaPrincipalTienda extends BaseFrame {
         gridProductos.repaint();
     }
 
+    private void mostrarDialogoEstadisticas() {
+        JDialog dialog = new JDialog(this, "Cálculos Básicos", true);
+        dialog.setSize(500, 400);
+        dialog.setLocationRelativeTo(this);
+        dialog.setLayout(new BorderLayout());
+
+        JPanel panelContenido = crearPanelEstadisticas();
+        JScrollPane scroll = new JScrollPane(panelContenido);
+        scroll.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+
+        dialog.add(scroll, BorderLayout.CENTER);
+        dialog.setVisible(true);
+    }
+
+    private JPanel crearPanelEstadisticas() {
+        JPanel panelEstadisticas = new JPanel();
+        panelEstadisticas.setLayout(new BoxLayout(panelEstadisticas, BoxLayout.Y_AXIS));
+        panelEstadisticas.setOpaque(false);
+        panelEstadisticas.setBorder(new EmptyBorder(10, 10, 10, 10));
+
+        Set<String> categorias = new LinkedHashSet<>();
+        for (Producto producto : inventario.getProductos()) {
+            if (producto.getCategoria() != null && !producto.getCategoria().trim().isEmpty()) {
+                categorias.add(producto.getCategoria());
+            }
+        }
+
+        if (categorias.isEmpty()) {
+            JLabel lblSinDatos = new JLabel("No hay categorías registradas aún.");
+            lblSinDatos.setFont(new Font("SansSerif", Font.BOLD, 14));
+            lblSinDatos.setForeground(new Color(120, 120, 120));
+            panelEstadisticas.add(lblSinDatos);
+            return panelEstadisticas;
+        }
+
+        JLabel lblTitulo = new JLabel("Cálculos básicos por categoría");
+        lblTitulo.setFont(new Font("SansSerif", Font.BOLD, 18));
+        lblTitulo.setForeground(new Color(40, 40, 40));
+        lblTitulo.setAlignmentX(Component.LEFT_ALIGNMENT);
+        panelEstadisticas.add(lblTitulo);
+        panelEstadisticas.add(Box.createRigidArea(new Dimension(0, 10)));
+
+        for (String categoria : categorias) {
+            double promedio = inventario.calcularPrecioPromedioPorCategoria(categoria);
+            Producto productoMenorStock = inventario.buscarMenorStockPorCategoria(categoria);
+
+            JPanel panelCategoria = new JPanel(new GridLayout(3, 1, 0, 4));
+            panelCategoria.setOpaque(false);
+            panelCategoria.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(new Color(230, 230, 230)),
+                    new EmptyBorder(10, 12, 10, 12)
+            ));
+            panelCategoria.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+            JLabel lblCategoria = new JLabel("Categoría: " + categoria);
+            lblCategoria.setFont(new Font("SansSerif", Font.BOLD, 14));
+            lblCategoria.setForeground(new Color(60, 60, 60));
+
+            JLabel lblPromedio = new JLabel("Precio promedio: $" + String.format("%.2f", promedio));
+            lblPromedio.setFont(new Font("SansSerif", Font.PLAIN, 13));
+            lblPromedio.setForeground(new Color(90, 90, 90));
+
+            String menorStockTexto = (productoMenorStock == null)
+                    ? "Menor stock: sin productos"
+                    : "Menor stock: " + productoMenorStock.getNombre() + " (" + productoMenorStock.getStock() + ")";
+            JLabel lblMenorStock = new JLabel(menorStockTexto);
+            lblMenorStock.setFont(new Font("SansSerif", Font.PLAIN, 13));
+            lblMenorStock.setForeground(new Color(90, 90, 90));
+
+            panelCategoria.add(lblCategoria);
+            panelCategoria.add(lblPromedio);
+            panelCategoria.add(lblMenorStock);
+            panelEstadisticas.add(panelCategoria);
+            panelEstadisticas.add(Box.createRigidArea(new Dimension(0, 8)));
+        }
+
+        return panelEstadisticas;
+    }
+
     // --- MÉTODOS DE DIÁLOGO Y TARJETAS ---
 
     private void mostrarDialogoAgregar() {
@@ -225,6 +316,7 @@ public class VistaPrincipalTienda extends BaseFrame {
                     JOptionPane.showMessageDialog(VistaPrincipalTienda.this, "Producto eliminado con éxito.", "Eliminado", JOptionPane.INFORMATION_MESSAGE);
                 }
                 else if (dialogo.isGuardadoExitoso()) {
+                    inventario.guardarEnCSV();
                     actualizarVistaProductos();
                     JOptionPane.showMessageDialog(VistaPrincipalTienda.this, "Producto modificado con éxito.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
                 }

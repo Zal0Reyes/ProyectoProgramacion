@@ -84,6 +84,20 @@ public class Inventario {
 
         return productosCategoria;
     }
+    public ArrayList<Producto> filtrarPorRangoPrecio(double precioMinimo, double precioMaximo) {
+
+        ArrayList<Producto> productosFiltrados = new ArrayList<>();
+
+        for (Producto p : listaProductos) {
+
+            if (p.getPrecio() >= precioMinimo && p.getPrecio() <= precioMaximo) {
+                productosFiltrados.add(p);
+            }
+        }
+
+        return productosFiltrados;
+    }
+
 
 
     //         ----- CALCULOS BASICOS----

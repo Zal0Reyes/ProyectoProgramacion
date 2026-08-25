@@ -38,7 +38,14 @@ public class VistaPrincipalTienda extends BaseFrame {
         barraLateral.setBorder(new EmptyBorder(30, 0, 30, 0));
 
         // BOTÓN INICIO
-        barraLateral.add(crearBotonMenu("🏠", null));
+        JButton btnInicio = crearBotonMenu("🏠", new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                actualizarVistaProductos();
+            }
+        });
+
+        barraLateral.add(btnInicio);
         barraLateral.add(Box.createRigidArea(new Dimension(0, 30)));
 
         // BOTÓN AGREGAR CON ACCIÓN
@@ -97,11 +104,20 @@ public class VistaPrincipalTienda extends BaseFrame {
         JTextField txtBuscar = new JTextField(15);
         txtBuscar.setFont(new Font("SansSerif", Font.PLAIN, 16));
 
-        // ESTILO BARRA DE BÚSQUEDA
         txtBuscar.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(new Color(200, 200, 200)),
                 BorderFactory.createEmptyBorder(5, 10, 5, 10)
         ));
+
+        JButton btnFiltro = new JButton("⚙ Filtrar");
+        btnFiltro.setFont(new Font("SansSerif", Font.BOLD, 14));
+        btnFiltro.setFocusPainted(false);
+        btnFiltro.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnFiltro.addActionListener(e -> mostrarDialogoFiltrarPrecio());
+
+        panelBusqueda.add(lblBuscar);
+        panelBusqueda.add(txtBuscar);
+        panelBusqueda.add(btnFiltro);
 
         // EVENTO DE BÚSQUEDA DINÁMICA
         txtBuscar.addKeyListener(new java.awt.event.KeyAdapter() {
@@ -281,6 +297,75 @@ public class VistaPrincipalTienda extends BaseFrame {
 
             } catch (NumberFormatException ex) {
                 JOptionPane.showMessageDialog(this, "Por favor ingrese un precio válido (solo números).", "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+
+    private void actualizarVistaPorRangoPrecio(double minimo, double maximo) {
+
+        gridProductos.removeAll();
+
+        for (Producto p : inventario.filtrarPorRangoPrecio(minimo, maximo)) {
+            gridProductos.add(crearTarjetaProducto(p));
+        }
+
+        gridProductos.revalidate();
+        gridProductos.repaint();
+    }
+
+    private void mostrarDialogoFiltrarPrecio() {
+
+        JTextField txtMinimo = new JTextField();
+        JTextField txtMaximo = new JTextField();
+
+        Object[] mensaje = {
+                "Precio mínimo:", txtMinimo,
+                "Precio máximo:", txtMaximo
+        };
+
+        int opcion = JOptionPane.showConfirmDialog(
+                this,
+                mensaje,
+                "Filtrar por rango de precios",
+                JOptionPane.OK_CANCEL_OPTION
+        );
+
+        if (opcion == JOptionPane.OK_OPTION) {
+
+            try {
+                double minimo = Double.parseDouble(txtMinimo.getText());
+                double maximo = Double.parseDouble(txtMaximo.getText());
+
+                if (minimo < 0 || maximo < 0) {
+                    JOptionPane.showMessageDialog(
+                            this,
+                            "Los precios no pueden ser negativos.",
+                            "Rango inválido",
+                            JOptionPane.ERROR_MESSAGE
+                    );
+                    return;
+                }
+
+                if (minimo > maximo) {
+                    JOptionPane.showMessageDialog(
+                            this,
+                            "El precio mínimo no puede ser mayor que el máximo.",
+                            "Rango inválido",
+                            JOptionPane.ERROR_MESSAGE
+                    );
+                    return;
+                }
+
+                actualizarVistaPorRangoPrecio(minimo, maximo);
+
+            } catch (NumberFormatException ex) {
+
+                JOptionPane.showMessageDialog(
+                        this,
+                        "Ingrese valores numéricos válidos.",
+                        "Error",
+                        JOptionPane.ERROR_MESSAGE
+                );
             }
         }
     }

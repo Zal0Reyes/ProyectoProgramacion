@@ -443,7 +443,7 @@ public class VistaPrincipalTienda extends BaseFrame {
         panelPrecioStock.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30)); // Evita que se estire en BoxLayout
 
         // Precio en verde
-        String precioFormateado = "$" + producto.getPrecio();
+        String precioFormateado = formatearPesos(producto.getPrecio());
         JLabel lblPrecio = new JLabel(precioFormateado);
         lblPrecio.setFont(new Font("SansSerif", Font.BOLD, 15));
         lblPrecio.setForeground(new Color(46, 139, 87)); // Color SeaGreen

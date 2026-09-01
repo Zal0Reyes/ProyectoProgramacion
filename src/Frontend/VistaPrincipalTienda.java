@@ -119,7 +119,7 @@ public class VistaPrincipalTienda extends BaseFrame {
         btnFiltro.setFont(new Font("SansSerif", Font.BOLD, 14));
         btnFiltro.setFocusPainted(false);
         btnFiltro.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btnFiltro.addActionListener(e -> mostrarDialogoFiltrarPrecio());
+        btnFiltro.addActionListener(e -> mostrarDialogoFiltros());
 
         panelBusqueda.add(lblBuscar);
         panelBusqueda.add(txtBuscar);
@@ -293,75 +293,114 @@ public class VistaPrincipalTienda extends BaseFrame {
     // ---  TARJETAS ---
 
 
-    private void actualizarVistaPorRangoPrecio(double minimo, double maximo) {
-
+    private void actualizarVistaConFiltros(java.util.List<String> categoriasFiltro, double minimo, double maximo) {
         gridProductos.removeAll();
 
-        for (Producto p : inventario.filtrarPorRangoPrecio(minimo, maximo)) {
-            gridProductos.add(crearTarjetaProducto(p));
+        for (Producto p : inventario.getProductos()) {
+
+            boolean pasaCategoria = categoriasFiltro.isEmpty();
+
+            for (String cat : categoriasFiltro) {
+
+                if (p.getCategoria().equalsIgnoreCase(cat)) {
+                    pasaCategoria = true;
+                    break;
+                }
+            }
+
+            boolean pasaPrecio = true;
+            if (minimo >= 0 && maximo >= 0) {
+                pasaPrecio = (p.getPrecio() >= minimo && p.getPrecio() <= maximo);
+            } else if (minimo >= 0) {
+                pasaPrecio = (p.getPrecio() >= minimo);
+            } else if (maximo >= 0) {
+                pasaPrecio = (p.getPrecio() <= maximo);
+            }
+
+            if (pasaCategoria && pasaPrecio) {
+                gridProductos.add(crearTarjetaProducto(p));
+            }
         }
 
         gridProductos.revalidate();
         gridProductos.repaint();
     }
 
-    private void mostrarDialogoFiltrarPrecio() {
-
+    private void mostrarDialogoFiltros() {
         JTextField txtMinimo = new JTextField();
         JTextField txtMaximo = new JTextField();
 
+        String[] categoriasGuardadas = inventario.getCategoriasDisponibles();
+        java.util.Arrays.sort(categoriasGuardadas);
+
+        JPanel panelCategorias = new JPanel();
+        panelCategorias.setLayout(new BoxLayout(panelCategorias, BoxLayout.Y_AXIS));
+        panelCategorias.setBackground(Color.WHITE);
+
+        java.util.List<JCheckBox> listaCheckboxes = new java.util.ArrayList<>();
+
+        for (String cat : categoriasGuardadas) {
+            JCheckBox checkBox = new JCheckBox(cat);
+            checkBox.setBackground(Color.WHITE);
+            checkBox.setFocusPainted(false);
+            checkBox.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+            listaCheckboxes.add(checkBox);
+            panelCategorias.add(checkBox);
+        }
+
+        JScrollPane scrollCategorias = new JScrollPane(panelCategorias);
+        scrollCategorias.setPreferredSize(new Dimension(250, 120)); // Ajusta el tamaño aquí
+        scrollCategorias.setBorder(BorderFactory.createLineBorder(new Color(200, 200, 200)));
+
         Object[] mensaje = {
-                "Precio mínimo:", txtMinimo,
-                "Precio máximo:", txtMaximo
+                "Selecciona las categorías:", scrollCategorias,
+                " ", // Espaciador visual
+                "Precio mínimo (opcional):", txtMinimo,
+                "Precio máximo (opcional):", txtMaximo
         };
 
         int opcion = JOptionPane.showConfirmDialog(
                 this,
                 mensaje,
-                "Filtrar por rango de precios",
+                "Opciones de Filtro",
                 JOptionPane.OK_CANCEL_OPTION
         );
 
         if (opcion == JOptionPane.OK_OPTION) {
+            java.util.List<String> categoriasSeleccionadas = new java.util.ArrayList<>();
+            for (JCheckBox cb : listaCheckboxes) {
+                if (cb.isSelected()) {
+                    categoriasSeleccionadas.add(cb.getText());
+                }
+            }
+
+            String minTxt = txtMinimo.getText().trim();
+            String maxTxt = txtMaximo.getText().trim();
+            double minimo = -1;
+            double maximo = -1;
 
             try {
-                double minimo = Double.parseDouble(txtMinimo.getText());
-                double maximo = Double.parseDouble(txtMaximo.getText());
+                if (!minTxt.isEmpty()) minimo = Double.parseDouble(minTxt);
+                if (!maxTxt.isEmpty()) maximo = Double.parseDouble(maxTxt);
 
-                if (minimo < 0 || maximo < 0) {
-                    JOptionPane.showMessageDialog(
-                            this,
-                            "Los precios no pueden ser negativos.",
-                            "Rango inválido",
-                            JOptionPane.ERROR_MESSAGE
-                    );
-                    return;
-                }
-
-                if (minimo > maximo) {
-                    JOptionPane.showMessageDialog(
-                            this,
+                if ((minimo >= 0 && maximo >= 0) && (minimo > maximo)) {
+                    JOptionPane.showMessageDialog(this,
                             "El precio mínimo no puede ser mayor que el máximo.",
-                            "Rango inválido",
-                            JOptionPane.ERROR_MESSAGE
-                    );
+                            "Rango inválido", JOptionPane.ERROR_MESSAGE);
                     return;
                 }
-
-                actualizarVistaPorRangoPrecio(minimo, maximo);
-
             } catch (NumberFormatException ex) {
-
-                JOptionPane.showMessageDialog(
-                        this,
-                        "Ingrese valores numéricos válidos.",
-                        "Error",
-                        JOptionPane.ERROR_MESSAGE
-                );
+                JOptionPane.showMessageDialog(this,
+                        "Ingrese valores numéricos válidos en los precios.",
+                        "Error", JOptionPane.ERROR_MESSAGE);
+                return;
             }
+
+            actualizarVistaConFiltros(categoriasSeleccionadas, minimo, maximo);
         }
     }
-
+    
     private String formatearPesos(double valor) {
         return "$" + String.format("%,.0f", valor).replace(",", ".");
     }

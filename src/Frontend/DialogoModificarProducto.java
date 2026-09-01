@@ -39,7 +39,7 @@ public class DialogoModificarProducto extends JDialog {
         // --- CABECERA DE LA VENTANA ---
         // ==========================================
         JPanel panelCabecera = new JPanel();
-        panelCabecera.setBackground(new Color(255, 204, 51)); // Mismo amarillo
+        panelCabecera.setBackground(new Color(110, 216, 255)); // Mismo amarillo
         panelCabecera.setBorder(new EmptyBorder(15, 0, 15, 0));
 
         JLabel lblTitulo = new JLabel("📝 Modificar Producto");

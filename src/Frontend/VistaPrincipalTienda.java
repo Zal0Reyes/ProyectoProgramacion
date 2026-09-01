@@ -32,7 +32,7 @@ public class VistaPrincipalTienda extends BaseFrame {
         // --- BARRA LATERAL (MENÚ) ---
         // ==========================================
         JPanel barraLateral = new JPanel();
-        barraLateral.setBackground(new Color(255, 204, 51));
+        barraLateral.setBackground(new Color(110, 216, 255));
         barraLateral.setPreferredSize(new Dimension(80, 0));
         barraLateral.setLayout(new BoxLayout(barraLateral, BoxLayout.Y_AXIS));
         barraLateral.setBorder(new EmptyBorder(30, 0, 30, 0));
@@ -441,7 +441,7 @@ public class VistaPrincipalTienda extends BaseFrame {
         JButton btn = new JButton(texto);
         btn.setFont(new Font("SansSerif", Font.PLAIN, 28));
         btn.setForeground(Color.DARK_GRAY);
-        btn.setBackground(new Color(255, 204, 51));
+        btn.setBackground(new Color(110, 216, 255));
         btn.setBorderPainted(false);
         btn.setFocusPainted(false);
         btn.setContentAreaFilled(false);
@@ -454,11 +454,11 @@ public class VistaPrincipalTienda extends BaseFrame {
 
         btn.addMouseListener(new MouseAdapter() {
             public void mouseEntered(MouseEvent e) {
-                btn.setBackground(new Color(255, 220, 90));
+                btn.setBackground(new Color(79, 177, 213));
                 btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
             }
             public void mouseExited(MouseEvent e) {
-                btn.setBackground(new Color(255, 204, 51));
+                btn.setBackground(new Color(110, 216, 255));
             }
         });
         return btn;

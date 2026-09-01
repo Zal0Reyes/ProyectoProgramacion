@@ -31,7 +31,7 @@ public class DialogoAgregarProducto extends JDialog {
         // --- CABECERA DE LA VENTANA ---
         // ==========================================
         JPanel panelCabecera = new JPanel();
-        panelCabecera.setBackground(new Color(255, 204, 51)); // Mismo amarillo de tu menú lateral
+        panelCabecera.setBackground(new Color(110, 216, 255)); // Mismo amarillo de tu menú lateral
         panelCabecera.setBorder(new EmptyBorder(15, 0, 15, 0));
 
         JLabel lblTitulo = new JLabel("📝 Agregar Nuevo Producto");

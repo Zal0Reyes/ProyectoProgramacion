@@ -210,10 +210,24 @@ public class VistaPrincipalTienda extends BaseFrame {
     }
 
     private JPanel crearPanelEstadisticas() {
+
         JPanel panelEstadisticas = new JPanel();
         panelEstadisticas.setLayout(new BoxLayout(panelEstadisticas, BoxLayout.Y_AXIS));
         panelEstadisticas.setOpaque(false);
         panelEstadisticas.setBorder(new EmptyBorder(10, 10, 10, 10));
+
+        double valorTotal = inventario.calcularValorTotalInventario();
+
+        JLabel lblValorTotal = new JLabel(
+                "Valor total del inventario: " + formatearPesos(valorTotal)
+        );
+
+        lblValorTotal.setFont(new Font("SansSerif", Font.BOLD, 15));
+        lblValorTotal.setForeground(new Color(40, 40, 40));
+        lblValorTotal.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        panelEstadisticas.add(lblValorTotal);
+        panelEstadisticas.add(Box.createRigidArea(new Dimension(0, 15)));
 
         Set<String> categorias = new LinkedHashSet<>();
         for (Producto producto : inventario.getProductos()) {
@@ -253,7 +267,9 @@ public class VistaPrincipalTienda extends BaseFrame {
             lblCategoria.setFont(new Font("SansSerif", Font.BOLD, 14));
             lblCategoria.setForeground(new Color(60, 60, 60));
 
-            JLabel lblPromedio = new JLabel("Precio promedio: $" + String.format("%.2f", promedio));
+            JLabel lblPromedio = new JLabel(
+                    "Precio promedio: " + formatearPesos(promedio)
+            );
             lblPromedio.setFont(new Font("SansSerif", Font.PLAIN, 13));
             lblPromedio.setForeground(new Color(90, 90, 90));
 
@@ -346,7 +362,9 @@ public class VistaPrincipalTienda extends BaseFrame {
         }
     }
 
-
+    private String formatearPesos(double valor) {
+        return "$" + String.format("%,.0f", valor).replace(",", ".");
+    }
 
     private JPanel crearTarjetaProducto(Producto producto) {
         // --- CONFIGURACIÓN BASE TARJETA ---
@@ -360,7 +378,7 @@ public class VistaPrincipalTienda extends BaseFrame {
         tarjeta.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseEntered(MouseEvent e) {
-                tarjeta.setBackground(new Color(248, 248, 255)); // Un ligero tono azulado al pasar el mouse
+                tarjeta.setBackground(new Color(248, 248, 248));
                 tarjeta.setCursor(new Cursor(Cursor.HAND_CURSOR));
             }
             @Override
@@ -386,76 +404,34 @@ public class VistaPrincipalTienda extends BaseFrame {
             }
         });
 
-        // --- IMAGEN DE LA TARJETA ---
+        // --- IMAGEN DE LA TARGETA ---
         JLabel lblImagen = new JLabel();
         lblImagen.setHorizontalAlignment(SwingConstants.CENTER);
+
         lblImagen.setText(producto.getNombre().substring(0, 1).toUpperCase());
         lblImagen.setFont(new Font("SansSerif", Font.BOLD, 48));
-        lblImagen.setForeground(new Color(130, 130, 150));
+        lblImagen.setForeground(new Color(150, 150, 150));
         lblImagen.setOpaque(true);
-        lblImagen.setBackground(new Color(240, 242, 245));
+        lblImagen.setBackground(new Color(235, 235, 235));
 
         tarjeta.add(lblImagen, BorderLayout.CENTER);
 
-        // --- TEXTOS DE LA TARJETA (NUEVO DISEÑO) ---
-        JPanel panelTextos = new JPanel();
-        panelTextos.setLayout(new BoxLayout(panelTextos, BoxLayout.Y_AXIS));
+        // --- TEXTOS DE LA TARJETA ---
+        JPanel panelTextos = new JPanel(new GridLayout(2, 1, 0, 5));
         panelTextos.setOpaque(false);
-        panelTextos.setBorder(new EmptyBorder(12, 0, 0, 0));
+        panelTextos.setBorder(new EmptyBorder(10, 0, 0, 0));
 
-        // 1. Categoría y ID (Texto pequeño en la parte superior)
-        String categoria = (producto.getCategoria() != null && !producto.getCategoria().isEmpty())
-                ? producto.getCategoria().toUpperCase()
-                : "SIN CATEGORÍA";
-        JLabel lblCategoriaId = new JLabel(categoria + "  •  #" + producto.getId());
-        lblCategoriaId.setFont(new Font("SansSerif", Font.BOLD, 10));
-        lblCategoriaId.setForeground(new Color(150, 150, 150));
-        lblCategoriaId.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        // 2. Nombre (Destacado)
         JLabel lblNombre = new JLabel(producto.getNombre());
         lblNombre.setFont(new Font("SansSerif", Font.BOLD, 16));
-        lblNombre.setForeground(new Color(40, 40, 40));
-        lblNombre.setAlignmentX(Component.LEFT_ALIGNMENT);
+        lblNombre.setForeground(new Color(60, 60, 60));
 
-        // 3. Panel inferior para Precio y Stock (Lado a lado)
-        JPanel panelPrecioStock = new JPanel(new BorderLayout());
-        panelPrecioStock.setOpaque(false);
-        panelPrecioStock.setAlignmentX(Component.LEFT_ALIGNMENT);
-        panelPrecioStock.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30)); // Evita que se estire en BoxLayout
-
-        // Precio en verde
-        String precioFormateado = "$" + String.format("%.2f", producto.getPrecio());
+        String precioFormateado = formatearPesos(producto.getPrecio());
         JLabel lblPrecio = new JLabel(precioFormateado);
-        lblPrecio.setFont(new Font("SansSerif", Font.BOLD, 15));
-        lblPrecio.setForeground(new Color(46, 139, 87)); // Color SeaGreen
+        lblPrecio.setFont(new Font("SansSerif", Font.PLAIN, 14));
+        lblPrecio.setForeground(new Color(150, 150, 150));
 
-        // Stock con colores dinámicos
-        JLabel lblStock = new JLabel();
-        lblStock.setFont(new Font("SansSerif", Font.BOLD, 12));
-
-        int stock = producto.getStock();
-        if (stock == 0) {
-            lblStock.setText("¡Agotado!");
-            lblStock.setForeground(new Color(220, 53, 69)); // Rojo de alerta
-        } else if (stock <= 5) {
-            lblStock.setText("Quedan: " + stock);
-            lblStock.setForeground(new Color(255, 140, 0)); // Naranja de advertencia
-        } else {
-            lblStock.setText("Stock: " + stock);
-            lblStock.setForeground(new Color(120, 120, 120)); // Gris estándar
-        }
-
-        panelPrecioStock.add(lblPrecio, BorderLayout.WEST);
-        panelPrecioStock.add(lblStock, BorderLayout.EAST);
-
-        // --- ENSAMBLAJE DE TEXTOS ---
-        panelTextos.add(lblCategoriaId);
-        panelTextos.add(Box.createRigidArea(new Dimension(0, 4))); // Espacio pequeño
         panelTextos.add(lblNombre);
-        panelTextos.add(Box.createRigidArea(new Dimension(0, 10))); // Espacio más grande
-        panelTextos.add(panelPrecioStock);
-
+        panelTextos.add(lblPrecio);
         tarjeta.add(panelTextos, BorderLayout.SOUTH);
 
         return tarjeta;

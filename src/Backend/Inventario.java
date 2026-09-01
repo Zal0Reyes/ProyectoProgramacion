@@ -250,6 +250,17 @@ public class Inventario {
         }
     }
 
+    public double calcularValorTotalInventario() {
+
+        double valorTotal = 0;
+
+        for (Producto p : listaProductos) {
+            valorTotal = valorTotal + (p.getPrecio() * p.getStock());
+        }
+
+        return valorTotal;
+    }
+
     public void cargarCategoriasDesdeCSV() {
         File archivo = new File(ARCHIVO_CATEGORIAS_CSV);
 

@@ -99,7 +99,7 @@ public class Inventario {
 
         // Crear ID
         // Usamos String.format para que el ID se vea como "P001", "P002", etc.
-    String nuevoId = String.format("P%03d", contadorId);
+        String nuevoId = String.format("P%03d", contadorId);
         // Aumentamos el contador para el próximo producto
         contadorId++;
 

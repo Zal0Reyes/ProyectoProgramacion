@@ -210,10 +210,24 @@ public class VistaPrincipalTienda extends BaseFrame {
     }
 
     private JPanel crearPanelEstadisticas() {
+
         JPanel panelEstadisticas = new JPanel();
         panelEstadisticas.setLayout(new BoxLayout(panelEstadisticas, BoxLayout.Y_AXIS));
         panelEstadisticas.setOpaque(false);
         panelEstadisticas.setBorder(new EmptyBorder(10, 10, 10, 10));
+
+        double valorTotal = inventario.calcularValorTotalInventario();
+
+        JLabel lblValorTotal = new JLabel(
+                "Valor total del inventario: " + formatearPesos(valorTotal)
+        );
+
+        lblValorTotal.setFont(new Font("SansSerif", Font.BOLD, 15));
+        lblValorTotal.setForeground(new Color(40, 40, 40));
+        lblValorTotal.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        panelEstadisticas.add(lblValorTotal);
+        panelEstadisticas.add(Box.createRigidArea(new Dimension(0, 15)));
 
         Set<String> categorias = new LinkedHashSet<>();
         for (Producto producto : inventario.getProductos()) {
@@ -253,7 +267,9 @@ public class VistaPrincipalTienda extends BaseFrame {
             lblCategoria.setFont(new Font("SansSerif", Font.BOLD, 14));
             lblCategoria.setForeground(new Color(60, 60, 60));
 
-            JLabel lblPromedio = new JLabel("Precio promedio: $" + String.format("%.2f", promedio));
+            JLabel lblPromedio = new JLabel(
+                    "Precio promedio: " + formatearPesos(promedio)
+            );
             lblPromedio.setFont(new Font("SansSerif", Font.PLAIN, 13));
             lblPromedio.setForeground(new Color(90, 90, 90));
 
@@ -346,6 +362,10 @@ public class VistaPrincipalTienda extends BaseFrame {
         }
     }
 
+    private String formatearPesos(double valor) {
+        return "$" + String.format("%,.0f", valor).replace(",", ".");
+    }
+
     private JPanel crearTarjetaProducto(Producto producto) {
         // --- CONFIGURACIÓN BASE TARJETA ---
         PanelRedondeado tarjeta = new PanelRedondeado(20);
@@ -405,7 +425,7 @@ public class VistaPrincipalTienda extends BaseFrame {
         lblNombre.setFont(new Font("SansSerif", Font.BOLD, 16));
         lblNombre.setForeground(new Color(60, 60, 60));
 
-        String precioFormateado = "$" + String.format("%.2f", producto.getPrecio());
+        String precioFormateado = formatearPesos(producto.getPrecio());
         JLabel lblPrecio = new JLabel(precioFormateado);
         lblPrecio.setFont(new Font("SansSerif", Font.PLAIN, 14));
         lblPrecio.setForeground(new Color(150, 150, 150));

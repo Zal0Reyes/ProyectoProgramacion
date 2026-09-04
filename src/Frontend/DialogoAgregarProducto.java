@@ -9,6 +9,7 @@ public class DialogoAgregarProducto extends JDialog {
     private JTextField txtNombre;
     private JTextField txtPrecio;
     private JTextField txtStock;
+    private JTextField txtRutaImagen;
     private JComboBox<String> cbCategoria;
 
     private boolean guardadoExitoso = false;
@@ -18,7 +19,7 @@ public class DialogoAgregarProducto extends JDialog {
         super(parent, "Agregar Nuevo Producto", true);
         this.inventario = inventario;
 
-        setSize(450, 380);
+        setSize(450, 440);
         setLocationRelativeTo(parent);
         setResizable(false); // Evita que se deforme la ventana
     }
@@ -44,7 +45,9 @@ public class DialogoAgregarProducto extends JDialog {
         // ==========================================
         // --- PANEL DE FORMULARIO ---
         // ==========================================
-        JPanel panelFormulario = new JPanel(new GridLayout(4, 2, 10, 20));
+        // Cinco filas por dos columnas: cada campo agrega una etiqueta y un componente.
+        // Si se agrega otra fila, aumentar el primer número del GridLayout.
+        JPanel panelFormulario = new JPanel(new GridLayout(5, 2, 10, 20));
         panelFormulario.setOpaque(false);
         panelFormulario.setBorder(BorderFactory.createEmptyBorder(25, 30, 25, 30));
 
@@ -123,6 +126,9 @@ public class DialogoAgregarProducto extends JDialog {
         panelCategoria.add(panelBotonesCat, BorderLayout.EAST);
         panelFormulario.add(panelCategoria);
 
+        panelFormulario.add(crearLabelFormulario("Imagen del producto:"));
+        panelFormulario.add(crearSelectorImagen());
+
         add(panelFormulario, BorderLayout.CENTER);
 
         // ==========================================
@@ -147,6 +153,7 @@ public class DialogoAgregarProducto extends JDialog {
     // --- MÉTODOS DE VALIDACIÓN ---
 
     private void validarYGuardar() {
+        // Punto de entrada del botón Guardar. Aquí se pueden agregar nuevas validaciones.
         String nombre = txtNombre.getText().trim();
         String precioStr = txtPrecio.getText().trim();
         String stockStr = txtStock.getText().trim();
@@ -182,7 +189,7 @@ public class DialogoAgregarProducto extends JDialog {
         }
 
         inventario.agregarCategoriaSiNoExiste(categoria);
-        inventario.registrarProducto(nombre, precio, stock, categoria);
+        inventario.registrarProducto(nombre, precio, stock, categoria, txtRutaImagen.getText().trim());
 
         guardadoExitoso = true;
         dispose();
@@ -213,6 +220,38 @@ public class DialogoAgregarProducto extends JDialog {
                 BorderFactory.createEmptyBorder(5, 8, 5, 8)
         ));
         return txt;
+    }
+
+    private JPanel crearSelectorImagen() {
+        // La ruta se muestra como texto y se guarda en el Producto
+        JPanel panel = new JPanel(new BorderLayout(5, 0));
+        panel.setOpaque(false);
+        txtRutaImagen = crearTextField();
+        JButton btnElegir = new JButton("Elegir...");
+        btnElegir.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        btnElegir.setForeground(new Color(60, 70, 80));
+        btnElegir.setBackground(Color.WHITE);
+        btnElegir.setBorder(BorderFactory.createLineBorder(new Color(205, 211, 217)));
+        btnElegir.setFocusPainted(false);
+        btnElegir.setContentAreaFilled(true);
+        btnElegir.setOpaque(true);
+        btnElegir.setPreferredSize(new Dimension(85, 32));
+        btnElegir.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnElegir.addActionListener(e -> seleccionarImagen());
+        panel.add(txtRutaImagen, BorderLayout.CENTER);
+        panel.add(btnElegir, BorderLayout.EAST);
+        return panel;
+    }
+
+    private void seleccionarImagen() {
+        // Para permitir otros formatos, agregarlos en la lista de extensiones del filtro.
+        JFileChooser selector = new JFileChooser();
+        selector.setDialogTitle("Seleccionar imagen del producto");
+        selector.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
+                "Imágenes (JPG, JPEG, PNG, GIF)", "jpg", "jpeg", "png", "gif"));
+        if (selector.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
+            txtRutaImagen.setText(selector.getSelectedFile().getAbsolutePath());
+        }
     }
 
     private JButton crearBotonPrincipal(String texto, Color colorFondo) {

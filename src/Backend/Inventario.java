@@ -23,6 +23,7 @@ public class Inventario {
         this.listaProductos = new ArrayList<>();
         this.categoriasDisponibles = new ArrayList<>();
         contadorId = 1;
+        // Las categorías deben cargarse antes que los productos para llenar los combos.
         cargarCategoriasDesdeCSV();
         cargarDesdeCSV();
     }
@@ -50,6 +51,7 @@ public class Inventario {
     }
 
     public boolean eliminarCategoria(String categoriaAEliminar) {
+        // No se permite eliminar una categoría que todavía usa algún producto.
         for (Producto p : listaProductos) {
             if (p.getCategoria().equalsIgnoreCase(categoriaAEliminar)) {
                 return false;
@@ -84,6 +86,10 @@ public class Inventario {
     }
 
     public void registrarProducto(String nombre, double precio, int stock, String categoria) {
+        registrarProducto(nombre, precio, stock, categoria, "");
+    }
+
+    public void registrarProducto(String nombre, double precio, int stock, String categoria, String rutaImagen) {
 
         // Confirmar si el producto ya existe
         for (Producto p : listaProductos) {
@@ -104,7 +110,7 @@ public class Inventario {
         contadorId++;
 
         // Crear y guardar el producto
-        Producto nuevoProducto = new Producto(nombre ,precio ,stock ,categoria ,nuevoId);
+        Producto nuevoProducto = new Producto(nombre, precio, stock, categoria, nuevoId, rutaImagen);
         listaProductos.add(nuevoProducto);
         guardarEnCSV();
 
@@ -115,6 +121,7 @@ public class Inventario {
 
         ArrayList<Producto> productosCategoria = new ArrayList<>();
 
+        // Este método devuelve una nueva lista y no modifica el inventario original.
         for (Producto p : listaProductos) {
 
             if (p.getCategoria().equalsIgnoreCase(categoria)) {
@@ -144,6 +151,7 @@ public class Inventario {
 
 
     public double calcularPrecioPromedioPorCategoria(String categoria) {
+        // Devuelve -1 cuando no existen productos para evitar una división por cero.
 
         ArrayList<Producto> productosCategoria = filtrarPorCategoria(categoria);
 
@@ -161,6 +169,7 @@ public class Inventario {
     }
 
     public Producto buscarMenorStockPorCategoria(String categoria) {
+        // Se usa en la ventana de "Cálculos básicos" para localizar el stock mínimo.
 
         List<Producto> productosCategoria = filtrarPorCategoria(categoria);
 
@@ -184,10 +193,10 @@ public class Inventario {
 
     public void guardarEnCSV() {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(ARCHIVO_CSV))) {
-            writer.write("id,nombre,precio,stock,categoria\n");
+            writer.write("id,nombre,precio,stock,categoria,rutaImagen\n");
 
             for (Producto p : listaProductos) {
-                writer.write(p.getId() + "," + p.getNombre() + "," + p.getPrecio() + "," + p.getStock() + "," + p.getCategoria() + "\n");
+                writer.write(p.getId() + "," + p.getNombre() + "," + p.getPrecio() + "," + p.getStock() + "," + p.getCategoria() + "," + p.getRutaImagen() + "\n");
             }
 
         } catch (IOException e) {
@@ -206,7 +215,7 @@ public class Inventario {
             String linea = reader.readLine(); // Ignora la cabecera
 
             while ((linea = reader.readLine()) != null) {
-                String[] datos = linea.split(",", 5);
+                String[] datos = linea.split(",", 6);
 
                 if (datos.length < 5) {
                     continue;
@@ -217,8 +226,9 @@ public class Inventario {
                 double precio = Double.parseDouble(datos[2].trim());
                 int stock = Integer.parseInt(datos[3].trim());
                 String categoria = datos[4].trim();
+                String rutaImagen = datos.length >= 6 ? datos[5].trim() : "";
 
-                listaProductos.add(new Producto(nombre, precio, stock, categoria, id));
+                listaProductos.add(new Producto(nombre, precio, stock, categoria, id, rutaImagen));
 
                 int numeroId = Integer.parseInt(id.replace("P", ""));
                 if (numeroId >= contadorId) {
@@ -251,6 +261,7 @@ public class Inventario {
     }
 
     public double calcularValorTotalInventario() {
+        // Valor total = suma de precio por unidades disponibles de cada producto.
 
         double valorTotal = 0;
 

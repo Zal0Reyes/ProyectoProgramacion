@@ -5,6 +5,7 @@ import Backend.Producto;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
+import javax.swing.plaf.basic.BasicScrollBarUI;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -26,7 +27,7 @@ public class VistaPrincipalTienda extends BaseFrame {
 
         // --- CONFIGURACIÓN BASE DEL FRAME ---
         setLayout(new BorderLayout());
-        getContentPane().setBackground(new Color(245, 247, 250));
+        getContentPane().setBackground(new Color(231, 244, 255));
 
         // ==========================================
         // --- BARRA LATERAL (MENÚ) ---
@@ -73,10 +74,6 @@ public class VistaPrincipalTienda extends BaseFrame {
         });
         barraLateral.add(btnEstadisticas);
 
-        // BOTÓN CONFIGURACIÓN
-        barraLateral.add(Box.createRigidArea(new Dimension(0, 30)));
-        barraLateral.add(crearBotonMenu("⚙", null));
-
         add(barraLateral, BorderLayout.EAST);
 
         // ==========================================
@@ -117,15 +114,32 @@ public class VistaPrincipalTienda extends BaseFrame {
 
         JButton btnFiltro = new JButton("⚙ Filtrar");
         btnFiltro.setFont(new Font("SansSerif", Font.BOLD, 14));
+        btnFiltro.setForeground(new Color(60, 70, 80));
+        btnFiltro.setBackground(Color.WHITE);
+        btnFiltro.setBorder(BorderFactory.createLineBorder(new Color(205, 211, 217)));
         btnFiltro.setFocusPainted(false);
+        btnFiltro.setContentAreaFilled(true);
+        btnFiltro.setOpaque(true);
+        btnFiltro.setPreferredSize(new Dimension(105, 34));
         btnFiltro.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnFiltro.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                btnFiltro.setBackground(new Color(238, 248, 252));
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                btnFiltro.setBackground(Color.WHITE);
+            }
+        });
         btnFiltro.addActionListener(e -> mostrarDialogoFiltros());
 
         panelBusqueda.add(lblBuscar);
         panelBusqueda.add(txtBuscar);
         panelBusqueda.add(btnFiltro);
 
-        // EVENTO DE BÚSQUEDA DINÁMICA
+        // EVENTO DE BÚSQUEDA DINÁMICA: filtra por nombre o ID en cada tecla escrita.
         txtBuscar.addKeyListener(new java.awt.event.KeyAdapter() {
             @Override
             public void keyReleased(java.awt.event.KeyEvent evt) {
@@ -158,6 +172,7 @@ public class VistaPrincipalTienda extends BaseFrame {
         scroll.setOpaque(false);
         scroll.getViewport().setOpaque(false);
         scroll.getVerticalScrollBar().setUnitIncrement(16);
+        configurarBarraScroll(scroll);
 
         // ENSAMBLAJE FINAL ÁREA CENTRAL
         panelCentral.add(scroll, BorderLayout.CENTER);
@@ -196,6 +211,7 @@ public class VistaPrincipalTienda extends BaseFrame {
     }
 
     private void mostrarDialogoEstadisticas() {
+        // Ventana independiente para cálculos; cambiar setSize modifica sus dimensiones.
         JDialog dialog = new JDialog(this, "Cálculos Básicos", true);
         dialog.setSize(500, 400);
         dialog.setLocationRelativeTo(this);
@@ -204,6 +220,7 @@ public class VistaPrincipalTienda extends BaseFrame {
         JPanel panelContenido = crearPanelEstadisticas();
         JScrollPane scroll = new JScrollPane(panelContenido);
         scroll.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        configurarBarraScroll(scroll);
 
         dialog.add(scroll, BorderLayout.CENTER);
         dialog.setVisible(true);
@@ -294,6 +311,7 @@ public class VistaPrincipalTienda extends BaseFrame {
 
 
     private void actualizarVistaConFiltros(java.util.List<String> categoriasFiltro, double minimo, double maximo) {
+        // Aplica categorías y rango de precios seleccionados.
         gridProductos.removeAll();
 
         for (Producto p : inventario.getProductos()) {
@@ -327,6 +345,7 @@ public class VistaPrincipalTienda extends BaseFrame {
     }
 
     private void mostrarDialogoFiltros() {
+        // Este método construye el formulario de filtros y recoge sus valores al pulsar Aceptar.
         JTextField txtMinimo = new JTextField();
         JTextField txtMaximo = new JTextField();
 
@@ -352,6 +371,7 @@ public class VistaPrincipalTienda extends BaseFrame {
         JScrollPane scrollCategorias = new JScrollPane(panelCategorias);
         scrollCategorias.setPreferredSize(new Dimension(250, 120)); // Ajusta el tamaño aquí
         scrollCategorias.setBorder(BorderFactory.createLineBorder(new Color(200, 200, 200)));
+        configurarBarraScroll(scrollCategorias);
 
         Object[] mensaje = {
                 "Selecciona las categorías:", scrollCategorias,
@@ -360,12 +380,19 @@ public class VistaPrincipalTienda extends BaseFrame {
                 "Precio máximo (opcional):", txtMaximo
         };
 
-        int opcion = JOptionPane.showConfirmDialog(
-                this,
-                mensaje,
-                "Opciones de Filtro",
-                JOptionPane.OK_CANCEL_OPTION
+        JOptionPane panelDialogo = new JOptionPane(
+            mensaje,
+            JOptionPane.PLAIN_MESSAGE,
+            JOptionPane.OK_CANCEL_OPTION
         );
+        JDialog dialogo = panelDialogo.createDialog(this, "Opciones de Filtro");
+        aplanarBotones(panelDialogo);
+        dialogo.setVisible(true);
+
+        Object valorOpcion = panelDialogo.getValue();
+        int opcion = valorOpcion instanceof Integer
+            ? (Integer) valorOpcion
+            : JOptionPane.CLOSED_OPTION;
 
         if (opcion == JOptionPane.OK_OPTION) {
             java.util.List<String> categoriasSeleccionadas = new java.util.ArrayList<>();
@@ -402,7 +429,75 @@ public class VistaPrincipalTienda extends BaseFrame {
     }
     
     private String formatearPesos(double valor) {
+        // Cambiar el patrón permite modificar separadores y formato de moneda.
         return "$" + String.format("%,.0f", valor).replace(",", ".");
+    }
+
+    private void configurarBarraScroll(JScrollPane scroll) {
+        // Aplica el mismo estilo plano a las barras vertical y horizontal
+        configurarBarraScroll(scroll.getVerticalScrollBar(), new Dimension(8, 0));
+        configurarBarraScroll(scroll.getHorizontalScrollBar(), new Dimension(0, 8));
+    }
+
+    private void configurarBarraScroll(JScrollBar barra, Dimension dimension) {
+        // Cambiar thumbColor, trackColor o dimension modifica el aspecto de la barra
+        barra.setUI(new BasicScrollBarUI() {
+            @Override
+            protected void configureScrollBarColors() {
+                thumbColor = new Color(190, 198, 205);
+                trackColor = new Color(245, 247, 250);
+            }
+
+            @Override
+            protected JButton createDecreaseButton(int orientation) {
+                return crearBotonBarraScroll();
+            }
+
+            @Override
+            protected JButton createIncreaseButton(int orientation) {
+                return crearBotonBarraScroll();
+            }
+
+            private JButton crearBotonBarraScroll() {
+                JButton boton = new JButton();
+                boton.setPreferredSize(new Dimension(0, 0));
+                boton.setMinimumSize(new Dimension(0, 0));
+                boton.setMaximumSize(new Dimension(0, 0));
+                return boton;
+            }
+        });
+        barra.setPreferredSize(dimension);
+        barra.setOpaque(false);
+    }
+
+    private void aplanarBotones(Container contenedor) {
+        // Recorre el JOptionPane para quitar el estilo nativo de Aceptar y Cancelar
+        for (Component componente : contenedor.getComponents()) {
+            if (componente instanceof JButton) {
+                JButton boton = (JButton) componente;
+                boton.setFont(new Font("SansSerif", Font.PLAIN, 13));
+                boton.setForeground(new Color(60, 70, 80));
+                boton.setBackground(Color.WHITE);
+                boton.setBorder(BorderFactory.createLineBorder(new Color(205, 211, 217)));
+                boton.setFocusPainted(false);
+                boton.setContentAreaFilled(true);
+                boton.setOpaque(true);
+                boton.setCursor(new Cursor(Cursor.HAND_CURSOR));
+                boton.addMouseListener(new MouseAdapter() {
+                    @Override
+                    public void mouseEntered(MouseEvent e) {
+                        boton.setBackground(new Color(238, 248, 252));
+                    }
+
+                    @Override
+                    public void mouseExited(MouseEvent e) {
+                        boton.setBackground(Color.WHITE);
+                    }
+                });
+            } else if (componente instanceof Container) {
+                aplanarBotones((Container) componente);
+            }
+        }
     }
 
     private JPanel crearTarjetaProducto(Producto producto) {
@@ -444,13 +539,20 @@ public class VistaPrincipalTienda extends BaseFrame {
         });
 
         // --- IMAGEN DE LA TARJETA ---
+        // Si no existe una ruta válida, se conserva la inicial como imagen de respaldo.
         JLabel lblImagen = new JLabel();
         lblImagen.setHorizontalAlignment(SwingConstants.CENTER);
-        lblImagen.setText(producto.getNombre().substring(0, 1).toUpperCase());
-        lblImagen.setFont(new Font("SansSerif", Font.BOLD, 48));
-        lblImagen.setForeground(new Color(130, 130, 150));
         lblImagen.setOpaque(true);
         lblImagen.setBackground(new Color(240, 242, 245));
+
+        ImageIcon imagen = crearIconoImagen(producto.getRutaImagen());
+        if (imagen != null) {
+            lblImagen.setIcon(imagen);
+        } else {
+            lblImagen.setText(producto.getNombre().substring(0, 1).toUpperCase());
+            lblImagen.setFont(new Font("SansSerif", Font.BOLD, 48));
+            lblImagen.setForeground(new Color(130, 130, 150));
+        }
 
         tarjeta.add(lblImagen, BorderLayout.CENTER);
 
@@ -518,7 +620,30 @@ public class VistaPrincipalTienda extends BaseFrame {
         return tarjeta;
     }
 
+    private ImageIcon crearIconoImagen(String rutaImagen) {
+        // La ruta llega desde Producto. Si el archivo no existe, se devuelve null.
+        if (rutaImagen == null || rutaImagen.trim().isEmpty()) {
+            return null;
+        }
+
+        java.io.File archivo = new java.io.File(rutaImagen);
+        if (!archivo.isFile()) {
+            return null;
+        }
+
+        ImageIcon imagenOriginal = new ImageIcon(archivo.getAbsolutePath());
+        if (imagenOriginal.getIconWidth() <= 0 || imagenOriginal.getIconHeight() <= 0) {
+            return null;
+        }
+
+        // Cambiar 170 x 130 modifica el tamaño visual de la imagen en la tarjeta.
+        Image imagenRedimensionada = imagenOriginal.getImage().getScaledInstance(
+                170, 130, Image.SCALE_SMOOTH);
+        return new ImageIcon(imagenRedimensionada);
+    }
+
     private JButton crearBotonMenu(String texto, ActionListener accion) {
+        // Método común para los botones laterales; aquí se cambian color, fuente y hover.
         JButton btn = new JButton(texto);
         btn.setFont(new Font("SansSerif", Font.PLAIN, 28));
         btn.setForeground(Color.DARK_GRAY);

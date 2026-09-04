@@ -1,10 +1,10 @@
-id,nombre,precio,stock,categoria
-P001,Monitor Samsung 22" FHD Panel IPS Essential S3 100 Hz 5ms LS22D300GALXZS,70990.0,123,Monitores
-P002,Teclado Alámbrico Resistente a Derrames Español - Negro,9990.0,23232,Teclados
-P003,Memoria RAM DDR4 16GB 3200MHz RGB UDIMM,140990.0,123,RAM
-P004,Monitor Portátil ASUS 15" FHD 60Hz IPS 5ms ZenScreen MB169CK,150990.0,456,Monitores
-P005,Mouse Gamer Inalámbrico G305 Ligthspeed - Negro,39990.0,100,Mouse
-P006,Tarjeta de Video NVIDIA Dual GeForce RTX 3050 6GB OC Edition GDDR6,249990.0,50,Graficas
-P007,CPU AMD Ryzen 5 8400F (AM5),154990.0,30,Procesadores
-P008,Audífonos Headsets Oracle Red Bull Racing RB-HP160,10990.0,40,Audifonos
-P009,Gabinete Gamer Aigo A275 M-atx Con 3 Fans A-rgb Incluidos Negro,34990.0,60,Gabinete
+id,nombre,precio,stock,categoria,rutaImagen
+P001,Monitor Samsung 22" FHD Panel IPS Essential S3 100 Hz 5ms LS22D300GALXZS,70990.0,123,Monitores,C:\Users\joeln\Documents\ProyectoProgramacion\imagenes\monitor.png
+P002,Teclado Alámbrico Resistente a Derrames Español - Negro,9990.0,23232,Teclados,C:\Users\joeln\Documents\ProyectoProgramacion\imagenes\teclado.png
+P003,Memoria RAM DDR4 16GB 3200MHz RGB UDIMM,140990.0,123,RAM,
+P004,Monitor Portátil ASUS 15" FHD 60Hz IPS 5ms ZenScreen MB169CK,150990.0,456,Monitores,
+P005,Mouse Gamer Inalámbrico G305 Ligthspeed - Negro,39990.0,100,Mouse,
+P006,Tarjeta de Video NVIDIA Dual GeForce RTX 3050 6GB OC Edition GDDR6,249990.0,50,Graficas,
+P007,CPU AMD Ryzen 5 8400F (AM5),154990.0,30,Procesadores,
+P008,Audífonos Headsets Oracle Red Bull Racing RB-HP160,10990.0,40,Audifonos,
+P009,Gabinete Gamer Aigo A275 M-atx Con 3 Fans A-rgb Incluidos Negro,34990.0,60,Gabinete,

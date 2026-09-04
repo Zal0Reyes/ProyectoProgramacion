@@ -17,6 +17,7 @@ public class DialogoModificarProducto extends JDialog {
     private JTextField txtNombre;
     private JTextField txtPrecio;
     private JTextField txtStock;
+    private JTextField txtRutaImagen;
     private JComboBox<String> cbCategoria;
     private JTextField txtId;
 
@@ -25,8 +26,8 @@ public class DialogoModificarProducto extends JDialog {
         this.producto = producto;
         this.inventario = inventario;
 
-        // Ajustamos tamaño para acomodar las 5 filas y los 3 botones
-        setSize(480, 440);
+        // Ajustamos tamaño para acomodar las filas y los 3 botones
+        setSize(480, 500);
         setLocationRelativeTo(parent);
         setResizable(false);
     }
@@ -39,7 +40,7 @@ public class DialogoModificarProducto extends JDialog {
         // --- CABECERA DE LA VENTANA ---
         // ==========================================
         JPanel panelCabecera = new JPanel();
-        panelCabecera.setBackground(new Color(110, 216, 255)); // Mismo amarillo
+        panelCabecera.setBackground(new Color(110, 216, 255)); // Mismo color
         panelCabecera.setBorder(new EmptyBorder(15, 0, 15, 0));
 
         JLabel lblTitulo = new JLabel("📝 Modificar Producto");
@@ -52,7 +53,8 @@ public class DialogoModificarProducto extends JDialog {
         // ==========================================
         // --- PANEL DE FORMULARIO ---
         // ==========================================
-        JPanel panelFormulario = new JPanel(new GridLayout(5, 2, 10, 20));
+        // Seis filas: nombre, precio, stock, categoría, imagen e ID.
+        JPanel panelFormulario = new JPanel(new GridLayout(6, 2, 10, 20));
         panelFormulario.setOpaque(false); // Transparente para que se vea el fondo
         panelFormulario.setBorder(BorderFactory.createEmptyBorder(25, 30, 15, 30));
 
@@ -124,6 +126,7 @@ public class DialogoModificarProducto extends JDialog {
         agregarCampoFormulario(panelFormulario, "Precio ($):", txtPrecio);
         agregarCampoFormulario(panelFormulario, "Stock Unidades:", txtStock);
         agregarCampoFormulario(panelFormulario, "Categoría:", panelCategoria);
+        agregarCampoFormulario(panelFormulario, "Imagen del producto:", crearSelectorImagen());
         agregarCampoFormulario(panelFormulario, "ID:", txtId);
 
         add(panelFormulario, BorderLayout.CENTER);
@@ -164,11 +167,13 @@ public class DialogoModificarProducto extends JDialog {
     }
 
     private void cargarDatosActuales() {
+        // Copia los valores del producto seleccionado hacia los controles del formulario.
         txtNombre.setText(producto.getNombre());
         // Forzamos que el precio se muestre sin notación científica y en formato entendible
         txtPrecio.setText(String.format("%.2f", producto.getPrecio()).replace(",", "."));
         txtStock.setText(String.valueOf(producto.getStock()));
         txtId.setText(producto.getId());
+        txtRutaImagen.setText(producto.getRutaImagen());
 
         cbCategoria.setSelectedItem(producto.getCategoria());
     }
@@ -187,6 +192,7 @@ public class DialogoModificarProducto extends JDialog {
     }
 
     private void guardarCambios() {
+        // Valida y copia los controles al objeto Producto seleccionado.
         try {
             double nuevoPrecio = Double.parseDouble(txtPrecio.getText());
             int nuevoStock = Integer.parseInt(txtStock.getText());
@@ -206,6 +212,7 @@ public class DialogoModificarProducto extends JDialog {
             producto.setPrecio(nuevoPrecio);
             producto.setStock(nuevoStock);
             producto.setCategoria(categoriaSeleccionada);
+            producto.setRutaImagen(txtRutaImagen.getText().trim());
 
             guardadoExitoso = true;
             dispose();
@@ -248,6 +255,38 @@ public class DialogoModificarProducto extends JDialog {
                 BorderFactory.createEmptyBorder(5, 8, 5, 8)
         ));
         return txt;
+    }
+
+    private JPanel crearSelectorImagen() {
+        // La ruta actual se carga al abrir el diálogo y puede reemplazarse con Elegir...
+        JPanel panel = new JPanel(new BorderLayout(5, 0));
+        panel.setOpaque(false);
+        txtRutaImagen = crearTextField();
+        JButton btnElegir = new JButton("Elegir...");
+        btnElegir.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        btnElegir.setForeground(new Color(60, 70, 80));
+        btnElegir.setBackground(Color.WHITE);
+        btnElegir.setBorder(BorderFactory.createLineBorder(new Color(205, 211, 217)));
+        btnElegir.setFocusPainted(false);
+        btnElegir.setContentAreaFilled(true);
+        btnElegir.setOpaque(true);
+        btnElegir.setPreferredSize(new Dimension(85, 32));
+        btnElegir.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnElegir.addActionListener(e -> seleccionarImagen());
+        panel.add(txtRutaImagen, BorderLayout.CENTER);
+        panel.add(btnElegir, BorderLayout.EAST);
+        return panel;
+    }
+
+    private void seleccionarImagen() {
+        // Agregar extensiones aquí permite seleccionar nuevos formatos de imagen.
+        JFileChooser selector = new JFileChooser();
+        selector.setDialogTitle("Seleccionar imagen del producto");
+        selector.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
+                "Imágenes (JPG, JPEG, PNG, GIF)", "jpg", "jpeg", "png", "gif"));
+        if (selector.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
+            txtRutaImagen.setText(selector.getSelectedFile().getAbsolutePath());
+        }
     }
 
     private JButton crearBotonPrincipal(String texto, Color colorFondo, int ancho) {

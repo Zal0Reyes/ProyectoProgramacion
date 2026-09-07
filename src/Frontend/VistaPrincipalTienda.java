@@ -211,41 +211,95 @@ public class VistaPrincipalTienda extends BaseFrame {
     }
 
     private void mostrarDialogoEstadisticas() {
-        // Ventana independiente para cálculos; cambiar setSize modifica sus dimensiones.
-        JDialog dialog = new JDialog(this, "Cálculos Básicos", true);
-        dialog.setSize(500, 400);
+        JDialog dialog = new JDialog(this, "Estadísticas del Inventario", true);
+        dialog.setSize(800, 800); // Mismo tamaño que DialogoModificarProducto
         dialog.setLocationRelativeTo(this);
         dialog.setLayout(new BorderLayout());
+        dialog.getContentPane().setBackground(new Color(245, 247, 250)); // Mismo fondo
 
+        // ==========================================
+        // --- CABECERA DE LA VENTANA ---
+        // ==========================================
+        JPanel panelCabecera = new JPanel();
+        panelCabecera.setBackground(new Color(110, 216, 255)); // Mismo color celeste
+        panelCabecera.setBorder(new EmptyBorder(15, 0, 15, 0));
+
+        JLabel lblTitulo = new JLabel("📊 Estadísticas del Inventario");
+        lblTitulo.setFont(new Font("SansSerif", Font.BOLD, 20));
+        lblTitulo.setForeground(new Color(40, 40, 40));
+        panelCabecera.add(lblTitulo);
+
+        dialog.add(panelCabecera, BorderLayout.NORTH);
+
+        // ==========================================
+        // --- CONTENIDO SCROLL ---
+        // ==========================================
         JPanel panelContenido = crearPanelEstadisticas();
         JScrollPane scroll = new JScrollPane(panelContenido);
-        scroll.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        scroll.setBorder(BorderFactory.createEmptyBorder());
+        scroll.setOpaque(false);
+        scroll.getViewport().setOpaque(false);
         configurarBarraScroll(scroll);
 
         dialog.add(scroll, BorderLayout.CENTER);
+
+        // ==========================================
+        // --- PANEL DE BOTONES (CERRAR) ---
+        // ==========================================
+        JPanel panelBotones = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        panelBotones.setOpaque(false);
+        panelBotones.setBorder(new EmptyBorder(10, 30, 20, 30));
+
+        JButton btnCerrar = new JButton("Cerrar");
+        btnCerrar.setFont(new Font("SansSerif", Font.BOLD, 14));
+        btnCerrar.setForeground(Color.WHITE);
+        btnCerrar.setBackground(new Color(149, 165, 166)); // Gris de botón cancelar
+        btnCerrar.setFocusPainted(false);
+        btnCerrar.setBorderPainted(false);
+        btnCerrar.setPreferredSize(new Dimension(110, 40));
+        btnCerrar.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnCerrar.addActionListener(e -> dialog.dispose());
+
+        panelBotones.add(btnCerrar);
+
+        dialog.add(panelBotones, BorderLayout.SOUTH);
+
         dialog.setVisible(true);
     }
 
     private JPanel crearPanelEstadisticas() {
-
         JPanel panelEstadisticas = new JPanel();
         panelEstadisticas.setLayout(new BoxLayout(panelEstadisticas, BoxLayout.Y_AXIS));
         panelEstadisticas.setOpaque(false);
-        panelEstadisticas.setBorder(new EmptyBorder(10, 10, 10, 10));
+        // Padding estilo formulario del DialogoModificarProducto
+        panelEstadisticas.setBorder(BorderFactory.createEmptyBorder(25, 30, 15, 30));
 
+        // --- TARJETA DE VALOR TOTAL ---
         double valorTotal = inventario.calcularValorTotalInventario();
+        JPanel panelTotal = new JPanel(new BorderLayout());
+        panelTotal.setBackground(Color.WHITE);
+        panelTotal.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(200, 200, 200)),
+                new EmptyBorder(15, 20, 15, 20)
+        ));
+        panelTotal.setMaximumSize(new Dimension(Integer.MAX_VALUE, 60));
+        panelTotal.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        JLabel lblValorTotal = new JLabel(
-                "Valor total del inventario: " + formatearPesos(valorTotal)
-        );
+        JLabel lblTotalTexto = new JLabel("Valor total del inventario:");
+        lblTotalTexto.setFont(new Font("SansSerif", Font.BOLD, 14));
+        lblTotalTexto.setForeground(new Color(80, 80, 80));
 
-        lblValorTotal.setFont(new Font("SansSerif", Font.BOLD, 15));
-        lblValorTotal.setForeground(new Color(40, 40, 40));
-        lblValorTotal.setAlignmentX(Component.LEFT_ALIGNMENT);
+        JLabel lblTotalValor = new JLabel(formatearPesos(valorTotal));
+        lblTotalValor.setFont(new Font("SansSerif", Font.BOLD, 16));
+        lblTotalValor.setForeground(new Color(41, 128, 185)); // Azul llamativo
 
-        panelEstadisticas.add(lblValorTotal);
-        panelEstadisticas.add(Box.createRigidArea(new Dimension(0, 15)));
+        panelTotal.add(lblTotalTexto, BorderLayout.WEST);
+        panelTotal.add(lblTotalValor, BorderLayout.EAST);
 
+        panelEstadisticas.add(panelTotal);
+        panelEstadisticas.add(Box.createRigidArea(new Dimension(0, 25)));
+
+        // --- EXTRACCIÓN DE CATEGORÍAS ---
         Set<String> categorias = new LinkedHashSet<>();
         for (Producto producto : inventario.getProductos()) {
             if (producto.getCategoria() != null && !producto.getCategoria().trim().isEmpty()) {
@@ -257,51 +311,55 @@ public class VistaPrincipalTienda extends BaseFrame {
             JLabel lblSinDatos = new JLabel("No hay categorías registradas aún.");
             lblSinDatos.setFont(new Font("SansSerif", Font.BOLD, 14));
             lblSinDatos.setForeground(new Color(120, 120, 120));
+            lblSinDatos.setAlignmentX(Component.CENTER_ALIGNMENT);
             panelEstadisticas.add(lblSinDatos);
             return panelEstadisticas;
         }
 
-        JLabel lblTitulo = new JLabel("Cálculos básicos por categoría");
-        lblTitulo.setFont(new Font("SansSerif", Font.BOLD, 18));
-        lblTitulo.setForeground(new Color(40, 40, 40));
-        lblTitulo.setAlignmentX(Component.LEFT_ALIGNMENT);
-        panelEstadisticas.add(lblTitulo);
-        panelEstadisticas.add(Box.createRigidArea(new Dimension(0, 10)));
+        // --- TÍTULO DE CATEGORÍAS ---
+        JLabel lblTituloCat = new JLabel("Cálculos por Categoría");
+        lblTituloCat.setFont(new Font("SansSerif", Font.BOLD, 16));
+        lblTituloCat.setForeground(new Color(40, 40, 40));
+        lblTituloCat.setAlignmentX(Component.CENTER_ALIGNMENT);
+        panelEstadisticas.add(lblTituloCat);
+        panelEstadisticas.add(Box.createRigidArea(new Dimension(0, 15)));
 
+        // --- TARJETAS POR CATEGORÍA ---
         for (String categoria : categorias) {
             double promedio = inventario.calcularPrecioPromedioPorCategoria(categoria);
             Producto productoMenorStock = inventario.buscarMenorStockPorCategoria(categoria);
 
-            JPanel panelCategoria = new JPanel(new GridLayout(3, 1, 0, 4));
-            panelCategoria.setOpaque(false);
+            JPanel panelCategoria = new JPanel(new GridLayout(3, 1, 0, 8));
+            panelCategoria.setBackground(Color.WHITE);
             panelCategoria.setBorder(BorderFactory.createCompoundBorder(
-                    BorderFactory.createLineBorder(new Color(230, 230, 230)),
-                    new EmptyBorder(10, 12, 10, 12)
+                    BorderFactory.createLineBorder(new Color(200, 200, 200)), // Borde tipo TextField
+                    new EmptyBorder(15, 20, 15, 20)
             ));
-            panelCategoria.setAlignmentX(Component.LEFT_ALIGNMENT);
+            panelCategoria.setMaximumSize(new Dimension(Integer.MAX_VALUE, 110));
+            panelCategoria.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-            JLabel lblCategoria = new JLabel("Categoría: " + categoria);
-            lblCategoria.setFont(new Font("SansSerif", Font.BOLD, 14));
-            lblCategoria.setForeground(new Color(60, 60, 60));
+            JLabel lblCategoria = new JLabel("📁 " + categoria);
+            lblCategoria.setFont(new Font("SansSerif", Font.BOLD, 15));
+            lblCategoria.setForeground(new Color(40, 40, 40));
 
-            JLabel lblPromedio = new JLabel(
-                    "Precio promedio: " + formatearPesos(promedio)
-            );
-            lblPromedio.setFont(new Font("SansSerif", Font.PLAIN, 13));
-            lblPromedio.setForeground(new Color(90, 90, 90));
+            JLabel lblPromedio = new JLabel("Precio promedio: " + formatearPesos(promedio));
+            lblPromedio.setFont(new Font("SansSerif", Font.PLAIN, 14));
+            lblPromedio.setForeground(new Color(80, 80, 80));
 
             String menorStockTexto = (productoMenorStock == null)
                     ? "Menor stock: sin productos"
-                    : "Menor stock: " + productoMenorStock.getNombre() + " (" + productoMenorStock.getStock() + ")";
+                    : "Menor stock: " + productoMenorStock.getNombre() + " (" + productoMenorStock.getStock() + " unids)";
+
             JLabel lblMenorStock = new JLabel(menorStockTexto);
-            lblMenorStock.setFont(new Font("SansSerif", Font.PLAIN, 13));
-            lblMenorStock.setForeground(new Color(90, 90, 90));
+            lblMenorStock.setFont(new Font("SansSerif", Font.PLAIN, 14));
+            lblMenorStock.setForeground(new Color(231, 76, 60)); // Color rojo estilo botón de borrar para destacar
 
             panelCategoria.add(lblCategoria);
             panelCategoria.add(lblPromedio);
             panelCategoria.add(lblMenorStock);
+
             panelEstadisticas.add(panelCategoria);
-            panelEstadisticas.add(Box.createRigidArea(new Dimension(0, 8)));
+            panelEstadisticas.add(Box.createRigidArea(new Dimension(0, 12)));
         }
 
         return panelEstadisticas;
@@ -345,7 +403,7 @@ public class VistaPrincipalTienda extends BaseFrame {
     }
 
     private void mostrarDialogoFiltros() {
-        // Este método construye el formulario de filtros y recoge sus valores al pulsar Aceptar.
+
         JTextField txtMinimo = new JTextField();
         JTextField txtMaximo = new JTextField();
 
@@ -375,7 +433,7 @@ public class VistaPrincipalTienda extends BaseFrame {
 
         Object[] mensaje = {
                 "Selecciona las categorías:", scrollCategorias,
-                " ", // Espaciador visual
+                " ",
                 "Precio mínimo (opcional):", txtMinimo,
                 "Precio máximo (opcional):", txtMaximo
         };
@@ -643,7 +701,6 @@ public class VistaPrincipalTienda extends BaseFrame {
     }
 
     private JButton crearBotonMenu(String texto, ActionListener accion) {
-        // Método común para los botones laterales; aquí se cambian color, fuente y hover.
         JButton btn = new JButton(texto);
         btn.setFont(new Font("SansSerif", Font.PLAIN, 28));
         btn.setForeground(Color.DARK_GRAY);

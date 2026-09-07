@@ -1,6 +1,6 @@
 id,nombre,precio,stock,categoria,rutaImagen
-P001,Monitor Samsung 22" FHD Panel IPS Essential S3 100 Hz 5ms LS22D300GALXZS,70990.0,123,Monitores,C:\Users\joeln\Documents\ProyectoProgramacion\imagenes\monitor.png
-P002,Teclado Alámbrico Resistente a Derrames Español - Negro,9990.0,23232,Teclados,C:\Users\joeln\Documents\ProyectoProgramacion\imagenes\teclado.png
+P001,Monitor Samsung 22" FHD Panel IPS Essential S3 100 Hz 5ms LS22D300GALXZS,70990.0,5,Monitores,C:\Users\joeln\Documents\ProyectoProgramacion\imagenes\monitor.png
+P002,Teclado Alámbrico Resistente a Derrames Español - Negro,9990.0,0,Teclados,C:\Users\joeln\Documents\ProyectoProgramacion\imagenes\teclado.png
 P003,Memoria RAM DDR4 16GB 3200MHz RGB UDIMM,140990.0,123,RAM,
 P004,Monitor Portátil ASUS 15" FHD 60Hz IPS 5ms ZenScreen MB169CK,150990.0,456,Monitores,
 P005,Mouse Gamer Inalámbrico G305 Ligthspeed - Negro,39990.0,100,Mouse,

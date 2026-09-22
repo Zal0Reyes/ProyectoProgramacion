@@ -2,9 +2,12 @@ package Frontend;
 
 import Backend.Inventario;
 import Backend.Producto;
+import Backend.GestorImagenes;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.io.File;
+import java.io.IOException;
 
 public class DialogoModificarProducto extends JDialog {
 
@@ -169,6 +172,10 @@ public class DialogoModificarProducto extends JDialog {
         txtPrecio.setText(String.format("%.2f", producto.getPrecio()).replace(",", "."));
         txtStock.setText(String.valueOf(producto.getStock()));
         txtId.setText(producto.getId());
+<<<<<<< Updated upstream
+=======
+        txtRutaImagen.setText(GestorImagenes.normalizarReferencia(producto.getRutaImagen()));
+>>>>>>> Stashed changes
 
         cbCategoria.setSelectedItem(producto.getCategoria());
     }
@@ -250,6 +257,48 @@ public class DialogoModificarProducto extends JDialog {
         return txt;
     }
 
+<<<<<<< Updated upstream
+=======
+    private JPanel crearSelectorImagen() {
+        // La ruta actual se carga al abrir el diálogo y puede reemplazarse con Elegir...
+        JPanel panel = new JPanel(new BorderLayout(5, 0));
+        panel.setOpaque(false);
+        txtRutaImagen = crearTextField();
+        JButton btnElegir = new JButton("Elegir...");
+        btnElegir.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        btnElegir.setForeground(new Color(60, 70, 80));
+        btnElegir.setBackground(Color.WHITE);
+        btnElegir.setBorder(BorderFactory.createLineBorder(new Color(205, 211, 217)));
+        btnElegir.setFocusPainted(false);
+        btnElegir.setContentAreaFilled(true);
+        btnElegir.setOpaque(true);
+        btnElegir.setPreferredSize(new Dimension(85, 32));
+        btnElegir.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnElegir.addActionListener(e -> seleccionarImagen());
+        panel.add(txtRutaImagen, BorderLayout.CENTER);
+        panel.add(btnElegir, BorderLayout.EAST);
+        return panel;
+    }
+
+    private void seleccionarImagen() {
+        // Agregar extensiones aquí permite seleccionar nuevos formatos de imagen.
+        JFileChooser selector = new JFileChooser();
+        selector.setDialogTitle("Seleccionar imagen del producto");
+        selector.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
+                "Imágenes (JPG, JPEG, PNG, GIF)", "jpg", "jpeg", "png", "gif"));
+        if (selector.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
+            try {
+                File archivo = selector.getSelectedFile();
+                txtRutaImagen.setText(GestorImagenes.copiarARepositorio(archivo));
+            } catch (IOException ex) {
+                JOptionPane.showMessageDialog(this,
+                        "No se pudo copiar la imagen a la carpeta imagenes.",
+                        "Error de imagen", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+
+>>>>>>> Stashed changes
     private JButton crearBotonPrincipal(String texto, Color colorFondo, int ancho) {
         JButton btn = new JButton(texto);
         btn.setFont(new Font("SansSerif", Font.BOLD, 14));

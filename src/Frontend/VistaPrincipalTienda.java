@@ -2,6 +2,7 @@ package Frontend;
 
 import Backend.Inventario;
 import Backend.Producto;
+import Backend.GestorImagenes;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -437,6 +438,31 @@ public class VistaPrincipalTienda extends BaseFrame {
         return tarjeta;
     }
 
+<<<<<<< Updated upstream
+=======
+    private ImageIcon crearIconoImagen(String rutaImagen) {
+        // La ruta llega desde Producto. Si el archivo no existe, se devuelve null.
+        if (rutaImagen == null || rutaImagen.trim().isEmpty()) {
+            return null;
+        }
+
+        java.io.File archivo = GestorImagenes.resolver(rutaImagen);
+        if (archivo == null) {
+            return null;
+        }
+
+        ImageIcon imagenOriginal = new ImageIcon(archivo.getAbsolutePath());
+        if (imagenOriginal.getIconWidth() <= 0 || imagenOriginal.getIconHeight() <= 0) {
+            return null;
+        }
+
+        // Cambiar 170 x 130 modifica el tamaño visual de la imagen en la tarjeta.
+        Image imagenRedimensionada = imagenOriginal.getImage().getScaledInstance(
+                170, 130, Image.SCALE_SMOOTH);
+        return new ImageIcon(imagenRedimensionada);
+    }
+
+>>>>>>> Stashed changes
     private JButton crearBotonMenu(String texto, ActionListener accion) {
         JButton btn = new JButton(texto);
         btn.setFont(new Font("SansSerif", Font.PLAIN, 28));

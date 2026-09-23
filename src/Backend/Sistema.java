@@ -17,8 +17,8 @@ public class Sistema {
     }
 
     private void cargarUsuariosPorDefecto() {
-        Administrador admin = new Administrador("11111111-1", "Admin Principal", "admin123", "admin@mitiendita.cl", "ADM-01");
-        Cliente cliente = new Cliente("22222222-2", "Juan Pérez", "cliente123", "juan@gmail.com", "+56912345678", "Avenida Siempre Viva 742");
+        Administrador admin = new Administrador("1", "Admin Principal", "1", "admin@mitiendita.cl", "ADM-01");
+        Cliente cliente = new Cliente("2", "Joaquin", "2", "juaco@gmail.com", "+56912345678", "Avenida Siempre Viva 742");
 
         mapaUsuarios.put(admin.getRut(), admin);
         mapaUsuarios.put(cliente.getRut(), cliente);

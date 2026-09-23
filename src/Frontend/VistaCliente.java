@@ -2,6 +2,8 @@ package Frontend;
 
 import Backend.Inventario;
 import Backend.Producto;
+import Backend.Sistema;
+import Backend.Usuario;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -28,8 +30,8 @@ public class VistaCliente extends BaseFrame {
     private double precioMinimo = -1;
     private double precioMaximo = -1;
 
-    public VistaCliente(Inventario inventario) {
-        super("NexoMarket - Cliente", inventario);
+    public VistaCliente(Inventario inventario, Sistema sistema) {
+        super("NexoMarket - Cliente", inventario, sistema);
         setSize(1200, 720);
     }
 
@@ -225,15 +227,27 @@ public class VistaCliente extends BaseFrame {
         );
 
 
-        // Después se reemplaza por
-        // la interfaz de login del compañero
-        btnLogin.addActionListener(e ->
 
-                JOptionPane.showMessageDialog(
-                        this,
-                        "Aquí se conectará la interfaz de login."
-                )
-        );
+        btnLogin.addActionListener(e -> {
+
+            VistaLogin dialogoLogin = new VistaLogin(this, sistema);
+            dialogoLogin.mostrar();
+
+            Usuario user = dialogoLogin.getUsuarioLogeado();
+
+            if (user != null) {
+                if (user.getTipoUsuario().equals("Administrador")) {
+                    // Es Administrador: Cerramos la VistaCliente y abrimos Vista Tienda
+                    this.dispose();
+                    VistaPrincipalTienda adminVista = new VistaPrincipalTienda(inventario, sistema);
+                    adminVista.mostrar();
+                } else {
+                    // Es Cliente: Se queda en esta misma vista
+                    btnLogin.setText("👤 Hola, " + user.getNombre());
+                    btnLogin.setEnabled(false); // Desactivar el botón porque ya inició sesión
+                }
+            }
+        });
 
 
         acciones.add(btnFiltrar);

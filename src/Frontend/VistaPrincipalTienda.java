@@ -2,6 +2,7 @@ package Frontend;
 
 import Backend.Inventario;
 import Backend.Producto;
+import Backend.Sistema;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -18,8 +19,9 @@ public class VistaPrincipalTienda extends BaseFrame {
 
     private JPanel gridProductos;
 
-    public VistaPrincipalTienda(Inventario inventario) {
-        super("Vista Tienda", inventario);
+    public VistaPrincipalTienda(Inventario inventario, Sistema sistema) {
+
+        super("Vista Admin", inventario,sistema);
     }
 
     @Override

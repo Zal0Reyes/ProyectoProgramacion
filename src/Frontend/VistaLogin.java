@@ -162,7 +162,7 @@ public class VistaLogin extends JDialog {
             this.usuarioLogeado = user;
             dispose();
         } else {
-            mostrarError("RUT o contraseña incorrectos.\n(Admin: 1 / Contraseña: 1)\n(Cliente: 2 / Contraseña: 2)");
+            mostrarError("RUT o contraseña incorrectos");
             txtContrasena.setText("");
             txtContrasena.requestFocus();
         }

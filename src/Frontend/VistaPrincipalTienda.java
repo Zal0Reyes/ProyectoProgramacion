@@ -682,12 +682,8 @@ public class VistaPrincipalTienda extends BaseFrame {
 
     private ImageIcon crearIconoImagen(String rutaImagen) {
         // La ruta llega desde Producto. Si el archivo no existe, se devuelve null.
-        if (rutaImagen == null || rutaImagen.trim().isEmpty()) {
-            return null;
-        }
-
-        java.io.File archivo = new java.io.File(rutaImagen);
-        if (!archivo.isFile()) {
+        java.io.File archivo = ImagenesUtil.resolverRutaImagen(rutaImagen);
+        if (archivo == null) {
             return null;
         }
 

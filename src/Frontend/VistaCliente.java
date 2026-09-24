@@ -10,6 +10,8 @@ import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.File;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 public class VistaCliente extends BaseFrame {
 
@@ -24,6 +26,11 @@ public class VistaCliente extends BaseFrame {
     private JTextField txtBuscar;
     private JPanel gridProductos;
     private JLabel lblCantidad;
+    private JPanel panelArticulosCarrito;
+    private JLabel lblCarritoTitulo;
+    private JLabel lblTotalCarrito;
+    private JButton btnComprar;
+    private final Map<Producto, Integer> carrito = new LinkedHashMap<>();
 
     // Filtros activos
     private String categoriaFiltro = "Todas";
@@ -363,40 +370,44 @@ public class VistaCliente extends BaseFrame {
         cabecera.setLayout(new BorderLayout());
         cabecera.setBorder(new EmptyBorder(9, 10, 9, 10));
 
-        JLabel titulo = new JLabel("Mi Carrito (0)");
-        titulo.setFont(new Font("SansSerif", Font.BOLD, 17));
-        titulo.setForeground(Color.WHITE);
+        lblCarritoTitulo = new JLabel("Mi Carrito (0)");
+        lblCarritoTitulo.setFont(new Font("SansSerif", Font.BOLD, 17));
+        lblCarritoTitulo.setForeground(Color.WHITE);
 
-        cabecera.add(titulo);
+        cabecera.add(lblCarritoTitulo);
 
-        // Mensaje central
-        JLabel vacio = new JLabel(
-                "<html><center><b>Tu carrito está vacío</b>"
-                        + "<br><br>Agrega productos para comenzar</center></html>"
-        );
+        panelArticulosCarrito = new JPanel();
+        panelArticulosCarrito.setOpaque(false);
+        panelArticulosCarrito.setLayout(new BoxLayout(panelArticulosCarrito, BoxLayout.Y_AXIS));
 
-        vacio.setHorizontalAlignment(SwingConstants.CENTER);
-        vacio.setForeground(GRIS);
+        JScrollPane scrollCarrito = new JScrollPane(panelArticulosCarrito);
+        scrollCarrito.setBorder(null);
+        scrollCarrito.setOpaque(false);
+        scrollCarrito.getViewport().setOpaque(false);
+        scrollCarrito.getVerticalScrollBar().setUnitIncrement(12);
 
         // Parte inferior
         JPanel inferior = new JPanel();
         inferior.setOpaque(false);
         inferior.setLayout(new BoxLayout(inferior, BoxLayout.Y_AXIS));
 
-        JLabel total = new JLabel("Total: $0");
-        total.setFont(new Font("SansSerif", Font.BOLD, 17));
-        total.setForeground(NAVY);
+        lblTotalCarrito = new JLabel("Total: $0");
+        lblTotalCarrito.setFont(new Font("SansSerif", Font.BOLD, 17));
+        lblTotalCarrito.setForeground(NAVY);
 
-        JButton comprar = crearBoton("Proceder a la compra", AZUL);
-        comprar.setEnabled(false);
+        btnComprar = crearBoton("Proceder a la compra", AZUL);
+        btnComprar.setEnabled(false);
+        btnComprar.addActionListener(e -> procederCompra());
 
-        inferior.add(total);
+        inferior.add(lblTotalCarrito);
         inferior.add(Box.createRigidArea(new Dimension(0, 10)));
-        inferior.add(comprar);
+        inferior.add(btnComprar);
 
         carrito.add(cabecera, BorderLayout.NORTH);
-        carrito.add(vacio, BorderLayout.CENTER);
+        carrito.add(scrollCarrito, BorderLayout.CENTER);
         carrito.add(inferior, BorderLayout.SOUTH);
+
+        actualizarCarrito();
 
         return carrito;
     }
@@ -566,13 +577,7 @@ public class VistaCliente extends BaseFrame {
             agregar.setEnabled(false);
         }
 
-        // Temporal mientras se integra la clase Carrito
-        agregar.addActionListener(e ->
-                JOptionPane.showMessageDialog(
-                        this,
-                        "Producto seleccionado: " + producto.getNombre()
-                )
-        );
+        agregar.addActionListener(e -> agregarAlCarrito(producto));
 
         info.add(nombre);
         info.add(categoria);
@@ -586,6 +591,77 @@ public class VistaCliente extends BaseFrame {
         tarjeta.add(info, BorderLayout.SOUTH);
 
         return tarjeta;
+    }
+
+    private void agregarAlCarrito(Producto producto) {
+        if (!inventario.reservarUnidad(producto)) {
+            actualizarProductos();
+            mostrarError("El producto ya no tiene stock disponible.");
+            return;
+        }
+
+        carrito.put(producto, carrito.getOrDefault(producto, 0) + 1);
+        actualizarCarrito();
+        actualizarProductos();
+    }
+
+    private void actualizarCarrito() {
+        if (panelArticulosCarrito == null) {
+            return;
+        }
+
+        panelArticulosCarrito.removeAll();
+        int unidades = 0;
+        double total = 0;
+
+        for (Map.Entry<Producto, Integer> entrada : carrito.entrySet()) {
+            Producto producto = entrada.getKey();
+            int cantidad = entrada.getValue();
+            unidades += cantidad;
+            total += producto.getPrecio() * cantidad;
+
+            JLabel articulo = new JLabel(cantidad + " x " + producto.getNombre()
+                    + " - " + formatearPesos(producto.getPrecio() * cantidad));
+            articulo.setFont(new Font("SansSerif", Font.PLAIN, 13));
+            articulo.setForeground(NAVY);
+            articulo.setBorder(new EmptyBorder(7, 3, 7, 3));
+            articulo.setAlignmentX(Component.LEFT_ALIGNMENT);
+            panelArticulosCarrito.add(articulo);
+        }
+
+        if (carrito.isEmpty()) {
+            JLabel vacio = new JLabel("<html><center><b>Tu carrito está vacío</b>"
+                    + "<br><br>Agrega productos para comenzar</center></html>");
+            vacio.setHorizontalAlignment(SwingConstants.CENTER);
+            vacio.setForeground(GRIS);
+            vacio.setAlignmentX(Component.CENTER_ALIGNMENT);
+            panelArticulosCarrito.add(Box.createVerticalGlue());
+            panelArticulosCarrito.add(vacio);
+            panelArticulosCarrito.add(Box.createVerticalGlue());
+        }
+
+        lblCarritoTitulo.setText("Mi Carrito (" + unidades + ")");
+        lblTotalCarrito.setText("Total: " + formatearPesos(total));
+        btnComprar.setEnabled(!carrito.isEmpty());
+        panelArticulosCarrito.revalidate();
+        panelArticulosCarrito.repaint();
+    }
+
+    private void procederCompra() {
+        Usuario usuarioActual = sistema.getUsuarioActual();
+
+        if (!(usuarioActual instanceof Backend.Cliente)) {
+            JOptionPane.showMessageDialog(this,
+                    "Debes iniciar sesión como cliente para realizar la compra.",
+                    "Inicio de sesión requerido", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        inventario.confirmarCompra();
+        carrito.clear();
+        actualizarCarrito();
+        actualizarProductos();
+        JOptionPane.showMessageDialog(this, "Compra realizada", "Compra", JOptionPane.INFORMATION_MESSAGE);
     }
 
     // =========================================================
@@ -659,15 +735,11 @@ public class VistaCliente extends BaseFrame {
 
     private ImageIcon cargarImagen(String ruta) {
 
-        if (ruta == null || ruta.trim().isEmpty())
+        File archivo = ImagenesUtil.resolverRutaImagen(ruta);
+        if (archivo == null)
             return null;
 
-        File archivo = new File(ruta);
-
-        if (!archivo.isFile())
-            return null;
-
-        ImageIcon original = new ImageIcon(ruta);
+        ImageIcon original = new ImageIcon(archivo.getPath());
 
         Image escalada = original.getImage().getScaledInstance(
                 160, 95, Image.SCALE_SMOOTH

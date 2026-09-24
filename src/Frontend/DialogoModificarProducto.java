@@ -280,12 +280,12 @@ public class DialogoModificarProducto extends JDialog {
 
     private void seleccionarImagen() {
         // Agregar extensiones aquí permite seleccionar nuevos formatos de imagen.
-        JFileChooser selector = new JFileChooser();
+        JFileChooser selector = new JFileChooser(ImagenesUtil.obtenerCarpetaImagenes());
         selector.setDialogTitle("Seleccionar imagen del producto");
         selector.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
                 "Imágenes (JPG, JPEG, PNG, GIF)", "jpg", "jpeg", "png", "gif"));
         if (selector.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
-            txtRutaImagen.setText(selector.getSelectedFile().getAbsolutePath());
+            txtRutaImagen.setText(ImagenesUtil.guardarRutaImagen(selector.getSelectedFile()));
         }
     }
 

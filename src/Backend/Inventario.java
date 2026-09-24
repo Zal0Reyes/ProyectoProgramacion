@@ -244,6 +244,20 @@ public class Inventario {
     public ArrayList<Producto> getProductos() {
         return listaProductos;
     }
+
+    public boolean reservarUnidad(Producto producto) {
+        if (producto == null || producto.getStock() <= 0 || !listaProductos.contains(producto)) {
+            return false;
+        }
+
+        producto.setStock(producto.getStock() - 1);
+        return true;
+    }
+
+    public void confirmarCompra() {
+        guardarEnCSV();
+    }
+
     // ==========================================
     // --- PERSISTENCIA DE CATEGORÍAS ---
     // ==========================================

@@ -237,21 +237,39 @@ public class VistaCliente extends BaseFrame {
 
         btnLogin.addActionListener(e -> {
 
-            VistaLogin dialogoLogin = new VistaLogin(this, sistema);
-            dialogoLogin.mostrar();
+            // Verificamos si ya hay alguien logeado en el sistema
+            Usuario usuarioActual = sistema.getUsuarioActual();
+            if (usuarioActual == null) {
+                // ==========================================
+                // Si no existe nadie logeado se habre VistaLogin
+                // ==========================================
+                VistaLogin dialogoLogin = new VistaLogin(this, sistema);
+                dialogoLogin.mostrar();
 
-            Usuario user = dialogoLogin.getUsuarioLogeado();
+                Usuario user = dialogoLogin.getUsuarioLogeado();
 
-            if (user != null) {
-                if (user.getTipoUsuario().equals("Administrador")) {
-                    // Es Administrador: Cerramos la VistaCliente y abrimos Vista Tienda
-                    this.dispose();
-                    VistaPrincipalTienda adminVista = new VistaPrincipalTienda(inventario, sistema);
-                    adminVista.mostrar();
-                } else {
-                    // Es Cliente: Se queda en esta misma vista
-                    btnLogin.setText("👤 Hola, " + user.getNombre());
-                    btnLogin.setEnabled(false); // Desactivar el botón porque ya inició sesión
+                if (user != null) {
+                    if (user.getTipoUsuario().equals("Administrador")) {
+                        // Es Administrador: Cerramos la VistaCliente y abrimos Vista Tienda
+                        this.dispose();
+                        VistaPrincipalTienda adminVista = new VistaPrincipalTienda(inventario, sistema);
+                        adminVista.mostrar();
+                    } else {
+                        // Es Cliente: Actualizamos el texto del botón
+                        btnLogin.setText("👤 Hola, " + user.getNombre());
+                        // ELIMINADO: btnLogin.setEnabled(false); <-- Ya no bloqueamos el botón
+                    }
+                }
+            } else {
+                // ==========================================
+                // Si ya existe alguien Logeado
+                // ==========================================
+                DialogoPerfil dialogoPerfil = new DialogoPerfil(this, sistema, usuarioActual);
+                dialogoPerfil.mostrar();
+
+                // Al cerrar el diálogo, verificamos si el usuario decidió cerrar sesión
+                if (dialogoPerfil.isCerroSesion()) {
+                    btnLogin.setText("Iniciar sesión"); // Restauramos el texto original
                 }
             }
         });

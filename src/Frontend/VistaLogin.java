@@ -2,6 +2,7 @@ package Frontend;
 
 import Backend.Sistema;
 import Backend.Usuario;
+
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
@@ -15,84 +16,98 @@ public class VistaLogin extends JDialog {
     private JTextField txtRut;
     private JPasswordField txtContrasena;
 
+    // Colores corporativos
+    private static final Color FONDO = new Color(238, 243, 249);
     private static final Color NAVY = new Color(19, 40, 72);
     private static final Color AZUL = new Color(30, 105, 210);
-    private static final Color GRIS_TEXTO = new Color(80, 90, 100);
-    private static final Color GRIS_BORDE = new Color(200, 210, 220);
+    private static final Color AZUL_HOVER = new Color(25, 90, 180);
+    private static final Color GRIS_TEXTO = new Color(100, 110, 125);
+    private static final Color GRIS_BORDE = new Color(210, 220, 230);
 
     public VistaLogin(JFrame parent, Sistema sistema) {
         super(parent, "Iniciar Sesión", true);
         this.sistema = sistema;
 
-        setSize(400, 420);
+        setSize(420, 560);
         setLocationRelativeTo(parent);
         setResizable(false);
     }
 
     public void mostrar() {
+        // Fondo general de la ventana
+        getContentPane().setBackground(FONDO);
         setLayout(new BorderLayout());
-        getContentPane().setBackground(Color.WHITE);
+
+        JPanel panelPrincipal = new JPanel();
+        panelPrincipal.setLayout(new BoxLayout(panelPrincipal, BoxLayout.Y_AXIS));
+        panelPrincipal.setOpaque(false);
+        panelPrincipal.setBorder(new EmptyBorder(30, 35, 30, 35));
 
         // ==========================================
-        // CABECERA
-        // ==========================================
-        JPanel panelNorte = new JPanel();
-        panelNorte.setBackground(NAVY);
-        panelNorte.setBorder(new EmptyBorder(20, 0, 20, 0));
-
-        JLabel lblTitulo = new JLabel("Bienvenido a NexoMarket");
-        lblTitulo.setFont(new Font("SansSerif", Font.BOLD, 22));
-        lblTitulo.setForeground(Color.WHITE);
-        panelNorte.add(lblTitulo);
-
-        add(panelNorte, BorderLayout.NORTH);
-
-        // ==========================================
-        // FORMULARIO CENTRAL
+        // 1. ZONA DEL ICONO Y BIENVENIDA
         // ==========================================
 
-        JPanel panelFormulario = new JPanel();
-        panelFormulario.setLayout(new BoxLayout(panelFormulario, BoxLayout.Y_AXIS));
-        panelFormulario.setBorder(new EmptyBorder(30, 40, 30, 40));
-        panelFormulario.setBackground(Color.WHITE);
+        // Círculo del icono
+        PanelRedondeado iconoCirculo = new PanelRedondeado(65);
+        iconoCirculo.setBackground(NAVY);
+        iconoCirculo.setPreferredSize(new Dimension(65, 65));
+        iconoCirculo.setMaximumSize(new Dimension(65, 65));
+        iconoCirculo.setLayout(new BorderLayout());
+        iconoCirculo.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        JLabel lblIcono = new JLabel("👋");
+        lblIcono.setForeground(Color.WHITE);
+        lblIcono.setFont(new Font("SansSerif", Font.PLAIN, 30));
+        lblIcono.setHorizontalAlignment(SwingConstants.CENTER);
+        iconoCirculo.add(lblIcono, BorderLayout.CENTER);
+
+        // Títulos
+        JLabel lblTitulo = new JLabel("¡Hola de nuevo!");
+        lblTitulo.setFont(new Font("SansSerif", Font.BOLD, 24));
+        lblTitulo.setForeground(NAVY);
+        lblTitulo.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        JLabel lblSubtitulo = new JLabel("Inicia sesión en NexoMarket");
+        lblSubtitulo.setFont(new Font("SansSerif", Font.PLAIN, 14));
+        lblSubtitulo.setForeground(GRIS_TEXTO);
+        lblSubtitulo.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        panelPrincipal.add(iconoCirculo);
+        panelPrincipal.add(Box.createRigidArea(new Dimension(0, 15)));
+        panelPrincipal.add(lblTitulo);
+        panelPrincipal.add(Box.createRigidArea(new Dimension(0, 5)));
+        panelPrincipal.add(lblSubtitulo);
+        panelPrincipal.add(Box.createRigidArea(new Dimension(0, 25)));
+
+        // ==========================================
+        // 2. TARJETA DE FORMULARIO
+        // ==========================================
+
+        PanelRedondeado tarjetaFormulario = new PanelRedondeado(20);
+        tarjetaFormulario.setBackground(Color.WHITE);
+        tarjetaFormulario.setLayout(new BoxLayout(tarjetaFormulario, BoxLayout.Y_AXIS));
+        tarjetaFormulario.setBorder(new EmptyBorder(25, 25, 30, 25));
+        tarjetaFormulario.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         // --- Campo RUT ---
         JLabel lblRut = new JLabel("RUT");
-        lblRut.setFont(new Font("SansSerif", Font.BOLD, 14));
+        lblRut.setFont(new Font("SansSerif", Font.BOLD, 13));
         lblRut.setForeground(GRIS_TEXTO);
         lblRut.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        txtRut = crearTextFieldOculto();
+        txtRut = new JTextField();
+        estilarTextField(txtRut);
 
         // --- Campo Contraseña ---
         JLabel lblPass = new JLabel("Contraseña");
-        lblPass.setFont(new Font("SansSerif", Font.BOLD, 14));
+        lblPass.setFont(new Font("SansSerif", Font.BOLD, 13));
         lblPass.setForeground(GRIS_TEXTO);
         lblPass.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         txtContrasena = new JPasswordField();
         estilarTextField(txtContrasena);
 
-        // Ensamblaje vertical con espacios (RigidArea)
-        panelFormulario.add(lblRut);
-        panelFormulario.add(Box.createRigidArea(new Dimension(0, 8)));
-        panelFormulario.add(txtRut);
-
-        panelFormulario.add(Box.createRigidArea(new Dimension(0, 20))); // Espacio entre campos
-
-        panelFormulario.add(lblPass);
-        panelFormulario.add(Box.createRigidArea(new Dimension(0, 8)));
-        panelFormulario.add(txtContrasena);
-
-        add(panelFormulario, BorderLayout.CENTER);
-
-        // ==========================================
-        // ZONA DEL BOTÓN
-        // ==========================================
-        JPanel panelSur = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        panelSur.setBackground(Color.WHITE);
-        panelSur.setBorder(new EmptyBorder(0, 40, 35, 40)); // Margen inferior
-
+        // --- Botón Ingresar ---
         JButton btnIngresar = new JButton("Ingresar");
         btnIngresar.setFont(new Font("SansSerif", Font.BOLD, 15));
         btnIngresar.setBackground(AZUL);
@@ -100,27 +115,39 @@ public class VistaLogin extends JDialog {
         btnIngresar.setFocusPainted(false);
         btnIngresar.setBorderPainted(false);
         btnIngresar.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnIngresar.setAlignmentX(Component.LEFT_ALIGNMENT);
+        btnIngresar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 45));
 
-        btnIngresar.setPreferredSize(new Dimension(300, 45));
-
-
+        // Efecto visual al pasar el cursor (Hover)
         btnIngresar.addMouseListener(new MouseAdapter() {
             public void mouseEntered(MouseEvent e) {
-                btnIngresar.setBackground(new Color(25, 90, 180)); // Azul más oscuro
+                btnIngresar.setBackground(AZUL_HOVER);
             }
             public void mouseExited(MouseEvent e) {
                 btnIngresar.setBackground(AZUL);
             }
         });
 
+        // Eventos de teclado y clic
         btnIngresar.addActionListener(e -> validarLogin());
+        txtContrasena.addActionListener(e -> validarLogin()); // Para iniciar sesión con Enter
 
-        // Permitir iniciar sesión presionando Enter en la contraseña
-        txtContrasena.addActionListener(e -> validarLogin());
+        // Ensamblaje de la tarjeta
+        tarjetaFormulario.add(lblRut);
+        tarjetaFormulario.add(Box.createRigidArea(new Dimension(0, 8)));
+        tarjetaFormulario.add(txtRut);
+        tarjetaFormulario.add(Box.createRigidArea(new Dimension(0, 20))); // Espacio entre campos
 
-        panelSur.add(btnIngresar);
-        add(panelSur, BorderLayout.SOUTH);
+        tarjetaFormulario.add(lblPass);
+        tarjetaFormulario.add(Box.createRigidArea(new Dimension(0, 8)));
+        tarjetaFormulario.add(txtContrasena);
+        tarjetaFormulario.add(Box.createRigidArea(new Dimension(0, 30))); // Espacio antes del botón
 
+        tarjetaFormulario.add(btnIngresar);
+
+        panelPrincipal.add(tarjetaFormulario);
+
+        add(panelPrincipal, BorderLayout.CENTER);
         setVisible(true);
     }
 
@@ -128,22 +155,17 @@ public class VistaLogin extends JDialog {
     // MÉTODOS AUXILIARES Y LOGICA
     // ==========================================
 
-    private JTextField crearTextFieldOculto() {
-        JTextField txt = new JTextField();
-        estilarTextField(txt);
-        return txt;
-    }
-
     private void estilarTextField(JTextField txt) {
         txt.setFont(new Font("SansSerif", Font.PLAIN, 15));
-        txt.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
-        txt.setPreferredSize(new Dimension(300, 40));
+        txt.setForeground(NAVY);
+        txt.setMaximumSize(new Dimension(Integer.MAX_VALUE, 45)); // Más alto para que se vea moderno
+        txt.setPreferredSize(new Dimension(300, 45));
         txt.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         // Borde redondeado suave para el textfield
         txt.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(GRIS_BORDE, 1, true),
-                new EmptyBorder(5, 10, 5, 10)
+                new EmptyBorder(5, 12, 5, 12)
         ));
     }
 
@@ -156,7 +178,7 @@ public class VistaLogin extends JDialog {
             return;
         }
 
-        Usuario user = sistema.iniciarSesion(rut, pass);
+        Usuario user = sistema.iniciarSesion(rut, pass); // Lógica intacta[cite: 16]
 
         if (user != null) {
             this.usuarioLogeado = user;
@@ -173,6 +195,6 @@ public class VistaLogin extends JDialog {
     }
 
     public Usuario getUsuarioLogeado() {
-        return usuarioLogeado;
+        return usuarioLogeado; // Lógica intacta[cite: 16]
     }
 }

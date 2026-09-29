@@ -29,13 +29,13 @@ public class VistaPrincipalTienda extends BaseFrame {
 
         // --- CONFIGURACIÓN BASE DEL FRAME ---
         setLayout(new BorderLayout());
-        getContentPane().setBackground(new Color(231, 244, 255));
+        getContentPane().setBackground(new Color(238, 243, 249));
 
         // ==========================================
         // --- BARRA LATERAL (MENÚ) ---
         // ==========================================
         JPanel barraLateral = new JPanel();
-        barraLateral.setBackground(new Color(110, 216, 255));
+        barraLateral.setBackground(new Color(19, 40, 72));
         barraLateral.setPreferredSize(new Dimension(80, 0));
         barraLateral.setLayout(new BoxLayout(barraLateral, BoxLayout.Y_AXIS));
         barraLateral.setBorder(new EmptyBorder(30, 0, 30, 0));
@@ -76,7 +76,34 @@ public class VistaPrincipalTienda extends BaseFrame {
         });
         barraLateral.add(btnEstadisticas);
 
+
+        barraLateral.add(Box.createRigidArea(new Dimension(0, 30))); // Espaciado
+
+        JButton btnCerrarSesion = crearBotonMenu("🚪", new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                int confirmacion = JOptionPane.showConfirmDialog(
+                        VistaPrincipalTienda.this,
+                        "¿Estás seguro de que deseas cerrar sesión?",
+                        "Cerrar Sesión",
+                        JOptionPane.YES_NO_OPTION,
+                        JOptionPane.QUESTION_MESSAGE
+                );
+
+                if (confirmacion == JOptionPane.YES_OPTION) {
+                    sistema.cerrarSesion();
+                    dispose();
+                    VistaCliente vistaCliente = new VistaCliente(inventario, sistema);
+                    vistaCliente.mostrar();
+                }
+            }
+        });
+
+        barraLateral.add(btnCerrarSesion);
+
         add(barraLateral, BorderLayout.EAST);
+
+
 
         // ==========================================
         // --- ÁREA CENTRAL PRINCIPAL ---
@@ -293,7 +320,7 @@ public class VistaPrincipalTienda extends BaseFrame {
 
         JLabel lblTotalValor = new JLabel(formatearPesos(valorTotal));
         lblTotalValor.setFont(new Font("SansSerif", Font.BOLD, 16));
-        lblTotalValor.setForeground(new Color(41, 128, 185)); // Azul llamativo
+        lblTotalValor.setForeground(new Color(110, 216, 255)); // Azul llamativo
 
         panelTotal.add(lblTotalTexto, BorderLayout.WEST);
         panelTotal.add(lblTotalValor, BorderLayout.EAST);
@@ -701,8 +728,8 @@ public class VistaPrincipalTienda extends BaseFrame {
     private JButton crearBotonMenu(String texto, ActionListener accion) {
         JButton btn = new JButton(texto);
         btn.setFont(new Font("SansSerif", Font.PLAIN, 28));
-        btn.setForeground(Color.DARK_GRAY);
-        btn.setBackground(new Color(110, 216, 255));
+        btn.setForeground(Color.WHITE);
+        btn.setBackground(new Color(19, 40, 72));
         btn.setBorderPainted(false);
         btn.setFocusPainted(false);
         btn.setContentAreaFilled(false);
@@ -715,11 +742,11 @@ public class VistaPrincipalTienda extends BaseFrame {
 
         btn.addMouseListener(new MouseAdapter() {
             public void mouseEntered(MouseEvent e) {
-                btn.setBackground(new Color(79, 177, 213));
+                btn.setBackground(new Color(45, 77, 124));
                 btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
             }
             public void mouseExited(MouseEvent e) {
-                btn.setBackground(new Color(110, 216, 255));
+                btn.setBackground(new Color(19, 40, 72));
             }
         });
         return btn;

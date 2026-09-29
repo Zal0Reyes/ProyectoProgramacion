@@ -31,6 +31,8 @@ public class VistaCliente extends BaseFrame {
     private JLabel lblTotalCarrito;
     private JButton btnComprar;
     private final Map<Producto, Integer> carrito = new LinkedHashMap<>();
+    // RUT opcional asociado a la compra
+    private String rutCompra = "";
 
     // Filtros activos
     private String categoriaFiltro = "Todas";
@@ -666,20 +668,92 @@ public class VistaCliente extends BaseFrame {
     }
 
     private void procederCompra() {
-        Usuario usuarioActual = sistema.getUsuarioActual();
 
-        if (!(usuarioActual instanceof Backend.Cliente)) {
-            JOptionPane.showMessageDialog(this,
-                    "Debes iniciar sesión como cliente para realizar la compra.",
-                    "Inicio de sesión requerido", JOptionPane.WARNING_MESSAGE);
+        // Preguntar si desea asociar un RUT a la compra
+        int opcionRut = JOptionPane.showConfirmDialog(
+                this,
+                "¿Desea ingresar su RUT para asociarlo a la compra?",
+                "RUT opcional",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.QUESTION_MESSAGE
+        );
+
+        // Si presiona Sí, pedimos el RUT
+        if (opcionRut == JOptionPane.YES_OPTION) {
+
+            String rutIngresado = JOptionPane.showInputDialog(
+                    this,
+                    "Ingrese su RUT:",
+                    "Ingresar RUT",
+                    JOptionPane.PLAIN_MESSAGE
+            );
+
+            // Si presiona Cancelar, cancelamos el proceso de compra
+            if (rutIngresado == null) {
+                return;
+            }
+
+            rutIngresado = rutIngresado.trim();
+
+            // Si eligió ingresar RUT, no permitimos dejarlo vacío
+            if (rutIngresado.isEmpty()) {
+                mostrarError("Debe ingresar un RUT o elegir comprar sin RUT.");
+                return;
+            }
+
+            rutCompra = rutIngresado;
+
+        } else {
+
+            // Compra sin identificación
+            rutCompra = "";
+        }
+
+        // Confirmar definitivamente la compra
+        int confirmar = JOptionPane.showConfirmDialog(
+                this,
+                "¿Desea confirmar la compra?",
+                "Confirmar compra",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.QUESTION_MESSAGE
+        );
+
+        if (confirmar != JOptionPane.YES_OPTION) {
             return;
         }
 
+        // Guardar los cambios de stock
         inventario.confirmarCompra();
+
+        // Mensaje final
+        if (rutCompra.isEmpty()) {
+
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Compra realizada correctamente.\nCompra sin RUT.",
+                    "Compra realizada",
+                    JOptionPane.INFORMATION_MESSAGE
+            );
+
+        } else {
+
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Compra realizada correctamente.\nRUT asociado: " + rutCompra,
+                    "Compra realizada",
+                    JOptionPane.INFORMATION_MESSAGE
+            );
+        }
+
+        // Vaciar carrito después de comprar
         carrito.clear();
+
+        // Actualizar interfaz
         actualizarCarrito();
         actualizarProductos();
-        JOptionPane.showMessageDialog(this, "Compra realizada", "Compra", JOptionPane.INFORMATION_MESSAGE);
+
+        // Limpiamos el RUT para la próxima compra
+        rutCompra = "";
     }
 
     // =========================================================

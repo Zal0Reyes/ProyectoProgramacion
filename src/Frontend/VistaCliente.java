@@ -10,6 +10,7 @@ import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.File;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -722,7 +723,17 @@ public class VistaCliente extends BaseFrame {
             return;
         }
 
+        java.util.List<String> articulosComprados = new ArrayList<>();
+        double totalCompra = 0;
+        for (Map.Entry<Producto, Integer> entrada : carrito.entrySet()) {
+            Producto producto = entrada.getKey();
+            int cantidad = entrada.getValue();
+            articulosComprados.add(cantidad + " x " + producto.getNombre());
+            totalCompra += producto.getPrecio() * cantidad;
+        }
+
         // Guardar los cambios de stock
+        inventario.registrarCompra(rutCompra, articulosComprados, totalCompra);
         inventario.confirmarCompra();
 
         // Mensaje final

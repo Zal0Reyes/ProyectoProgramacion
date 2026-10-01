@@ -6,26 +6,32 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class Inventario {
     // Lista donde se almacenan todos los productos
     private final ArrayList<Producto> listaProductos;
+    private final ArrayList<Compra> historialCompras;
     private final List<String> categoriasDisponibles;
     private int contadorId;
 
 
     private static final String ARCHIVO_CSV = "inventario.csv";
     private static final String ARCHIVO_CATEGORIAS_CSV = "categorias.csv";
+    private static final String ARCHIVO_COMPRAS_CSV = "compras.csv";
 
     public Inventario() {
         this.listaProductos = new ArrayList<>();
+        this.historialCompras = new ArrayList<>();
         this.categoriasDisponibles = new ArrayList<>();
         contadorId = 1;
         // Las categorías deben cargarse antes que los productos para llenar los combos.
         cargarCategoriasDesdeCSV();
         cargarDesdeCSV();
+        cargarComprasDesdeCSV();
     }
 
 
@@ -256,6 +262,61 @@ public class Inventario {
 
     public void confirmarCompra() {
         guardarEnCSV();
+    }
+
+    public void registrarCompra(String rutUsuario, List<String> articulos, double totalPagado) {
+        historialCompras.add(new Compra(rutUsuario, articulos, totalPagado));
+        guardarComprasEnCSV();
+        guardarEnCSV();
+    }
+
+    public List<Compra> getHistorialCompras() {
+        return new ArrayList<>(historialCompras);
+    }
+
+    private void guardarComprasEnCSV() {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(ARCHIVO_COMPRAS_CSV))) {
+            writer.write("rut,fechaHora,articulos,totalPagado\n");
+
+            for (Compra compra : historialCompras) {
+                String articulos = String.join(" | ", compra.getArticulos())
+                        .replace("\n", " ")
+                        .replace("\r", " ");
+                writer.write(String.format("%s,%s,%s,%s\n",
+                        compra.getRutUsuario(), compra.getFechaHora(), articulos, compra.getTotalPagado()));
+            }
+        } catch (IOException e) {
+            System.out.println("No se pudo guardar el historial de compras: " + e.getMessage());
+        }
+    }
+
+    private void cargarComprasDesdeCSV() {
+        File archivo = new File(ARCHIVO_COMPRAS_CSV);
+        if (!archivo.exists()) {
+            return;
+        }
+
+        try (BufferedReader reader = new BufferedReader(new FileReader(archivo))) {
+            reader.readLine();
+            String linea;
+            while ((linea = reader.readLine()) != null) {
+                String[] datos = linea.split(",", 4);
+                if (datos.length < 4) {
+                    continue;
+                }
+
+                List<String> articulos = datos[2].trim().isEmpty()
+                        ? new ArrayList<>()
+                        : Arrays.asList(datos[2].split(" \\| "));
+                historialCompras.add(new Compra(
+                        datos[0].trim(),
+                        LocalDateTime.parse(datos[1].trim()),
+                        articulos,
+                        Double.parseDouble(datos[3].trim())));
+            }
+        } catch (IOException | RuntimeException e) {
+            System.out.println("No se pudo leer el historial de compras: " + e.getMessage());
+        }
     }
 
     // ==========================================

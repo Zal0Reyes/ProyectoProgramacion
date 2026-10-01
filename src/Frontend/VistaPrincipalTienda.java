@@ -51,7 +51,7 @@ public class VistaPrincipalTienda extends BaseFrame {
         barraLateral.add(btnInicio);
         barraLateral.add(Box.createRigidArea(new Dimension(0, 30)));
 
-        // BOTÓN AGREGAR CON ACCIÓN
+        // BOTÓN AGREGAR
         JButton btnAgregar = crearBotonMenu("➕", new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -66,7 +66,19 @@ public class VistaPrincipalTienda extends BaseFrame {
         });
         barraLateral.add(btnAgregar);
 
-        // BOTÓN ESTADÍSTICAS EN VENTANA SEPARADA
+
+        // BOTON AGREGAR ADMINISTRADOR
+
+        barraLateral.add(Box.createRigidArea(new Dimension(0, 30)));
+        JButton btnAgregarAdmin = crearBotonMenu("👨‍", e -> {
+            DialogoRegistroAdmin dialogoAdmin = new DialogoRegistroAdmin(VistaPrincipalTienda.this, sistema);
+            dialogoAdmin.mostrar();
+        });
+        btnAgregarAdmin.setToolTipText("Registrar Nuevo Administrador");
+        barraLateral.add(btnAgregarAdmin);
+
+
+        // BOTÓN ESTADÍSTICAS
         barraLateral.add(Box.createRigidArea(new Dimension(0, 30)));
         JButton btnEstadisticas = crearBotonMenu("📊", new ActionListener() {
             @Override
@@ -79,6 +91,7 @@ public class VistaPrincipalTienda extends BaseFrame {
 
         barraLateral.add(Box.createRigidArea(new Dimension(0, 30))); // Espaciado
 
+        //  BOTON CERRAR SESION
         JButton btnCerrarSesion = crearBotonMenu("🚪", new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {

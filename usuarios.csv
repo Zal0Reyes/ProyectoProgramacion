@@ -1,0 +1,5 @@
+tipo,rut,nombre,contrasena,correo,telefono,direccion,codigoEmpleado
+Administrador,1,Admin Principal,1,admin@mitiendita.cl,,,ADM-01
+Cliente,cliente,cliente,1234,Cliente1@gmail.com,+569 12345678,Avenida algo,
+Cliente,2,Joaquin,2,juaco@gmail.com,+56912345678,Avenida Siempre Viva 742,
+Administrador,admin,Administrador,1234,Admin@gmail.com,,,E001

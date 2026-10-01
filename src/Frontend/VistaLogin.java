@@ -86,7 +86,7 @@ public class VistaLogin extends JDialog {
         PanelRedondeado tarjetaFormulario = new PanelRedondeado(20);
         tarjetaFormulario.setBackground(Color.WHITE);
         tarjetaFormulario.setLayout(new BoxLayout(tarjetaFormulario, BoxLayout.Y_AXIS));
-        tarjetaFormulario.setBorder(new EmptyBorder(25, 25, 30, 25));
+        tarjetaFormulario.setBorder(new EmptyBorder(25, 25, 25, 25));
         tarjetaFormulario.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         // --- Campo RUT ---
@@ -118,36 +118,75 @@ public class VistaLogin extends JDialog {
         btnIngresar.setAlignmentX(Component.LEFT_ALIGNMENT);
         btnIngresar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 45));
 
-        // Efecto visual al pasar el cursor (Hover)
         btnIngresar.addMouseListener(new MouseAdapter() {
-            public void mouseEntered(MouseEvent e) {
-                btnIngresar.setBackground(AZUL_HOVER);
-            }
-            public void mouseExited(MouseEvent e) {
-                btnIngresar.setBackground(AZUL);
-            }
+            public void mouseEntered(MouseEvent e) { btnIngresar.setBackground(AZUL_HOVER); }
+            public void mouseExited(MouseEvent e) { btnIngresar.setBackground(AZUL); }
         });
 
-        // Eventos de teclado y clic
         btnIngresar.addActionListener(e -> validarLogin());
-        txtContrasena.addActionListener(e -> validarLogin()); // Para iniciar sesión con Enter
+        txtContrasena.addActionListener(e -> validarLogin());
 
-        // Ensamblaje de la tarjeta
+        // --- NUEVO: Sección de Registro ---
+        JPanel panelRegistro = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 0));
+        panelRegistro.setOpaque(false);
+        panelRegistro.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JLabel lblPregunta = new JLabel("¿No tienes cuenta?");
+        lblPregunta.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        lblPregunta.setForeground(GRIS_TEXTO);
+
+        JButton btnRegistrar = new JButton("Regístrate aquí");
+        btnRegistrar.setFont(new Font("SansSerif", Font.BOLD, 13));
+        btnRegistrar.setForeground(AZUL);
+        btnRegistrar.setContentAreaFilled(false); // Fondo transparente
+        btnRegistrar.setBorderPainted(false);
+        btnRegistrar.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnRegistrar.setMargin(new Insets(0, 0, 0, 0)); // Quitar márgenes extra
+
+        btnRegistrar.addMouseListener(new MouseAdapter() {
+            public void mouseEntered(MouseEvent e) { btnRegistrar.setForeground(NAVY); }
+            public void mouseExited(MouseEvent e) { btnRegistrar.setForeground(AZUL); }
+        });
+
+        // Acción para abrir el nuevo diálogo de registro
+        btnRegistrar.addActionListener(e -> {
+            DialogoRegistroCliente dialogoRegistro = new DialogoRegistroCliente(this, sistema);
+            dialogoRegistro.mostrar();
+        });
+
+        panelRegistro.add(lblPregunta);
+        panelRegistro.add(btnRegistrar);
+
+        // Ensamblaje de la tarjeta (NUEVO ORDEN)
         tarjetaFormulario.add(lblRut);
         tarjetaFormulario.add(Box.createRigidArea(new Dimension(0, 8)));
         tarjetaFormulario.add(txtRut);
-        tarjetaFormulario.add(Box.createRigidArea(new Dimension(0, 20))); // Espacio entre campos
+        tarjetaFormulario.add(Box.createRigidArea(new Dimension(0, 20)));
 
         tarjetaFormulario.add(lblPass);
         tarjetaFormulario.add(Box.createRigidArea(new Dimension(0, 8)));
         tarjetaFormulario.add(txtContrasena);
-        tarjetaFormulario.add(Box.createRigidArea(new Dimension(0, 30))); // Espacio antes del botón
+        tarjetaFormulario.add(Box.createRigidArea(new Dimension(0, 25)));
 
         tarjetaFormulario.add(btnIngresar);
+        tarjetaFormulario.add(Box.createRigidArea(new Dimension(0, 15))); // Espacio antes del registro
+
+        // Línea separadora sutil
+        JSeparator separador = new JSeparator();
+        separador.setForeground(GRIS_BORDE);
+        separador.setBackground(GRIS_BORDE);
+        separador.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
+        tarjetaFormulario.add(separador);
+        tarjetaFormulario.add(Box.createRigidArea(new Dimension(0, 10)));
+
+        tarjetaFormulario.add(panelRegistro); // Agregamos la sección de registro abajo
 
         panelPrincipal.add(tarjetaFormulario);
 
         add(panelPrincipal, BorderLayout.CENTER);
+
+        // Ajustamos levemente el tamaño de la ventana para que quepa todo perfecto
+        setSize(420, 600);
         setVisible(true);
     }
 
@@ -178,7 +217,7 @@ public class VistaLogin extends JDialog {
             return;
         }
 
-        Usuario user = sistema.iniciarSesion(rut, pass); // Lógica intacta[cite: 16]
+        Usuario user = sistema.iniciarSesion(rut, pass); // Lógica intacta
 
         if (user != null) {
             this.usuarioLogeado = user;
@@ -195,6 +234,6 @@ public class VistaLogin extends JDialog {
     }
 
     public Usuario getUsuarioLogeado() {
-        return usuarioLogeado; // Lógica intacta[cite: 16]
+        return usuarioLogeado; // Lógica intacta
     }
 }

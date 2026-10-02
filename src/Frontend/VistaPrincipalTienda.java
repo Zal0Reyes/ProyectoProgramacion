@@ -4,6 +4,7 @@ import Backend.Inventario;
 import Backend.Producto;
 import Backend.Sistema;
 
+
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.plaf.basic.BasicScrollBarUI;

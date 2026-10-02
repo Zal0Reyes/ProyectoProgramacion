@@ -4,6 +4,7 @@ import Backend.Inventario;
 import Backend.Producto;
 import Backend.Sistema;
 import Backend.Usuario;
+import Backend.Carrito;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -28,10 +29,17 @@ public class VistaCliente extends BaseFrame {
     private JPanel gridProductos;
     private JLabel lblCantidad;
     private JPanel panelArticulosCarrito;
+
     private JLabel lblCarritoTitulo;
+    private JLabel lblSubtotalCarrito;
+    private JLabel lblIvaCarrito;
     private JLabel lblTotalCarrito;
+
     private JButton btnComprar;
-    private final Map<Producto, Integer> carrito = new LinkedHashMap<>();
+    private JButton btnVaciarCarrito;
+
+    private final Carrito carrito;
+
     // RUT opcional asociado a la compra
     private String rutCompra = "";
 
@@ -42,6 +50,8 @@ public class VistaCliente extends BaseFrame {
 
     public VistaCliente(Inventario inventario, Sistema sistema) {
         super("NexoMarket - Cliente", inventario, sistema);
+
+        this.carrito = new Carrito(inventario);
         setSize(1200, 720);
     }
 
@@ -412,16 +422,92 @@ public class VistaCliente extends BaseFrame {
         inferior.setOpaque(false);
         inferior.setLayout(new BoxLayout(inferior, BoxLayout.Y_AXIS));
 
-        lblTotalCarrito = new JLabel("Total: $0");
-        lblTotalCarrito.setFont(new Font("SansSerif", Font.BOLD, 17));
+        lblSubtotalCarrito =
+                new JLabel("Subtotal: $0");
+
+        lblSubtotalCarrito.setFont(
+                new Font("SansSerif", Font.PLAIN, 14)
+        );
+        lblSubtotalCarrito.setForeground(NAVY);
+
+
+        lblIvaCarrito =
+                new JLabel("IVA (19%): $0");
+
+        lblIvaCarrito.setFont(
+                new Font("SansSerif", Font.PLAIN, 14)
+        );
+        lblIvaCarrito.setForeground(NAVY);
+
+
+        lblTotalCarrito =
+                new JLabel("Total: $0");
+
+        lblTotalCarrito.setFont(
+                new Font("SansSerif", Font.BOLD, 17)
+        );
         lblTotalCarrito.setForeground(NAVY);
 
-        btnComprar = crearBoton("Proceder a la compra", AZUL);
+
+// Botón vaciar
+        btnVaciarCarrito = crearBoton(
+                "Vaciar carrito",
+                new Color(215, 60, 70)
+        );
+
+        btnVaciarCarrito.setEnabled(false);
+
+        btnVaciarCarrito.addActionListener(
+                e -> vaciarCarrito()
+        );
+
+
+// Botón comprar
+        btnComprar =
+                crearBoton(
+                        "Proceder a la compra",
+                        AZUL
+                );
+
         btnComprar.setEnabled(false);
-        btnComprar.addActionListener(e -> procederCompra());
+
+        btnComprar.addActionListener(
+                e -> procederCompra()
+        );
+
+
+        inferior.add(lblSubtotalCarrito);
+
+        inferior.add(
+                Box.createRigidArea(
+                        new Dimension(0, 4)
+                )
+        );
+
+        inferior.add(lblIvaCarrito);
+
+        inferior.add(
+                Box.createRigidArea(
+                        new Dimension(0, 5)
+                )
+        );
 
         inferior.add(lblTotalCarrito);
-        inferior.add(Box.createRigidArea(new Dimension(0, 10)));
+
+        inferior.add(
+                Box.createRigidArea(
+                        new Dimension(0, 12)
+                )
+        );
+
+        inferior.add(btnVaciarCarrito);
+
+        inferior.add(
+                Box.createRigidArea(
+                        new Dimension(0, 7)
+                )
+        );
+
         inferior.add(btnComprar);
 
         carrito.add(cabecera, BorderLayout.NORTH);
@@ -614,58 +700,423 @@ public class VistaCliente extends BaseFrame {
         return tarjeta;
     }
 
-    private void agregarAlCarrito(Producto producto) {
-        if (!inventario.reservarUnidad(producto)) {
+    private void agregarAlCarrito(
+            Producto producto
+    ) {
+
+        boolean agregado =
+                carrito.agregarProducto(
+                        producto,
+                        1
+                );
+
+        if (!agregado) {
+
             actualizarProductos();
-            mostrarError("El producto ya no tiene stock disponible.");
+
+            mostrarError(
+                    "No hay stock suficiente."
+            );
+
             return;
         }
 
-        carrito.put(producto, carrito.getOrDefault(producto, 0) + 1);
         actualizarCarrito();
         actualizarProductos();
     }
 
     private void actualizarCarrito() {
+
         if (panelArticulosCarrito == null) {
             return;
         }
 
         panelArticulosCarrito.removeAll();
-        int unidades = 0;
-        double total = 0;
 
-        for (Map.Entry<Producto, Integer> entrada : carrito.entrySet()) {
+        Map<Producto, Integer> productosCarrito =
+                carrito.getProductos();
+
+
+        for (Map.Entry<Producto, Integer> entrada
+                : productosCarrito.entrySet()) {
+
             Producto producto = entrada.getKey();
             int cantidad = entrada.getValue();
-            unidades += cantidad;
-            total += producto.getPrecio() * cantidad;
 
-            JLabel articulo = new JLabel(cantidad + " x " + producto.getNombre()
-                    + " - " + formatearPesos(producto.getPrecio() * cantidad));
-            articulo.setFont(new Font("SansSerif", Font.PLAIN, 13));
-            articulo.setForeground(NAVY);
-            articulo.setBorder(new EmptyBorder(7, 3, 7, 3));
-            articulo.setAlignmentX(Component.LEFT_ALIGNMENT);
-            panelArticulosCarrito.add(articulo);
+
+            // Fila completa del producto
+            JPanel filaProducto =
+                    new JPanel(
+                            new BorderLayout(5, 0)
+                    );
+
+            filaProducto.setOpaque(false);
+
+            filaProducto.setMaximumSize(
+                    new Dimension(
+                            Integer.MAX_VALUE,
+                            65
+                    )
+            );
+
+
+            // =========================
+            // INFORMACIÓN
+            // =========================
+
+            JPanel datos = new JPanel();
+
+            datos.setLayout(
+                    new BoxLayout(
+                            datos,
+                            BoxLayout.Y_AXIS
+                    )
+            );
+
+            datos.setOpaque(false);
+
+
+            JLabel nombre =
+                    new JLabel(
+                            producto.getNombre()
+                    );
+
+            nombre.setFont(
+                    new Font(
+                            "SansSerif",
+                            Font.BOLD,
+                            12
+                    )
+            );
+
+            nombre.setForeground(NAVY);
+
+
+            JLabel precio =
+                    new JLabel(
+                            formatearPesos(
+                                    producto.getPrecio()
+                                            * cantidad
+                            )
+                    );
+
+            precio.setFont(
+                    new Font(
+                            "SansSerif",
+                            Font.PLAIN,
+                            12
+                    )
+            );
+
+            precio.setForeground(GRIS);
+
+
+            datos.add(nombre);
+            datos.add(precio);
+
+
+            // =========================
+            // CONTROLES
+            // =========================
+
+            JPanel controles =
+                    new JPanel(
+                            new FlowLayout(
+                                    FlowLayout.RIGHT,
+                                    3,
+                                    0
+                            )
+                    );
+
+            controles.setOpaque(false);
+
+
+            JButton btnMenos =
+                    crearBotonCarrito(
+                            "-",
+                            NAVY
+                    );
+
+
+            JLabel lblCantidadProducto =
+                    new JLabel(
+                            String.valueOf(cantidad)
+                    );
+
+            lblCantidadProducto.setFont(
+                    new Font(
+                            "SansSerif",
+                            Font.BOLD,
+                            13
+                    )
+            );
+
+
+            JButton btnMas =
+                    crearBotonCarrito(
+                            "+",
+                            AZUL
+                    );
+
+
+            JButton btnEliminar =
+                    crearBotonCarrito(
+                            "X",
+                            new Color(215, 60, 70)
+                    );
+
+
+            // DISMINUIR
+            btnMenos.addActionListener(
+                    e -> cambiarCantidad(
+                            producto,
+                            cantidad - 1
+                    )
+            );
+
+
+            // AUMENTAR
+            btnMas.addActionListener(
+                    e -> cambiarCantidad(
+                            producto,
+                            cantidad + 1
+                    )
+            );
+
+
+            // ELIMINAR TODO EL PRODUCTO
+            btnEliminar.addActionListener(
+                    e -> eliminarDelCarrito(
+                            producto
+                    )
+            );
+
+
+            // Si no queda stock disponible,
+            // no se puede aumentar más
+            if (producto.getStock() == 0) {
+                btnMas.setEnabled(false);
+            }
+
+
+            controles.add(btnMenos);
+            controles.add(lblCantidadProducto);
+            controles.add(btnMas);
+            controles.add(btnEliminar);
+
+
+            filaProducto.add(
+                    datos,
+                    BorderLayout.CENTER
+            );
+
+            filaProducto.add(
+                    controles,
+                    BorderLayout.EAST
+            );
+
+
+            panelArticulosCarrito.add(
+                    filaProducto
+            );
+
+            panelArticulosCarrito.add(
+                    Box.createRigidArea(
+                            new Dimension(0, 8)
+                    )
+            );
         }
 
-        if (carrito.isEmpty()) {
-            JLabel vacio = new JLabel("<html><center><b>Tu carrito está vacío</b>"
-                    + "<br><br>Agrega productos para comenzar</center></html>");
-            vacio.setHorizontalAlignment(SwingConstants.CENTER);
+
+        // =========================
+        // CARRITO VACÍO
+        // =========================
+
+        if (carrito.estaVacio()) {
+
+            JLabel vacio = new JLabel(
+                    "<html><center>"
+                            + "<b>Tu carrito está vacío</b>"
+                            + "<br><br>"
+                            + "Agrega productos para comenzar"
+                            + "</center></html>"
+            );
+
+            vacio.setHorizontalAlignment(
+                    SwingConstants.CENTER
+            );
+
             vacio.setForeground(GRIS);
-            vacio.setAlignmentX(Component.CENTER_ALIGNMENT);
-            panelArticulosCarrito.add(Box.createVerticalGlue());
+
+            vacio.setAlignmentX(
+                    Component.CENTER_ALIGNMENT
+            );
+
+            panelArticulosCarrito.add(
+                    Box.createVerticalGlue()
+            );
+
             panelArticulosCarrito.add(vacio);
-            panelArticulosCarrito.add(Box.createVerticalGlue());
+
+            panelArticulosCarrito.add(
+                    Box.createVerticalGlue()
+            );
         }
 
-        lblCarritoTitulo.setText("Mi Carrito (" + unidades + ")");
-        lblTotalCarrito.setText("Total: " + formatearPesos(total));
-        btnComprar.setEnabled(!carrito.isEmpty());
+
+        // =========================
+        // TOTALES
+        // =========================
+
+        double subtotal =
+                carrito.calcularSubtotal();
+
+        double iva =
+                carrito.calcularIva();
+
+        double total =
+                carrito.calcularTotal();
+
+
+        lblCarritoTitulo.setText(
+                "Mi Carrito ("
+                        + carrito.getCantidadTotal()
+                        + ")"
+        );
+
+        lblSubtotalCarrito.setText(
+                "Subtotal: "
+                        + formatearPesos(subtotal)
+        );
+
+        lblIvaCarrito.setText(
+                "IVA (19%): "
+                        + formatearPesos(iva)
+        );
+
+        lblTotalCarrito.setText(
+                "Total: "
+                        + formatearPesos(total)
+        );
+
+
+        boolean tieneProductos =
+                !carrito.estaVacio();
+
+        btnComprar.setEnabled(
+                tieneProductos
+        );
+
+        btnVaciarCarrito.setEnabled(
+                tieneProductos
+        );
+
+
         panelArticulosCarrito.revalidate();
         panelArticulosCarrito.repaint();
+    }
+
+    private void cambiarCantidad(
+            Producto producto,
+            int nuevaCantidad
+    ) {
+
+        boolean actualizado =
+                carrito.actualizarCantidad(
+                        producto,
+                        nuevaCantidad
+                );
+
+        if (!actualizado) {
+
+            mostrarError(
+                    "No hay stock suficiente "
+                            + "para aumentar la cantidad."
+            );
+
+            return;
+        }
+
+        actualizarCarrito();
+        actualizarProductos();
+    }
+
+
+    private void eliminarDelCarrito(
+            Producto producto
+    ) {
+
+        carrito.eliminarProducto(producto);
+
+        actualizarCarrito();
+        actualizarProductos();
+    }
+
+
+    private void vaciarCarrito() {
+
+        if (carrito.estaVacio()) {
+            return;
+        }
+
+        int opcion =
+                JOptionPane.showConfirmDialog(
+                        this,
+                        "¿Desea vaciar todo el carrito?",
+                        "Vaciar carrito",
+                        JOptionPane.YES_NO_OPTION,
+                        JOptionPane.QUESTION_MESSAGE
+                );
+
+        if (opcion != JOptionPane.YES_OPTION) {
+            return;
+        }
+
+        carrito.vaciarCarrito();
+
+        actualizarCarrito();
+        actualizarProductos();
+    }
+
+
+    // Botones pequeños + - X
+    private JButton crearBotonCarrito(
+            String texto,
+            Color color
+    ) {
+
+        JButton boton =
+                new JButton(texto);
+
+        boton.setFont(
+                new Font(
+                        "SansSerif",
+                        Font.BOLD,
+                        12
+                )
+        );
+
+        boton.setForeground(Color.WHITE);
+        boton.setBackground(color);
+
+        boton.setFocusPainted(false);
+        boton.setBorderPainted(false);
+
+        boton.setPreferredSize(
+                new Dimension(35, 28)
+        );
+
+        boton.setMargin(
+                new Insets(0, 0, 0, 0)
+        );
+
+        boton.setCursor(
+                new Cursor(
+                        Cursor.HAND_CURSOR
+                )
+        );
+
+        return boton;
     }
 
     private void procederCompra() {
@@ -713,7 +1164,10 @@ public class VistaCliente extends BaseFrame {
         // Confirmar definitivamente la compra
         int confirmar = JOptionPane.showConfirmDialog(
                 this,
-                "¿Desea confirmar la compra?",
+                "Subtotal: " + formatearPesos(carrito.calcularSubtotal())
+                        + "\nIVA (19%): " + formatearPesos(carrito.calcularIva())
+                        + "\nTotal: " + formatearPesos(carrito.calcularTotal())
+                        + "\n\n¿Desea confirmar la compra?",
                 "Confirmar compra",
                 JOptionPane.YES_NO_OPTION,
                 JOptionPane.QUESTION_MESSAGE
@@ -723,14 +1177,30 @@ public class VistaCliente extends BaseFrame {
             return;
         }
 
-        java.util.List<String> articulosComprados = new ArrayList<>();
-        double totalCompra = 0;
-        for (Map.Entry<Producto, Integer> entrada : carrito.entrySet()) {
+        java.util.List<String> articulosComprados =
+                new ArrayList<>();
+
+        for (Map.Entry<Producto, Integer> entrada
+                : carrito.getProductos().entrySet()) {
+
             Producto producto = entrada.getKey();
             int cantidad = entrada.getValue();
-            articulosComprados.add(cantidad + " x " + producto.getNombre());
-            totalCompra += producto.getPrecio() * cantidad;
+
+            articulosComprados.add(
+                    cantidad
+                            + " x "
+                            + producto.getNombre()
+            );
         }
+
+        double subtotalCompra =
+                carrito.calcularSubtotal();
+
+        double ivaCompra =
+                carrito.calcularIva();
+
+        double totalCompra =
+                carrito.calcularTotal();
 
         // Guardar los cambios de stock
         inventario.registrarCompra(rutCompra, articulosComprados, totalCompra);
@@ -757,7 +1227,7 @@ public class VistaCliente extends BaseFrame {
         }
 
         // Vaciar carrito después de comprar
-        carrito.clear();
+        carrito.limpiarDespuesDeCompra();
 
         // Actualizar interfaz
         actualizarCarrito();

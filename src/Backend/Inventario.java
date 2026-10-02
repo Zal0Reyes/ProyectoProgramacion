@@ -252,12 +252,48 @@ public class Inventario {
     }
 
     public boolean reservarUnidad(Producto producto) {
-        if (producto == null || producto.getStock() <= 0 || !listaProductos.contains(producto)) {
+        return reservarUnidades(producto, 1);
+    }
+
+    // Reserva varias unidades de una sola vez
+    public boolean reservarUnidades(Producto producto, int cantidad) {
+
+        if (producto == null || cantidad <= 0) {
             return false;
         }
 
-        producto.setStock(producto.getStock() - 1);
+        if (!listaProductos.contains(producto)) {
+            return false;
+        }
+
+        // No existe stock suficiente
+        if (producto.getStock() < cantidad) {
+            return false;
+        }
+
+        producto.setStock(
+                producto.getStock() - cantidad
+        );
+
         return true;
+    }
+
+    // Devuelve productos reservados al inventario
+    public void devolverStock(
+            Producto producto,
+            int cantidad
+    ) {
+
+        if (producto == null || cantidad <= 0) {
+            return;
+        }
+
+        if (listaProductos.contains(producto)) {
+
+            producto.setStock(
+                    producto.getStock() + cantidad
+            );
+        }
     }
 
     public void confirmarCompra() {

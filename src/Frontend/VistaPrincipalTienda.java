@@ -92,16 +92,32 @@ public class VistaPrincipalTienda extends BaseFrame {
         });
         barraLateral.add(btnEstadisticas);
 
+
         // BOTÓN HISTORIAL DE COMPRAS
         barraLateral.add(Box.createRigidArea(new Dimension(0, 30)));
-        JButton btnHistorial = crearBotonMenu("🧾", e -> mostrarHistorialCompras());
+        JButton btnHistorial = crearBotonMenu("\uD83D\uDCCB", e -> mostrarHistorialCompras());
         btnHistorial.setToolTipText("Historial de compras");
         barraLateral.add(btnHistorial);
 
 
-        barraLateral.add(Box.createRigidArea(new Dimension(0, 30))); // Espaciado
+
+        // --- BOTÓN VACIAR INVENTARIO ---
+        barraLateral.add(Box.createRigidArea(new Dimension(0, 30)));
+        JButton btnVaciar = crearBotonMenu("🗑", e -> {
+            DialogoVaciarInventario dialogoVaciar = new DialogoVaciarInventario(VistaPrincipalTienda.this, inventario);
+            dialogoVaciar.mostrar();
+
+            // Refrescar la pantalla si se eliminaron productos
+            if (dialogoVaciar.huboCambios()) {
+                actualizarVistaProductos();
+            }
+        });
+        btnVaciar.setToolTipText("Gestión Masiva / Vaciar Inventario");
+        barraLateral.add(btnVaciar);
+
 
         //  BOTON CERRAR SESION
+        barraLateral.add(Box.createVerticalGlue());
         JButton btnCerrarSesion = crearBotonMenu("🚪", new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {

@@ -1202,29 +1202,25 @@ public class VistaCliente extends BaseFrame {
         double totalCompra =
                 carrito.calcularTotal();
 
-        // Guardar los cambios de stock
+        // Creamos la instancia del objeto Compra para la boleta
+        Backend.Compra nuevaCompra = new Backend.Compra(rutCompra, articulosComprados, totalCompra);
+
+        // Guardar los cambios de stock y registrar en el historial
         inventario.registrarCompra(rutCompra, articulosComprados, totalCompra);
         inventario.confirmarCompra();
 
-        // Mensaje final
-        if (rutCompra.isEmpty()) {
-
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Compra realizada correctamente.\nCompra sin RUT.",
-                    "Compra realizada",
-                    JOptionPane.INFORMATION_MESSAGE
-            );
-
-        } else {
-
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Compra realizada correctamente.\nRUT asociado: " + rutCompra,
-                    "Compra realizada",
-                    JOptionPane.INFORMATION_MESSAGE
-            );
-        }
+        // =========================================================
+        // MOSTRAR EL NUEVO DIÁLOGO DE COMPROBANTE (BOLETA)
+        // =========================================================
+        DialogoComprobante dialogoComprobante = new DialogoComprobante(
+                this,
+                nuevaCompra,
+                carrito.getProductos(),
+                subtotalCompra,
+                ivaCompra,
+                totalCompra
+        );
+        dialogoComprobante.mostrar();
 
         // Vaciar carrito después de comprar
         carrito.limpiarDespuesDeCompra();

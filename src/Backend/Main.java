@@ -1,7 +1,6 @@
 package Backend;
 
 import Frontend.VistaCliente;
-import Frontend.VistaPrincipalTienda;
 
 
 public class Main {

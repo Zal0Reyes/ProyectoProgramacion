@@ -91,9 +91,7 @@ public class Inventario {
         return false; // Si termina el ciclo y no encontró nada, retorna false
     }
 
-    public void registrarProducto(String nombre, double precio, int stock, String categoria) {
-        registrarProducto(nombre, precio, stock, categoria, "");
-    }
+
 
     public void registrarProducto(String nombre, double precio, int stock, String categoria, String rutaImagen) {
 
@@ -136,19 +134,6 @@ public class Inventario {
         }
 
         return productosCategoria;
-    }
-    public ArrayList<Producto> filtrarPorRangoPrecio(double precioMinimo, double precioMaximo) {
-
-        ArrayList<Producto> productosFiltrados = new ArrayList<>();
-
-        for (Producto p : listaProductos) {
-
-            if (p.getPrecio() >= precioMinimo && p.getPrecio() <= precioMaximo) {
-                productosFiltrados.add(p);
-            }
-        }
-
-        return productosFiltrados;
     }
 
 
@@ -406,5 +391,34 @@ public class Inventario {
         } catch (IOException e) {
             System.out.println("No se pudo leer el archivo de categorías: " + e.getMessage());
         }
+    }
+
+    // ==========================================
+    // --- MÉTODOS PARA VACIAR INVENTARIO ---
+    // ==========================================
+
+    public void vaciarInventarioCompleto() {
+        // Limpia toda la lista de productos
+        listaProductos.clear();
+        guardarEnCSV();
+    }
+
+    public int eliminarProductosPorCategoria(String categoriaAEliminar) {
+        int cantidadEliminada = 0;
+
+
+        for (int i = listaProductos.size() - 1; i >= 0; i--) {
+            Producto p = listaProductos.get(i);
+
+            if (p.getCategoria().equalsIgnoreCase(categoriaAEliminar)) {
+                listaProductos.remove(i);
+                cantidadEliminada++;
+            }
+        }
+
+        if (cantidadEliminada > 0) {
+            guardarEnCSV();
+        }
+        return cantidadEliminada;
     }
 }

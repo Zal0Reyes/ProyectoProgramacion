@@ -13,11 +13,8 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.time.format.DateTimeFormatter;
-import java.util.List;
 import java.util.LinkedHashSet;
 import java.util.Set;
-import Backend.Compra;
 
 public class VistaPrincipalTienda extends BaseFrame {
 
@@ -336,45 +333,7 @@ public class VistaPrincipalTienda extends BaseFrame {
     }
 
     private void mostrarHistorialCompras() {
-        JDialog dialog = new JDialog(this, "Historial de compras", true);
-        dialog.setSize(760, 520);
-        dialog.setLocationRelativeTo(this);
-        dialog.setLayout(new BorderLayout(10, 10));
-        dialog.getContentPane().setBackground(new Color(245, 247, 250));
-
-        JTextArea texto = new JTextArea();
-        texto.setEditable(false);
-        texto.setFont(new Font("SansSerif", Font.PLAIN, 14));
-        texto.setBackground(Color.WHITE);
-        texto.setBorder(new EmptyBorder(15, 15, 15, 15));
-
-        List<Compra> compras = inventario.getHistorialCompras();
-        DateTimeFormatter formatoFecha = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
-        if (compras.isEmpty()) {
-            texto.setText("No hay compras registradas.");
-        } else {
-            StringBuilder contenido = new StringBuilder();
-            for (int i = compras.size() - 1; i >= 0; i--) {
-                Compra compra = compras.get(i);
-                contenido.append("Compra #").append(i + 1)
-                        .append("  |  ").append(compra.getFechaHora().format(formatoFecha)).append("\n")
-                        .append("RUT: ").append(compra.getRutUsuario()).append("\n")
-                        .append("Artículos: ").append(String.join(", ", compra.getArticulos())).append("\n")
-                        .append("Total pagado: $").append(String.format("%,.0f", compra.getTotalPagado()).replace(',', '.'))
-                        .append("\n\n");
-            }
-            texto.setText(contenido.toString());
-            texto.setCaretPosition(0);
-        }
-
-        dialog.add(new JScrollPane(texto), BorderLayout.CENTER);
-        JButton cerrar = new JButton("Cerrar");
-        cerrar.addActionListener(e -> dialog.dispose());
-        JPanel panelBoton = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        panelBoton.setOpaque(false);
-        panelBoton.add(cerrar);
-        dialog.add(panelBoton, BorderLayout.SOUTH);
-        dialog.setVisible(true);
+        new DialogoHistorialCompras(this, inventario).mostrar();
     }
 
     private JPanel crearPanelEstadisticas() {

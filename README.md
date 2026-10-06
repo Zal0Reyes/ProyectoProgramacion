@@ -8,7 +8,7 @@ Zal0Reyes =====> Joaquin Rodriguez
 </br>
 GojiBL =====> Joel Sanchez
 </br>
-Coevaluacion (06-10-2026)
+Coevaluacion 
 </br>
 Javier Urra : 7.0
 </br>

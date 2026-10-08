@@ -236,6 +236,18 @@ public class Inventario {
         return listaProductos;
     }
 
+    public Producto buscarProductoPorId(String idBuscado) {
+
+        for (Producto producto : listaProductos) {
+
+            if (producto.getId().equalsIgnoreCase(idBuscado)) {
+                return producto;
+            }
+        }
+
+        return null;
+    }
+
     public boolean reservarUnidad(Producto producto) {
         return reservarUnidades(producto, 1);
     }

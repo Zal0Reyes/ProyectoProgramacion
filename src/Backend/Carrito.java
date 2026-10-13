@@ -100,6 +100,59 @@ public class Carrito {
         return true;
     }
 
+    public void agregarProductoConfirmado(
+            Producto producto,
+            int cantidad
+    ) {
+
+        if (producto == null ||
+                cantidad <= 0) {
+
+            return;
+        }
+
+
+        int cantidadActual =
+                productos.getOrDefault(
+                        producto,
+                        0
+                );
+
+
+        productos.put(
+                producto,
+                cantidadActual + cantidad
+        );
+    }
+
+    public void devolverProductoConfirmado(
+            Producto producto,
+            int cantidad
+    ) {
+
+        Integer cantidadActual =
+                productos.get(producto);
+
+        if (cantidadActual == null) {
+            return;
+        }
+
+        int nuevaCantidad =
+                cantidadActual - cantidad;
+
+        if (nuevaCantidad <= 0) {
+
+            productos.remove(producto);
+
+        } else {
+
+            productos.put(
+                    producto,
+                    nuevaCantidad
+            );
+        }
+    }
+
     // Vacía el carrito y devuelve todo el stock
     public void vaciarCarrito() {
 

@@ -5,6 +5,7 @@ import Backend.Producto;
 import Backend.Sistema;
 import Backend.Usuario;
 import Backend.Carrito;
+import Backend.ConexionServidor;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -39,6 +40,7 @@ public class VistaCliente extends BaseFrame {
     private JButton btnVaciarCarrito;
 
     private final Carrito carrito;
+    private final ConexionServidor conexionServidor;
 
     // RUT opcional asociado a la compra
     private String rutCompra = "";
@@ -49,10 +51,33 @@ public class VistaCliente extends BaseFrame {
     private double precioMaximo = -1;
 
     public VistaCliente(Inventario inventario, Sistema sistema) {
-        super("NexoMarket - Cliente", inventario, sistema);
 
-        this.carrito = new Carrito(inventario);
+        super(
+                "NexoMarket - Cliente",
+                inventario,
+                sistema
+        );
+
+        this.carrito =
+                new Carrito(inventario);
+
+        this.conexionServidor =
+                new ConexionServidor();
+
+        conexionServidor.setReceptorMensajes(
+                mensaje -> procesarMensajeServidor(
+                        mensaje
+                )
+        );
+
+        conexionServidor.conectar();
+
         setSize(1200, 720);
+
+        if (conexionServidor.estaConectado()) {
+
+            conexionServidor.solicitarStockActual();
+        }
     }
 
     @Override
@@ -706,25 +731,294 @@ public class VistaCliente extends BaseFrame {
             Producto producto
     ) {
 
-        boolean agregado =
-                carrito.agregarProducto(
-                        producto,
-                        1
-                );
-
-        if (!agregado) {
-
-            actualizarProductos();
+        if (!conexionServidor.estaConectado()) {
 
             mostrarError(
-                    "No hay stock suficiente."
+                    "No hay conexión con el servidor."
             );
 
             return;
         }
 
-        actualizarCarrito();
-        actualizarProductos();
+
+        conexionServidor.solicitarReserva(
+                producto.getId(),
+                1
+        );
+    }
+
+    private void procesarMensajeServidor(
+            String mensaje
+    ) {
+
+        if (mensaje.equals("COMPRA_OK")) {
+
+            System.out.println(
+                    "El servidor confirmó la compra."
+            );
+
+            return;
+        }
+
+        if (mensaje.startsWith("ERROR_COMPRA;")) {
+
+            SwingUtilities.invokeLater(() -> {
+
+                mostrarError(
+                        "El servidor no pudo confirmar la compra."
+                );
+            });
+
+            return;
+        }
+
+        // =====================================
+        // RESERVA ACEPTADA
+        // =====================================
+        if (mensaje.startsWith("DEVOLUCION_OK;")) {
+
+            String[] datos =
+                    mensaje.split(";");
+
+            if (datos.length != 4) {
+                return;
+            }
+
+
+            String idProducto =
+                    datos[1];
+
+            int cantidadDevuelta;
+            int nuevoStock;
+
+
+            try {
+
+                cantidadDevuelta =
+                        Integer.parseInt(
+                                datos[2]
+                        );
+
+                nuevoStock =
+                        Integer.parseInt(
+                                datos[3]
+                        );
+
+            } catch (NumberFormatException e) {
+
+                return;
+            }
+
+
+            SwingUtilities.invokeLater(() -> {
+
+                Producto producto =
+                        buscarProductoLocal(
+                                idProducto
+                        );
+
+                if (producto == null) {
+                    return;
+                }
+
+
+                producto.setStock(
+                        nuevoStock
+                );
+
+
+                carrito.devolverProductoConfirmado(
+                        producto,
+                        cantidadDevuelta
+                );
+
+
+                actualizarCarrito();
+                actualizarProductos();
+            });
+
+            return;
+        }
+
+        if (mensaje.startsWith("RESERVA_OK;")) {
+
+            String[] datos = mensaje.split(";");
+
+            if (datos.length != 4) {
+                return;
+            }
+
+            String idProducto =
+                    datos[1];
+
+            int cantidadReservada;
+            int nuevoStock;
+
+            try {
+
+                cantidadReservada =
+                        Integer.parseInt(datos[2]);
+
+                nuevoStock =
+                        Integer.parseInt(datos[3]);
+
+            } catch (NumberFormatException e) {
+
+                return;
+            }
+
+
+            SwingUtilities.invokeLater(() -> {
+
+                Producto producto =
+                        buscarProductoLocal(
+                                idProducto
+                        );
+
+                if (producto == null) {
+                    return;
+                }
+
+
+                producto.setStock(
+                        nuevoStock
+                );
+
+
+                carrito.agregarProductoConfirmado(
+                        producto,
+                        cantidadReservada
+                );
+
+
+                actualizarCarrito();
+                actualizarProductos();
+            });
+
+            return;
+        }
+
+
+        // =====================================
+        // STOCK MODIFICADO POR OTRO CLIENTE
+        // =====================================
+
+        if (mensaje.startsWith("STOCK;")) {
+
+            String[] datos =
+                    mensaje.split(";");
+
+            if (datos.length != 3) {
+                return;
+            }
+
+
+            String idProducto =
+                    datos[1];
+
+            int nuevoStock;
+
+
+            try {
+
+                nuevoStock =
+                        Integer.parseInt(
+                                datos[2]
+                        );
+
+            } catch (NumberFormatException e) {
+
+                return;
+            }
+
+
+            SwingUtilities.invokeLater(() -> {
+
+                Producto producto =
+                        buscarProductoLocal(
+                                idProducto
+                        );
+
+
+                if (producto == null) {
+                    return;
+                }
+
+
+                producto.setStock(
+                        nuevoStock
+                );
+
+
+                actualizarProductos();
+            });
+
+            return;
+        }
+
+
+        // =====================================
+        // SIN STOCK
+        // =====================================
+
+        if (mensaje.startsWith("ERROR_STOCK;")) {
+
+            String[] datos =
+                    mensaje.split(";");
+
+
+            SwingUtilities.invokeLater(() -> {
+
+                if (datos.length == 3) {
+
+                    Producto producto =
+                            buscarProductoLocal(
+                                    datos[1]
+                            );
+
+                    try {
+
+                        int stockReal =
+                                Integer.parseInt(
+                                        datos[2]
+                                );
+
+                        if (producto != null) {
+
+                            producto.setStock(
+                                    stockReal
+                            );
+                        }
+
+                    } catch (NumberFormatException ignored) {
+                    }
+                }
+
+
+                actualizarProductos();
+
+                mostrarError(
+                        "El producto ya no tiene stock disponible."
+                );
+            });
+        }
+    }
+
+    private Producto buscarProductoLocal(
+            String idProducto
+    ) {
+
+        for (Producto producto :
+                inventario.getProductos()) {
+
+            if (producto.getId()
+                    .equalsIgnoreCase(idProducto)) {
+
+                return producto;
+            }
+        }
+
+        return null;
     }
 
     private void actualizarCarrito() {
@@ -1023,24 +1317,40 @@ public class VistaCliente extends BaseFrame {
             int nuevaCantidad
     ) {
 
-        boolean actualizado =
-                carrito.actualizarCantidad(
-                        producto,
-                        nuevaCantidad
+        Integer cantidadActual =
+                carrito.getProductos().get(
+                        producto
                 );
 
-        if (!actualizado) {
+        if (cantidadActual == null) {
+            return;
+        }
 
-            mostrarError(
-                    "No hay stock suficiente "
-                            + "para aumentar la cantidad."
+        // AUMENTAR
+        if (nuevaCantidad > cantidadActual) {
+
+            int cantidadExtra =
+                    nuevaCantidad - cantidadActual;
+
+            conexionServidor.solicitarReserva(
+                    producto.getId(),
+                    cantidadExtra
             );
 
             return;
         }
 
-        actualizarCarrito();
-        actualizarProductos();
+        // DISMINUIR
+        if (nuevaCantidad < cantidadActual) {
+
+            int cantidadADevolver =
+                    cantidadActual - nuevaCantidad;
+
+            conexionServidor.solicitarDevolucion(
+                    producto.getId(),
+                    cantidadADevolver
+            );
+        }
     }
 
 
@@ -1048,10 +1358,21 @@ public class VistaCliente extends BaseFrame {
             Producto producto
     ) {
 
-        carrito.eliminarProducto(producto);
+        Integer cantidad =
+                carrito.getProductos().get(
+                        producto
+                );
 
-        actualizarCarrito();
-        actualizarProductos();
+
+        if (cantidad == null) {
+            return;
+        }
+
+
+        conexionServidor.solicitarDevolucion(
+                producto.getId(),
+                cantidad
+        );
     }
 
 
@@ -1060,6 +1381,7 @@ public class VistaCliente extends BaseFrame {
         if (carrito.estaVacio()) {
             return;
         }
+
 
         int opcion =
                 JOptionPane.showConfirmDialog(
@@ -1070,14 +1392,31 @@ public class VistaCliente extends BaseFrame {
                         JOptionPane.QUESTION_MESSAGE
                 );
 
+
         if (opcion != JOptionPane.YES_OPTION) {
             return;
         }
 
-        carrito.vaciarCarrito();
 
-        actualizarCarrito();
-        actualizarProductos();
+        Map<Producto, Integer> productosCarrito =
+                carrito.getProductos();
+
+
+        for (Map.Entry<Producto, Integer> entrada
+                : productosCarrito.entrySet()) {
+
+            Producto producto =
+                    entrada.getKey();
+
+            int cantidad =
+                    entrada.getValue();
+
+
+            conexionServidor.solicitarDevolucion(
+                    producto.getId(),
+                    cantidad
+            );
+        }
     }
 
 
@@ -1212,6 +1551,17 @@ public class VistaCliente extends BaseFrame {
         // Creamos la instancia del objeto Compra para la boleta
         Backend.Compra nuevaCompra = new Backend.Compra(rutCompra, articulosComprados, totalCompra);
 
+        if (!conexionServidor.estaConectado()) {
+
+            mostrarError(
+                    "No se puede confirmar la compra porque no hay conexión con el servidor."
+            );
+
+            return;
+        }
+
+
+        conexionServidor.confirmarCompra();
         // Guardar los cambios de stock y registrar en el historial
         inventario.registrarCompra(rutCompra, articulosComprados, totalCompra);
         inventario.confirmarCompra();

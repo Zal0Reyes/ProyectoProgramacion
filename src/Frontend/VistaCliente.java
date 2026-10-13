@@ -73,6 +73,11 @@ public class VistaCliente extends BaseFrame {
         conexionServidor.conectar();
 
         setSize(1200, 720);
+
+        if (conexionServidor.estaConectado()) {
+
+            conexionServidor.solicitarStockActual();
+        }
     }
 
     @Override
@@ -743,6 +748,27 @@ public class VistaCliente extends BaseFrame {
     private void procesarMensajeServidor(
             String mensaje
     ) {
+
+        if (mensaje.equals("COMPRA_OK")) {
+
+            System.out.println(
+                    "El servidor confirmó la compra."
+            );
+
+            return;
+        }
+
+        if (mensaje.startsWith("ERROR_COMPRA;")) {
+
+            SwingUtilities.invokeLater(() -> {
+
+                mostrarError(
+                        "El servidor no pudo confirmar la compra."
+                );
+            });
+
+            return;
+        }
 
         // =====================================
         // RESERVA ACEPTADA
@@ -1518,6 +1544,17 @@ public class VistaCliente extends BaseFrame {
         // Creamos la instancia del objeto Compra para la boleta
         Backend.Compra nuevaCompra = new Backend.Compra(rutCompra, articulosComprados, totalCompra);
 
+        if (!conexionServidor.estaConectado()) {
+
+            mostrarError(
+                    "No se puede confirmar la compra porque no hay conexión con el servidor."
+            );
+
+            return;
+        }
+
+
+        conexionServidor.confirmarCompra();
         // Guardar los cambios de stock y registrar en el historial
         inventario.registrarCompra(rutCompra, articulosComprados, totalCompra);
         inventario.confirmarCompra();

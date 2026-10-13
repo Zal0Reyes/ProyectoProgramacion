@@ -137,6 +137,20 @@ public class ConexionServidor {
         );
     }
 
+    public void confirmarCompra() {
+
+        enviarMensaje(
+                "CONFIRMAR_COMPRA"
+        );
+    }
+
+    public void solicitarStockActual() {
+
+        enviarMensaje(
+                "PEDIR_STOCK"
+        );
+    }
+
 
     public void solicitarDevolucion(
             String idProducto,

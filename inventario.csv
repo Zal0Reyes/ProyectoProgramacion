@@ -1,9 +1,9 @@
 id,nombre,precio,stock,categoria,rutaImagen
 P001,Monitor Samsung 22" FHD Panel IPS Essential S3 100 Hz 5ms LS22D300GALXZS,70990.0,6,Monitores,imagenes\monitor.png
-P002,Teclado Alámbrico Resistente a Derrames Español - Negro,9990.0,17,Teclados,imagenes\teclado.png
-P003,Memoria RAM DDR4 16GB 3200MHz RGB UDIMM,140990.0,110,RAM,
-P004,Monitor Portátil ASUS 15" FHD 60Hz IPS 5ms ZenScreen MB169CK,150990.0,455,Monitores,
-P005,Mouse Gamer Inalámbrico G305 Ligthspeed - Negro,39990.0,98,Mouse,
+P002,Teclado Alámbrico Resistente a Derrames Español - Negro,9990.0,16,Teclados,imagenes\teclado.png
+P003,Memoria RAM DDR4 16GB 3200MHz RGB UDIMM,140990.0,108,RAM,
+P004,Monitor Portátil ASUS 15" FHD 60Hz IPS 5ms ZenScreen MB169CK,150990.0,453,Monitores,
+P005,Mouse Gamer Inalámbrico G305 Ligthspeed - Negro,39990.0,97,Mouse,
 P006,Tarjeta de Video NVIDIA Dual GeForce RTX 3050 6GB OC Edition GDDR6,249990.0,48,Graficas,
 P007,CPU AMD Ryzen 5 8400F (AM5),154990.0,29,Procesadores,
 P008,Audífonos Headsets Oracle Red Bull Racing RB-HP160,10990.0,39,Audifonos,

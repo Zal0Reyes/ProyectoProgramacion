@@ -277,12 +277,14 @@ public class VistaCliente extends BaseFrame {
                 // ==========================================
                 // Si ya existe alguien Logeado
                 // ==========================================
-                DialogoPerfil dialogoPerfil = new DialogoPerfil(this, sistema, usuarioActual);
+                DialogoPerfil dialogoPerfil = new DialogoPerfil(this, sistema, inventario, usuarioActual);
                 dialogoPerfil.mostrar();
 
-                // Al cerrar el diálogo, verificamos si el usuario decidió cerrar sesión
+                // Al cerrar el diálogo, verificamos si cerró sesión o si actualizó su nombre
                 if (dialogoPerfil.isCerroSesion()) {
-                    btnLogin.setText("Iniciar sesión"); // Restauramos el texto original
+                    btnLogin.setText("Iniciar sesión");
+                } else {
+                    btnLogin.setText("👤 Hola, " + usuarioActual.getNombre());
                 }
             }
         });
@@ -1121,46 +1123,51 @@ public class VistaCliente extends BaseFrame {
 
     private void procederCompra() {
 
-        // Preguntar si desea asociar un RUT a la compra
-        int opcionRut = JOptionPane.showConfirmDialog(
-                this,
-                "¿Desea ingresar su RUT para asociarlo a la compra?",
-                "RUT opcional",
-                JOptionPane.YES_NO_OPTION,
-                JOptionPane.QUESTION_MESSAGE
-        );
-
-        // Si presiona Sí, pedimos el RUT
-        if (opcionRut == JOptionPane.YES_OPTION) {
-
-            String rutIngresado = JOptionPane.showInputDialog(
+        // 1. Si el usuario YA inició sesión, usamos su RUT automáticamente
+        if (sistema.getUsuarioActual() != null) {
+            rutCompra = sistema.getUsuarioActual().getRut();
+        } else {
+            // 2. Si NO ha iniciado sesión (invitado), le preguntamos si desea asociar un RUT
+            int opcionRut = JOptionPane.showConfirmDialog(
                     this,
-                    "Ingrese su RUT:",
-                    "Ingresar RUT",
-                    JOptionPane.PLAIN_MESSAGE
+                    "¿Desea ingresar su RUT para asociarlo a la compra?",
+                    "RUT opcional",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.QUESTION_MESSAGE
             );
 
-            // Si presiona Cancelar, cancelamos el proceso de compra
-            if (rutIngresado == null) {
-                return;
+            // Si presiona Sí, pedimos el RUT
+            if (opcionRut == JOptionPane.YES_OPTION) {
+
+                String rutIngresado = JOptionPane.showInputDialog(
+                        this,
+                        "Ingrese su RUT:",
+                        "Ingresar RUT",
+                        JOptionPane.PLAIN_MESSAGE
+                );
+
+                // Si presiona Cancelar, cancelamos el proceso de compra
+                if (rutIngresado == null) {
+                    return;
+                }
+
+                rutIngresado = rutIngresado.trim();
+
+                // Si eligió ingresar RUT, no permitimos dejarlo vacío
+                if (rutIngresado.isEmpty()) {
+                    mostrarError("Debe ingresar un RUT o elegir comprar sin RUT.");
+                    return;
+                }
+
+                rutCompra = rutIngresado;
+
+            } else {
+                // Compra sin identificación
+                rutCompra = "";
             }
-
-            rutIngresado = rutIngresado.trim();
-
-            // Si eligió ingresar RUT, no permitimos dejarlo vacío
-            if (rutIngresado.isEmpty()) {
-                mostrarError("Debe ingresar un RUT o elegir comprar sin RUT.");
-                return;
-            }
-
-            rutCompra = rutIngresado;
-
-        } else {
-
-            // Compra sin identificación
-            rutCompra = "";
         }
 
+        // De aquí hacia abajo tu método sigue exactamente igual:
         // Confirmar definitivamente la compra
         int confirmar = JOptionPane.showConfirmDialog(
                 this,

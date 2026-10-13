@@ -1,6 +1,7 @@
 package Frontend;
 
 import Backend.Cliente;
+import Backend.Inventario;
 import Backend.Sistema;
 import Backend.Usuario;
 
@@ -12,28 +13,43 @@ import java.awt.event.MouseEvent;
 
 public class DialogoPerfil extends JDialog {
     private Sistema sistema;
+    private Inventario inventario;
     private Usuario usuario;
     private boolean cerroSesion = false;
 
     // Colores corporativos basados en tu aplicación
     private static final Color FONDO = new Color(238, 243, 249);
     private static final Color NAVY = new Color(19, 40, 72);
+    private static final Color AZUL = new Color(30, 105, 210);
+    private static final Color AZUL_HOVER = new Color(25, 90, 180);
     private static final Color GRIS_CLARO = new Color(230, 235, 240);
     private static final Color ROJO_BOTON = new Color(231, 76, 60);
     private static final Color ROJO_HOVER = new Color(192, 57, 43);
 
+    // Constructor original (se mantiene por compatibilidad)
     public DialogoPerfil(JFrame parent, Sistema sistema, Usuario usuario) {
+        this(parent, sistema, null, usuario);
+    }
+
+    // Nuevo constructor con Inventario para consultar "Mis Compras"
+    public DialogoPerfil(JFrame parent, Sistema sistema, Inventario inventario, Usuario usuario) {
         super(parent, "Mi Perfil", true);
         this.sistema = sistema;
+        this.inventario = inventario;
         this.usuario = usuario;
 
-        setSize(420, 580);
+        setSize(430, 650);
         setLocationRelativeTo(parent);
         setResizable(false);
     }
 
     public void mostrar() {
-        // Fondo general de la ventana
+        construirInterfaz();
+        setVisible(true);
+    }
+
+    private void construirInterfaz() {
+        getContentPane().removeAll();
         getContentPane().setBackground(FONDO);
         setLayout(new BorderLayout());
 
@@ -41,25 +57,24 @@ public class DialogoPerfil extends JDialog {
         JPanel panelPrincipal = new JPanel();
         panelPrincipal.setLayout(new BoxLayout(panelPrincipal, BoxLayout.Y_AXIS));
         panelPrincipal.setOpaque(false);
-        panelPrincipal.setBorder(new EmptyBorder(30, 30, 30, 30));
+        panelPrincipal.setBorder(new EmptyBorder(25, 30, 25, 30));
 
         // ==========================================
         // 1. ZONA DEL AVATAR Y SALUDO
         // ==========================================
+        PanelRedondeado avatarCirculo = new PanelRedondeado(70);
+        avatarCirculo.setBackground(NAVY);
+        avatarCirculo.setPreferredSize(new Dimension(70, 70));
+        avatarCirculo.setMaximumSize(new Dimension(70, 70));
+        avatarCirculo.setLayout(new BorderLayout());
+        avatarCirculo.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        // Círculo del avatar (usando PanelRedondeado con radio alto)
-        PanelRedondeado avatarCiculo = new PanelRedondeado(70);
-        avatarCiculo.setBackground(NAVY);
-        avatarCiculo.setPreferredSize(new Dimension(70, 70));
-        avatarCiculo.setMaximumSize(new Dimension(70, 70));
-        avatarCiculo.setLayout(new BorderLayout());
-        avatarCiculo.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-        JLabel lblInicial = new JLabel(usuario.getNombre().substring(0, 1).toUpperCase());
+        String inicial = usuario.getNombre().isEmpty() ? "U" : usuario.getNombre().substring(0, 1).toUpperCase();
+        JLabel lblInicial = new JLabel(inicial);
         lblInicial.setFont(new Font("SansSerif", Font.BOLD, 32));
         lblInicial.setForeground(Color.WHITE);
         lblInicial.setHorizontalAlignment(SwingConstants.CENTER);
-        avatarCiculo.add(lblInicial, BorderLayout.CENTER);
+        avatarCirculo.add(lblInicial, BorderLayout.CENTER);
 
         // Nombre y Rol
         JLabel lblNombre = new JLabel(usuario.getNombre());
@@ -72,28 +87,25 @@ public class DialogoPerfil extends JDialog {
         lblRol.setForeground(new Color(120, 130, 140));
         lblRol.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        panelPrincipal.add(avatarCiculo);
-        panelPrincipal.add(Box.createRigidArea(new Dimension(0, 15)));
+        panelPrincipal.add(avatarCirculo);
+        panelPrincipal.add(Box.createRigidArea(new Dimension(0, 12)));
         panelPrincipal.add(lblNombre);
-        panelPrincipal.add(Box.createRigidArea(new Dimension(0, 5)));
+        panelPrincipal.add(Box.createRigidArea(new Dimension(0, 4)));
         panelPrincipal.add(lblRol);
-        panelPrincipal.add(Box.createRigidArea(new Dimension(0, 25)));
+        panelPrincipal.add(Box.createRigidArea(new Dimension(0, 20)));
 
         // ==========================================
         // 2. TARJETA DE INFORMACIÓN (Panel Redondeado)
         // ==========================================
-
         PanelRedondeado tarjetaDatos = new PanelRedondeado(20);
         tarjetaDatos.setBackground(Color.WHITE);
         tarjetaDatos.setLayout(new BoxLayout(tarjetaDatos, BoxLayout.Y_AXIS));
-        tarjetaDatos.setBorder(new EmptyBorder(15, 20, 15, 20));
+        tarjetaDatos.setBorder(new EmptyBorder(12, 20, 12, 20));
         tarjetaDatos.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        // Agregamos los datos con formato de lista y separadores
         agregarFilaATarjeta(tarjetaDatos, "✉", "Correo", usuario.getCorreo(), true);
-        agregarFilaATarjeta(tarjetaDatos, "️👤", "RUT", usuario.getRut(), usuario instanceof Cliente);
+        agregarFilaATarjeta(tarjetaDatos, "👤", "RUT", usuario.getRut(), usuario instanceof Cliente);
 
-        // Si es cliente, agregamos los extras
         if (usuario instanceof Cliente) {
             Cliente cliente = (Cliente) usuario;
             agregarFilaATarjeta(tarjetaDatos, "📞", "Teléfono", cliente.getTelefono(), true);
@@ -101,34 +113,38 @@ public class DialogoPerfil extends JDialog {
         }
 
         panelPrincipal.add(tarjetaDatos);
-        panelPrincipal.add(Box.createVerticalGlue()); // Empuja el botón hacia abajo
+        panelPrincipal.add(Box.createVerticalGlue());
 
         // ==========================================
-        // 3. BOTÓN CERRAR SESIÓN
+        // 3. BOTONES DE AUTOGESTIÓN Y CIERRE DE SESIÓN
         // ==========================================
 
-        JButton btnCerrarSesion = new JButton("Cerrar Sesión");
-        btnCerrarSesion.setFont(new Font("SansSerif", Font.BOLD, 15));
-        btnCerrarSesion.setBackground(ROJO_BOTON);
-        btnCerrarSesion.setForeground(Color.WHITE);
-        btnCerrarSesion.setFocusPainted(false);
-        btnCerrarSesion.setBorderPainted(false);
-        btnCerrarSesion.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btnCerrarSesion.setAlignmentX(Component.CENTER_ALIGNMENT);
-        btnCerrarSesion.setMaximumSize(new Dimension(Integer.MAX_VALUE, 45));
-
-        // Efecto visual al pasar el cursor (Hover)
-        btnCerrarSesion.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseEntered(MouseEvent e) {
-                btnCerrarSesion.setBackground(ROJO_HOVER);
-            }
-            @Override
-            public void mouseExited(MouseEvent e) {
-                btnCerrarSesion.setBackground(ROJO_BOTON);
+        // Botón: Editar Mis Datos
+        JButton btnEditarDatos = crearBotonAccion("✏️ Editar Mis Datos", AZUL, AZUL_HOVER);
+        btnEditarDatos.addActionListener(e -> {
+            DialogoEditarPerfil dialogoEditar = new DialogoEditarPerfil(this, sistema, usuario);
+            dialogoEditar.mostrar();
+            if (dialogoEditar.isDatosActualizados()) {
+                // Redibujamos la ventana para reflejar el nuevo nombre, correo, etc. al instante
+                construirInterfaz();
             }
         });
+        panelPrincipal.add(btnEditarDatos);
+        panelPrincipal.add(Box.createRigidArea(new Dimension(0, 10)));
 
+        // Botón: Mis Compras (Solo si es Cliente y se pasó el inventario)
+        if (usuario instanceof Cliente && inventario != null) {
+            JButton btnMisCompras = crearBotonAccion("📦 Ver Mis Compras", NAVY, new Color(35, 65, 110));
+            btnMisCompras.addActionListener(e -> {
+                DialogoMisCompras dialogoCompras = new DialogoMisCompras(this, inventario, usuario);
+                dialogoCompras.mostrar();
+            });
+            panelPrincipal.add(btnMisCompras);
+            panelPrincipal.add(Box.createRigidArea(new Dimension(0, 10)));
+        }
+
+        // Botón: Cerrar Sesión
+        JButton btnCerrarSesion = crearBotonAccion("Cerrar Sesión", ROJO_BOTON, ROJO_HOVER);
         btnCerrarSesion.addActionListener(e -> {
             sistema.cerrarSesion();
             cerroSesion = true;
@@ -138,38 +154,59 @@ public class DialogoPerfil extends JDialog {
         panelPrincipal.add(btnCerrarSesion);
         add(panelPrincipal, BorderLayout.CENTER);
 
-        setVisible(true);
+        revalidate();
+        repaint();
     }
 
     // ==========================================
     // MÉTODOS AUXILIARES DE DISEÑO
     // ==========================================
 
+    private JButton crearBotonAccion(String texto, Color colorBase, Color colorHover) {
+        JButton btn = new JButton(texto);
+        btn.setFont(new Font("SansSerif", Font.BOLD, 14));
+        btn.setBackground(colorBase);
+        btn.setForeground(Color.WHITE);
+        btn.setFocusPainted(false);
+        btn.setBorderPainted(false);
+        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btn.setAlignmentX(Component.CENTER_ALIGNMENT);
+        btn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
+
+        btn.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                btn.setBackground(colorHover);
+            }
+            @Override
+            public void mouseExited(MouseEvent e) {
+                btn.setBackground(colorBase);
+            }
+        });
+        return btn;
+    }
+
     private void agregarFilaATarjeta(JPanel tarjeta, String icono, String etiqueta, String valor, boolean incluirSeparador) {
         JPanel fila = new JPanel(new BorderLayout());
         fila.setOpaque(false);
         fila.setBorder(new EmptyBorder(10, 0, 10, 0));
 
-        // Lado izquierdo (Icono + Etiqueta)
         JLabel lblIzquierda = new JLabel(icono + "  " + etiqueta);
         lblIzquierda.setFont(new Font("SansSerif", Font.BOLD, 13));
         lblIzquierda.setForeground(new Color(100, 110, 125));
 
-        // Lado derecho (Valor)
-        // Acortamos el texto si es muy largo para que no rompa el diseño
         String valorMostrar = valor.length() > 22 ? valor.substring(0, 20) + "..." : valor;
         JLabel lblDerecha = new JLabel(valorMostrar);
         lblDerecha.setFont(new Font("SansSerif", Font.BOLD, 14));
         lblDerecha.setForeground(NAVY);
         lblDerecha.setHorizontalAlignment(SwingConstants.RIGHT);
-        lblDerecha.setToolTipText(valor); // Muestra el texto completo al pasar el mouse
+        lblDerecha.setToolTipText(valor);
 
         fila.add(lblIzquierda, BorderLayout.WEST);
-        fila.add(lblDerecha, BorderLayout.CENTER); // Center para que tome el espacio sobrante hacia la derecha
+        fila.add(lblDerecha, BorderLayout.CENTER);
 
         tarjeta.add(fila);
 
-        // Agrega una línea sutil entre los datos
         if (incluirSeparador) {
             JSeparator separador = new JSeparator();
             separador.setForeground(GRIS_CLARO);

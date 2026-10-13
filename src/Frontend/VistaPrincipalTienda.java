@@ -29,82 +29,120 @@ public class VistaPrincipalTienda extends BaseFrame {
     public void mostrar() {
 
         // --- CONFIGURACIÓN BASE DEL FRAME ---
+        setSize(1200, 720); // Dimensiones similares a VistaCliente
         setLayout(new BorderLayout());
-        getContentPane().setBackground(new Color(238, 243, 249));
+        getContentPane().setBackground(new Color(238, 243, 249)); // FONDO
+
+        // ==========================================
+        // --- CABECERA SUPERIOR (Estilo VistaCliente) ---
+        // ==========================================
+        JPanel contenedorCabecera = new JPanel(new BorderLayout());
+        contenedorCabecera.setBackground(Color.WHITE);
+
+        JPanel panelCabecera = new JPanel(new BorderLayout(15, 0));
+        panelCabecera.setBackground(Color.WHITE);
+        panelCabecera.setBorder(new EmptyBorder(8, 20, 8, 20));
+
+        // =========================
+        // LOGO
+        // =========================
+        JLabel lblLogo = new JLabel();
+        ImageIcon logo = cargarLogo();
+
+        if (logo != null) {
+            lblLogo.setIcon(logo);
+        } else {
+            lblLogo.setText("NEXOMARKET ADMIN");
+            lblLogo.setFont(new Font("SansSerif", Font.BOLD, 23));
+            lblLogo.setForeground(new Color(19, 40, 72)); // NAVY
+        }
+        panelCabecera.add(lblLogo, BorderLayout.WEST);
+
+        // Barra de Búsqueda
+        JTextField txtBuscar = new JTextField();
+        txtBuscar.setFont(new Font("SansSerif", Font.PLAIN, 15));
+        txtBuscar.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(180, 190, 205)),
+                new EmptyBorder(9, 12, 9, 12)
+        ));
+
+        JPanel panelBusqueda = new JPanel(new BorderLayout());
+        panelBusqueda.setOpaque(false);
+        panelBusqueda.setBorder(new EmptyBorder(15, 0, 15, 0));
+        panelBusqueda.add(txtBuscar, BorderLayout.CENTER);
+        panelCabecera.add(panelBusqueda, BorderLayout.CENTER);
+
+        // Botón Filtrar
+        JButton btnFiltro = new JButton("Filtrar");
+        btnFiltro.setFont(new Font("SansSerif", Font.BOLD, 13));
+        btnFiltro.setForeground(Color.WHITE);
+        btnFiltro.setBackground(new Color(30, 105, 210)); // AZUL
+        btnFiltro.setPreferredSize(new Dimension(120, 45));
+        btnFiltro.setFocusPainted(false);
+        btnFiltro.setBorderPainted(false);
+        btnFiltro.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnFiltro.addActionListener(e -> mostrarDialogoFiltros());
+
+        JPanel acciones = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
+        acciones.setOpaque(false);
+        acciones.add(btnFiltro);
+        panelCabecera.add(acciones, BorderLayout.EAST);
+
+        // Franja inferior
+        JPanel franja = new JPanel();
+        franja.setBackground(new Color(19, 40, 72)); // NAVY
+        franja.setPreferredSize(new Dimension(0, 5));
+
+        contenedorCabecera.add(panelCabecera, BorderLayout.CENTER);
+        contenedorCabecera.add(franja, BorderLayout.SOUTH);
+
+        add(contenedorCabecera, BorderLayout.NORTH);
 
         // ==========================================
         // --- BARRA LATERAL (MENÚ) ---
         // ==========================================
         JPanel barraLateral = new JPanel();
-        barraLateral.setBackground(new Color(19, 40, 72));
+        barraLateral.setBackground(new Color(19, 40, 72)); // NAVY
         barraLateral.setPreferredSize(new Dimension(80, 0));
         barraLateral.setLayout(new BoxLayout(barraLateral, BoxLayout.Y_AXIS));
         barraLateral.setBorder(new EmptyBorder(30, 0, 30, 0));
 
-        // BOTÓN INICIO
-        JButton btnInicio = crearBotonMenu("🏠", new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                actualizarVistaProductos();
-            }
-        });
-
+        // BOTONES BARRA LATERAL
+        JButton btnInicio = crearBotonMenu("🏠", e -> actualizarVistaProductos());
         barraLateral.add(btnInicio);
         barraLateral.add(Box.createRigidArea(new Dimension(0, 30)));
 
-        // BOTÓN AGREGAR
-        JButton btnAgregar = crearBotonMenu("➕", new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                DialogoAgregarProducto dialogo = new DialogoAgregarProducto(VistaPrincipalTienda.this, inventario);
-                dialogo.mostrar();
-
-                if (dialogo.isGuardadoExitoso()) {
-                    actualizarVistaProductos();
-                    JOptionPane.showMessageDialog(VistaPrincipalTienda.this, "Producto agregado exitosamente.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
-                }
+        JButton btnAgregar = crearBotonMenu("➕", e -> {
+            DialogoAgregarProducto dialogo = new DialogoAgregarProducto(VistaPrincipalTienda.this, inventario);
+            dialogo.mostrar();
+            if (dialogo.isGuardadoExitoso()) {
+                actualizarVistaProductos();
+                JOptionPane.showMessageDialog(VistaPrincipalTienda.this, "Producto agregado exitosamente.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
             }
         });
         barraLateral.add(btnAgregar);
-
-
-        // BOTON AGREGAR ADMINISTRADOR
-
         barraLateral.add(Box.createRigidArea(new Dimension(0, 30)));
+
         JButton btnAgregarAdmin = crearBotonMenu("👨‍", e -> {
             DialogoRegistroAdmin dialogoAdmin = new DialogoRegistroAdmin(VistaPrincipalTienda.this, sistema);
             dialogoAdmin.mostrar();
         });
         btnAgregarAdmin.setToolTipText("Registrar Nuevo Administrador");
         barraLateral.add(btnAgregarAdmin);
-
-
-        // BOTÓN ESTADÍSTICAS
         barraLateral.add(Box.createRigidArea(new Dimension(0, 30)));
-        JButton btnEstadisticas = crearBotonMenu("📊", new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                mostrarDialogoEstadisticas();
-            }
-        });
+
+        JButton btnEstadisticas = crearBotonMenu("📊", e -> mostrarDialogoEstadisticas());
         barraLateral.add(btnEstadisticas);
-
-
-        // BOTÓN HISTORIAL DE COMPRAS
         barraLateral.add(Box.createRigidArea(new Dimension(0, 30)));
+
         JButton btnHistorial = crearBotonMenu("\uD83D\uDCCB", e -> mostrarHistorialCompras());
         btnHistorial.setToolTipText("Historial de compras");
         barraLateral.add(btnHistorial);
-
-
-
-        // --- BOTÓN VACIAR INVENTARIO ---
         barraLateral.add(Box.createRigidArea(new Dimension(0, 30)));
+
         JButton btnVaciar = crearBotonMenu("🗑", e -> {
             DialogoVaciarInventario dialogoVaciar = new DialogoVaciarInventario(VistaPrincipalTienda.this, inventario);
             dialogoVaciar.mostrar();
-
-            // Refrescar la pantalla si se eliminaron productos
             if (dialogoVaciar.huboCambios()) {
                 actualizarVistaProductos();
             }
@@ -112,136 +150,74 @@ public class VistaPrincipalTienda extends BaseFrame {
         btnVaciar.setToolTipText("Gestión Masiva / Vaciar Inventario");
         barraLateral.add(btnVaciar);
 
-
-        //  BOTON CERRAR SESION
         barraLateral.add(Box.createVerticalGlue());
-        JButton btnCerrarSesion = crearBotonMenu("🚪", new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                int confirmacion = JOptionPane.showConfirmDialog(
-                        VistaPrincipalTienda.this,
-                        "¿Estás seguro de que deseas cerrar sesión?",
-                        "Cerrar Sesión",
-                        JOptionPane.YES_NO_OPTION,
-                        JOptionPane.QUESTION_MESSAGE
-                );
+        JButton btnCerrarSesion = crearBotonMenu("🚪", e -> {
+            int confirmacion = JOptionPane.showConfirmDialog(
+                    VistaPrincipalTienda.this,
+                    "¿Estás seguro de que deseas cerrar sesión?",
+                    "Cerrar Sesión",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.QUESTION_MESSAGE
+            );
 
-                if (confirmacion == JOptionPane.YES_OPTION) {
-                    sistema.cerrarSesion();
-                    dispose();
-                    VistaCliente vistaCliente = new VistaCliente(inventario, sistema);
-                    vistaCliente.mostrar();
-                }
+            if (confirmacion == JOptionPane.YES_OPTION) {
+                sistema.cerrarSesion();
+                dispose();
+                VistaCliente vistaCliente = new VistaCliente(inventario, sistema);
+                vistaCliente.mostrar();
             }
         });
-
         barraLateral.add(btnCerrarSesion);
 
-        add(barraLateral, BorderLayout.EAST);
-
-
+        // Movemos la barra lateral al lado Izquierdo (WEST) como dashboard moderno
+        add(barraLateral, BorderLayout.WEST);
 
         // ==========================================
-        // --- ÁREA CENTRAL PRINCIPAL ---
+        // --- ÁREA CENTRAL PRINCIPAL (ESTILO CATÁLOGO) ---
         // ==========================================
-        JPanel panelCentral = new JPanel(new BorderLayout());
+        JPanel panelCentral = new JPanel(new BorderLayout(15, 0));
         panelCentral.setOpaque(false);
-        panelCentral.setBorder(new EmptyBorder(30, 40, 30, 40));
+        panelCentral.setBorder(new EmptyBorder(15, 18, 18, 18));
 
-        // ------------------------------------------
-        // --- PANEL NORTE (CABECERA) ---
-        // ------------------------------------------
-        JPanel panelNorte = new JPanel(new BorderLayout());
-        panelNorte.setOpaque(false);
-        panelNorte.setBorder(new EmptyBorder(0, 0, 20, 0)); // Margen inferior
+        // Encabezado Redondeado
+        PanelRedondeado encabezado = new PanelRedondeado(12);
+        encabezado.setBackground(new Color(19, 40, 72)); // NAVY
+        encabezado.setLayout(new BorderLayout());
+        encabezado.setBorder(new EmptyBorder(9, 12, 9, 12));
 
-        // TÍTULO
-        JLabel lblTitulo = new JLabel("Inventario de Productos");
-        lblTitulo.setFont(new Font("SansSerif", Font.BOLD, 28));
-        lblTitulo.setForeground(new Color(40, 40, 40));
-        panelNorte.add(lblTitulo, BorderLayout.WEST);
+        JLabel titulo = new JLabel("Gestión de Inventario");
+        titulo.setFont(new Font("SansSerif", Font.BOLD, 20));
+        titulo.setForeground(Color.WHITE);
+        encabezado.add(titulo, BorderLayout.WEST);
 
-        // ZONA DE BÚSQUEDA
-        JPanel panelBusqueda = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
-        panelBusqueda.setOpaque(false);
+        panelCentral.add(encabezado, BorderLayout.NORTH);
 
-        JLabel lblBuscar = new JLabel("🔍 Buscar:");
-        lblBuscar.setFont(new Font("SansSerif", Font.BOLD, 16));
-        lblBuscar.setForeground(new Color(100, 100, 100));
+        // Grilla de Productos
+        gridProductos = new JPanel(new GridLayout(0, 3, 12, 12)); // Espaciado igual a VistaCliente
+        gridProductos.setOpaque(false);
 
-        JTextField txtBuscar = new JTextField(15);
-        txtBuscar.setFont(new Font("SansSerif", Font.PLAIN, 16));
+        JPanel contenedor = new JPanel(new BorderLayout());
+        contenedor.setOpaque(false);
+        contenedor.setBorder(new EmptyBorder(12, 0, 0, 0));
+        contenedor.add(gridProductos, BorderLayout.NORTH);
 
-        txtBuscar.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(200, 200, 200)),
-                BorderFactory.createEmptyBorder(5, 10, 5, 10)
-        ));
+        JScrollPane scroll = new JScrollPane(contenedor);
+        scroll.setBorder(null);
+        scroll.setOpaque(false);
+        scroll.getViewport().setOpaque(false);
+        scroll.getVerticalScrollBar().setUnitIncrement(16);
+        configurarBarraScroll(scroll);
 
-        JButton btnFiltro = new JButton("⚙ Filtrar");
-        btnFiltro.setFont(new Font("SansSerif", Font.BOLD, 14));
-        btnFiltro.setForeground(new Color(60, 70, 80));
-        btnFiltro.setBackground(Color.WHITE);
-        btnFiltro.setBorder(BorderFactory.createLineBorder(new Color(205, 211, 217)));
-        btnFiltro.setFocusPainted(false);
-        btnFiltro.setContentAreaFilled(true);
-        btnFiltro.setOpaque(true);
-        btnFiltro.setPreferredSize(new Dimension(105, 34));
-        btnFiltro.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btnFiltro.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseEntered(MouseEvent e) {
-                btnFiltro.setBackground(new Color(238, 248, 252));
-            }
+        panelCentral.add(scroll, BorderLayout.CENTER);
+        add(panelCentral, BorderLayout.CENTER);
 
-            @Override
-            public void mouseExited(MouseEvent e) {
-                btnFiltro.setBackground(Color.WHITE);
-            }
-        });
-        btnFiltro.addActionListener(e -> mostrarDialogoFiltros());
-
-        panelBusqueda.add(lblBuscar);
-        panelBusqueda.add(txtBuscar);
-        panelBusqueda.add(btnFiltro);
-
-        // EVENTO DE BÚSQUEDA DINÁMICA: filtra por nombre o ID en cada tecla escrita.
+        // EVENTO DE BÚSQUEDA DINÁMICA
         txtBuscar.addKeyListener(new java.awt.event.KeyAdapter() {
             @Override
             public void keyReleased(java.awt.event.KeyEvent evt) {
                 actualizarVistaProductos(txtBuscar.getText());
             }
         });
-
-        panelBusqueda.add(lblBuscar);
-        panelBusqueda.add(txtBuscar);
-
-        panelNorte.add(panelBusqueda, BorderLayout.EAST);
-
-        // ENSAMBLAJE PANEL NORTE
-        panelCentral.add(panelNorte, BorderLayout.NORTH);
-
-        // ------------------------------------------
-        // --- PANEL CENTRAL (GRILLA DE PRODUCTOS) ---
-        // ------------------------------------------
-        gridProductos = new JPanel(new GridLayout(0, 3, 20, 20));
-        gridProductos.setOpaque(false);
-
-        // WRAPPER ANTI-ESTIRAMIENTO
-        JPanel wrapperAntiEstiramiento = new JPanel(new BorderLayout());
-        wrapperAntiEstiramiento.setOpaque(false);
-        wrapperAntiEstiramiento.add(gridProductos, BorderLayout.NORTH);
-
-        // SCROLL DE LA GRILLA
-        JScrollPane scroll = new JScrollPane(wrapperAntiEstiramiento);
-        scroll.setBorder(BorderFactory.createEmptyBorder());
-        scroll.setOpaque(false);
-        scroll.getViewport().setOpaque(false);
-        scroll.getVerticalScrollBar().setUnitIncrement(16);
-        configurarBarraScroll(scroll);
-
-        // ENSAMBLAJE FINAL ÁREA CENTRAL
-        panelCentral.add(scroll, BorderLayout.CENTER);
-        add(panelCentral, BorderLayout.CENTER);
 
         // --- CARGA DE DATOS INICIALES ---
         actualizarVistaProductos();
@@ -790,5 +766,27 @@ public class VistaPrincipalTienda extends BaseFrame {
             }
         });
         return btn;
+    }
+
+    private ImageIcon cargarLogo() {
+        String[] rutas = {
+                "imagenes/Logo NEXOMARKET.jepg",
+                "imagenes/Logo NEXOMARKET.jpeg",
+                "imagenes/Logo NEXOMARKET.jpg",
+                "imagenes/Logo NEXOMARKET.png"
+        };
+
+        for (String ruta : rutas) {
+            java.io.File archivo = new java.io.File(ruta);
+
+            if (archivo.isFile()) {
+                ImageIcon original = new ImageIcon(ruta);
+                Image escalada = original.getImage().getScaledInstance(
+                        180, 75, Image.SCALE_SMOOTH
+                );
+                return new ImageIcon(escalada);
+            }
+        }
+        return null;
     }
 }

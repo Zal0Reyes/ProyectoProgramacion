@@ -134,6 +134,18 @@ public class ServidorNexoMarket {
                             salida
                     );
 
+                } else if (mensaje.equals("CONFIRMAR_COMPRA")) {
+
+                    procesarCompra(
+                            salida
+                    );
+
+                } else if (mensaje.equals("PEDIR_STOCK")) {
+
+                    enviarStockActual(
+                            salida
+                    );
+
                 } else {
 
                     enviarATodos(
@@ -170,6 +182,92 @@ public class ServidorNexoMarket {
                 );
             }
         }
+    }
+
+    private static void procesarCompra(
+            PrintWriter cliente
+    ) {
+
+        synchronized (inventarioServidor) {
+
+            Map<String, Integer> reservas =
+                    reservasClientes.get(
+                            cliente
+                    );
+
+
+            if (reservas == null ||
+                    reservas.isEmpty()) {
+
+                cliente.println(
+                        "ERROR_COMPRA;No hay productos reservados"
+                );
+
+                return;
+            }
+
+
+            System.out.println(
+                    "Compra confirmada."
+            );
+
+
+            for (Map.Entry<String, Integer> entrada
+                    : reservas.entrySet()) {
+
+                System.out.println(
+                        "Producto: "
+                                + entrada.getKey()
+                                + " - Cantidad: "
+                                + entrada.getValue()
+                );
+            }
+
+
+            /*
+             * MUY IMPORTANTE:
+             *
+             * NO devolvemos estas unidades al stock.
+             * Ya habían sido descontadas cuando
+             * se agregaron al carrito.
+             *
+             * Solamente eliminamos la reserva
+             * porque ahora fueron compradas.
+             */
+            reservas.clear();
+
+
+            inventarioServidor.guardarEnCSV();
+
+
+            cliente.println(
+                    "COMPRA_OK"
+            );
+        }
+    }
+
+    private static void enviarStockActual(
+            PrintWriter cliente
+    ) {
+
+        synchronized (inventarioServidor) {
+
+            for (Producto producto :
+                    inventarioServidor.getProductos()) {
+
+                cliente.println(
+                        "STOCK;"
+                                + producto.getId()
+                                + ";"
+                                + producto.getStock()
+                );
+            }
+        }
+
+
+        System.out.println(
+                "Stock actual enviado a un cliente."
+        );
     }
 
 

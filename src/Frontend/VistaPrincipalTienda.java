@@ -3,6 +3,7 @@ package Frontend;
 import Backend.Inventario;
 import Backend.Producto;
 import Backend.Sistema;
+import Backend.ConexionServidor;
 
 
 import javax.swing.*;
@@ -16,13 +17,24 @@ import java.awt.event.MouseEvent;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
+
+
 public class VistaPrincipalTienda extends BaseFrame {
 
     private JPanel gridProductos;
+    private final ConexionServidor conexionServidor;
 
     public VistaPrincipalTienda(Inventario inventario, Sistema sistema) {
 
-        super("Vista Admin", inventario,sistema);
+        super("Vista Admin", inventario, sistema);
+
+        conexionServidor = new ConexionServidor();
+
+        conexionServidor.setReceptorMensajes(
+                mensaje -> procesarMensajeServidor(mensaje)
+        );
+
+        conexionServidor.conectar();
     }
 
     @Override
@@ -161,9 +173,19 @@ public class VistaPrincipalTienda extends BaseFrame {
             );
 
             if (confirmacion == JOptionPane.YES_OPTION) {
+
                 sistema.cerrarSesion();
+
+                conexionServidor.cerrarConexion();
+
                 dispose();
-                VistaCliente vistaCliente = new VistaCliente(inventario, sistema);
+
+                VistaCliente vistaCliente =
+                        new VistaCliente(
+                                inventario,
+                                sistema
+                        );
+
                 vistaCliente.mostrar();
             }
         });
@@ -222,7 +244,10 @@ public class VistaPrincipalTienda extends BaseFrame {
         // --- CARGA DE DATOS INICIALES ---
         actualizarVistaProductos();
 
-        // --- HACER VISIBLE LA VENTANA ---
+        if (conexionServidor.estaConectado()) {
+            conexionServidor.solicitarStockActual();
+        }
+
         setVisible(true);
     }
 
@@ -306,6 +331,46 @@ public class VistaPrincipalTienda extends BaseFrame {
         dialog.add(panelBotones, BorderLayout.SOUTH);
 
         dialog.setVisible(true);
+    }
+    private void procesarMensajeServidor(String mensaje) {
+
+        if (!mensaje.startsWith("STOCK;")) {
+            return;
+        }
+
+        String[] datos = mensaje.split(";");
+
+        if (datos.length != 3) {
+            return;
+        }
+
+        String idProducto = datos[1];
+
+        int nuevoStock;
+
+        try {
+
+            nuevoStock = Integer.parseInt(datos[2]);
+
+        } catch (NumberFormatException e) {
+
+            return;
+        }
+
+
+        SwingUtilities.invokeLater(() -> {
+
+            Producto producto =
+                    inventario.buscarProductoPorId(idProducto);
+
+            if (producto == null) {
+                return;
+            }
+
+            producto.setStock(nuevoStock);
+
+            actualizarVistaProductos();
+        });
     }
 
     private void mostrarHistorialCompras() {

@@ -289,8 +289,16 @@ public class VistaCliente extends BaseFrame {
                 if (user != null) {
                     if (user.getTipoUsuario().equals("Administrador")) {
                         // Es Administrador: Cerramos la VistaCliente y abrimos Vista Tienda
+                        conexionServidor.cerrarConexion();
+
                         this.dispose();
-                        VistaPrincipalTienda adminVista = new VistaPrincipalTienda(inventario, sistema);
+
+                        VistaPrincipalTienda adminVista =
+                                new VistaPrincipalTienda(
+                                        inventario,
+                                        sistema
+                                );
+
                         adminVista.mostrar();
                     } else {
                         // Es Cliente: Actualizamos el texto del botón

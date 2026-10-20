@@ -910,6 +910,77 @@ public class VistaCliente extends BaseFrame {
         // =====================================
         // STOCK MODIFICADO POR OTRO CLIENTE
         // =====================================
+        if (mensaje.startsWith("PRODUCTO_ACTUALIZADO;")) {
+
+            String[] datos =
+                    mensaje.split(";", 7);
+
+            if (datos.length != 7) {
+                return;
+            }
+
+
+            try {
+
+                String id = datos[1];
+                String nombre = datos[2];
+
+                double precio =
+                        Double.parseDouble(datos[3]);
+
+                int stock =
+                        Integer.parseInt(datos[4]);
+
+                String categoria = datos[5];
+                String rutaImagen = datos[6];
+
+
+                SwingUtilities.invokeLater(() -> {
+
+                    inventario.sincronizarProductoDesdeServidor(
+                            id,
+                            nombre,
+                            precio,
+                            stock,
+                            categoria,
+                            rutaImagen
+                    );
+
+                    actualizarProductos();
+                });
+
+
+            } catch (NumberFormatException e) {
+
+                return;
+            }
+
+            return;
+        }
+
+
+        if (mensaje.startsWith("PRODUCTO_ELIMINADO;")) {
+
+            String[] datos =
+                    mensaje.split(";");
+
+            if (datos.length != 2) {
+                return;
+            }
+
+
+            SwingUtilities.invokeLater(() -> {
+
+                inventario.eliminarProductoDesdeServidor(
+                        datos[1]
+                );
+
+                actualizarProductos();
+            });
+
+            return;
+        }
+
 
         if (mensaje.startsWith("STOCK;")) {
 
@@ -1569,7 +1640,13 @@ public class VistaCliente extends BaseFrame {
         }
 
 
-        conexionServidor.confirmarCompra();
+        conexionServidor.confirmarCompra(
+                rutCompra,
+                subtotalCompra,
+                ivaCompra,
+                totalCompra,
+                articulosComprados
+        );
         // Guardar los cambios de stock y registrar en el historial
         inventario.registrarCompra(rutCompra, articulosComprados, totalCompra);
         inventario.confirmarCompra();

@@ -134,9 +134,24 @@ public class ServidorNexoMarket {
                             salida
                     );
 
-                } else if (mensaje.equals("CONFIRMAR_COMPRA")) {
+                } else if (mensaje.startsWith("ADMIN_GUARDAR_PRODUCTO;")) {
+
+                    procesarProductoAdmin(
+                            mensaje,
+                            salida
+                    );
+
+                } else if (mensaje.startsWith("ADMIN_ELIMINAR_PRODUCTO;")) {
+
+                    procesarEliminarProductoAdmin(
+                            mensaje,
+                            salida
+                    );
+
+                } else if (mensaje.startsWith("CONFIRMAR_COMPRA;")) {
 
                     procesarCompra(
+                            mensaje,
                             salida
                     );
 
@@ -185,15 +200,28 @@ public class ServidorNexoMarket {
     }
 
     private static void procesarCompra(
+            String mensaje,
             PrintWriter cliente
     ) {
+
+        String[] datos =
+                mensaje.split(";", 6);
+
+
+        if (datos.length != 6) {
+
+            cliente.println(
+                    "ERROR_COMPRA;Datos incorrectos"
+            );
+
+            return;
+        }
+
 
         synchronized (inventarioServidor) {
 
             Map<String, Integer> reservas =
-                    reservasClientes.get(
-                            cliente
-                    );
+                    reservasClientes.get(cliente);
 
 
             if (reservas == null ||
@@ -207,35 +235,9 @@ public class ServidorNexoMarket {
             }
 
 
-            System.out.println(
-                    "Compra confirmada."
-            );
-
-
-            for (Map.Entry<String, Integer> entrada
-                    : reservas.entrySet()) {
-
-                System.out.println(
-                        "Producto: "
-                                + entrada.getKey()
-                                + " - Cantidad: "
-                                + entrada.getValue()
-                );
-            }
-
-
-            /*
-             * MUY IMPORTANTE:
-             *
-             * NO devolvemos estas unidades al stock.
-             * Ya habían sido descontadas cuando
-             * se agregaron al carrito.
-             *
-             * Solamente eliminamos la reserva
-             * porque ahora fueron compradas.
-             */
+            // La compra se confirma.
+            // NO se devuelve el stock.
             reservas.clear();
-
 
             inventarioServidor.guardarEnCSV();
 
@@ -243,7 +245,140 @@ public class ServidorNexoMarket {
             cliente.println(
                     "COMPRA_OK"
             );
+
+
+            enviarATodos(
+                    "VENTA_REALIZADA;"
+                            + datos[1] + ";"
+                            + datos[2] + ";"
+                            + datos[3] + ";"
+                            + datos[4] + ";"
+                            + datos[5],
+                    cliente
+            );
+
+
+            System.out.println(
+                    "Compra confirmada y enviada al ADMIN."
+            );
         }
+    }
+
+    private static void procesarProductoAdmin(
+            String mensaje,
+            PrintWriter admin
+    ) {
+
+        String[] datos =
+                mensaje.split(";", 7);
+
+
+        if (datos.length != 7) {
+            return;
+        }
+
+
+        String id = datos[1];
+        String nombre = datos[2];
+
+        double precio;
+        int stock;
+
+
+        try {
+
+            precio =
+                    Double.parseDouble(datos[3]);
+
+            stock =
+                    Integer.parseInt(datos[4]);
+
+        } catch (NumberFormatException e) {
+
+            return;
+        }
+
+
+        String categoria = datos[5];
+        String rutaImagen = datos[6];
+
+
+        synchronized (inventarioServidor) {
+
+            inventarioServidor.sincronizarProductoDesdeServidor(
+                    id,
+                    nombre,
+                    precio,
+                    stock,
+                    categoria,
+                    rutaImagen
+            );
+
+
+            inventarioServidor.guardarEnCSV();
+
+
+            enviarATodos(
+                    "PRODUCTO_ACTUALIZADO;"
+                            + id + ";"
+                            + nombre + ";"
+                            + precio + ";"
+                            + stock + ";"
+                            + categoria + ";"
+                            + rutaImagen,
+                    admin
+            );
+        }
+
+
+        System.out.println(
+                "Producto actualizado por ADMIN: "
+                        + id
+        );
+    }
+
+
+    private static void procesarEliminarProductoAdmin(
+            String mensaje,
+            PrintWriter admin
+    ) {
+
+        String[] datos =
+                mensaje.split(";");
+
+
+        if (datos.length != 2) {
+            return;
+        }
+
+
+        String idProducto =
+                datos[1];
+
+
+        synchronized (inventarioServidor) {
+
+            boolean eliminado =
+                    inventarioServidor.eliminarProductoPorId(
+                            idProducto
+                    );
+
+
+            if (eliminado) {
+
+                enviarATodos(
+                        "PRODUCTO_ELIMINADO;"
+                                + idProducto,
+                        admin
+                );
+            }
+        }
+
+
+        System.out.println(
+                "ADMIN eliminó producto: "
+                        + idProducto
+        );
     }
 
     private static void enviarStockActual(

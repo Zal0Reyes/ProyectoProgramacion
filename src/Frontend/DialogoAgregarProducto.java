@@ -1,9 +1,11 @@
 package Frontend;
 
 import Backend.Inventario;
+import Backend.Producto;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+
 
 public class DialogoAgregarProducto extends JDialog {
     private JTextField txtNombre;
@@ -11,6 +13,7 @@ public class DialogoAgregarProducto extends JDialog {
     private JTextField txtStock;
     private JTextField txtRutaImagen;
     private JComboBox<String> cbCategoria;
+    private Producto productoGuardado;
 
     private boolean guardadoExitoso = false;
     private Inventario inventario;
@@ -189,7 +192,14 @@ public class DialogoAgregarProducto extends JDialog {
         }
 
         inventario.agregarCategoriaSiNoExiste(categoria);
-        inventario.registrarProducto(nombre, precio, stock, categoria, txtRutaImagen.getText().trim());
+        productoGuardado =
+                inventario.registrarProducto(
+                        nombre,
+                        precio,
+                        stock,
+                        categoria,
+                        txtRutaImagen.getText().trim()
+                );
 
         guardadoExitoso = true;
         dispose();
@@ -279,5 +289,8 @@ public class DialogoAgregarProducto extends JDialog {
 
     public boolean isGuardadoExitoso() {
         return guardadoExitoso;
+    }
+    public Producto getProductoGuardado() {
+        return productoGuardado;
     }
 }

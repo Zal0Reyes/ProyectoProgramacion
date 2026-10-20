@@ -3,6 +3,7 @@ package Backend;
 import java.io.*;
 import java.net.*;
 import java.util.function.Consumer;
+import java.util.List;
 
 public class ConexionServidor {
 
@@ -110,6 +111,51 @@ public class ConexionServidor {
                 receptorMensajes;
     }
 
+    public void enviarProductoAdmin(
+            Producto producto
+    ) {
+
+        if (producto == null) {
+            return;
+        }
+
+
+        enviarMensaje(
+                "ADMIN_GUARDAR_PRODUCTO;"
+                        + producto.getId() + ";"
+                        + limpiarCampo(producto.getNombre()) + ";"
+                        + producto.getPrecio() + ";"
+                        + producto.getStock() + ";"
+                        + limpiarCampo(producto.getCategoria()) + ";"
+                        + limpiarCampo(producto.getRutaImagen())
+        );
+    }
+
+
+    public void eliminarProductoAdmin(
+            String idProducto
+    ) {
+
+        enviarMensaje(
+                "ADMIN_ELIMINAR_PRODUCTO;"
+                        + idProducto
+        );
+    }
+
+
+    private String limpiarCampo(
+            String texto
+    ) {
+
+        if (texto == null) {
+            return "";
+        }
+
+        return texto
+                .replace(";", " ")
+                .replace("|", " ");
+    }
+
 
     public void enviarMensaje(
             String mensaje
@@ -137,10 +183,45 @@ public class ConexionServidor {
         );
     }
 
-    public void confirmarCompra() {
+    public void confirmarCompra(
+            String rut,
+            double subtotal,
+            double iva,
+            double total,
+            List<String> articulos
+    ) {
+
+        String rutEnviar =
+                rut == null ? "" : limpiarCampo(rut);
+
+
+        StringBuilder productos =
+                new StringBuilder();
+
+
+        for (int i = 0;
+             i < articulos.size();
+             i++) {
+
+            if (i > 0) {
+                productos.append("|");
+            }
+
+            productos.append(
+                    limpiarCampo(
+                            articulos.get(i)
+                    )
+            );
+        }
+
 
         enviarMensaje(
-                "CONFIRMAR_COMPRA"
+                "CONFIRMAR_COMPRA;"
+                        + rutEnviar + ";"
+                        + subtotal + ";"
+                        + iva + ";"
+                        + total + ";"
+                        + productos
         );
     }
 

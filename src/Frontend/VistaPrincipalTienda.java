@@ -125,11 +125,40 @@ public class VistaPrincipalTienda extends BaseFrame {
         barraLateral.add(Box.createRigidArea(new Dimension(0, 30)));
 
         JButton btnAgregar = crearBotonMenu("➕", e -> {
-            DialogoAgregarProducto dialogo = new DialogoAgregarProducto(VistaPrincipalTienda.this, inventario);
+
+            DialogoAgregarProducto dialogo =
+                    new DialogoAgregarProducto(
+                            VistaPrincipalTienda.this,
+                            inventario
+                    );
+
             dialogo.mostrar();
+
+
             if (dialogo.isGuardadoExitoso()) {
+
+                Producto productoGuardado =
+                        dialogo.getProductoGuardado();
+
+
+                if (productoGuardado != null &&
+                        conexionServidor.estaConectado()) {
+
+                    conexionServidor.enviarProductoAdmin(
+                            productoGuardado
+                    );
+                }
+
+
                 actualizarVistaProductos();
-                JOptionPane.showMessageDialog(VistaPrincipalTienda.this, "Producto agregado exitosamente.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
+
+
+                JOptionPane.showMessageDialog(
+                        VistaPrincipalTienda.this,
+                        "Producto agregado exitosamente.",
+                        "Éxito",
+                        JOptionPane.INFORMATION_MESSAGE
+                );
             }
         });
         barraLateral.add(btnAgregar);
@@ -332,45 +361,241 @@ public class VistaPrincipalTienda extends BaseFrame {
 
         dialog.setVisible(true);
     }
+
     private void procesarMensajeServidor(String mensaje) {
 
-        if (!mensaje.startsWith("STOCK;")) {
-            return;
-        }
 
-        String[] datos = mensaje.split(";");
+        // =====================================
+// PRODUCTO AGREGADO O MODIFICADO POR ADMIN
+// =====================================
+        if (mensaje.startsWith("PRODUCTO_ACTUALIZADO;")) {
 
-        if (datos.length != 3) {
-            return;
-        }
+            String[] datos =
+                    mensaje.split(";", 7);
 
-        String idProducto = datos[1];
-
-        int nuevoStock;
-
-        try {
-
-            nuevoStock = Integer.parseInt(datos[2]);
-
-        } catch (NumberFormatException e) {
-
-            return;
-        }
-
-
-        SwingUtilities.invokeLater(() -> {
-
-            Producto producto =
-                    inventario.buscarProductoPorId(idProducto);
-
-            if (producto == null) {
+            if (datos.length != 7) {
                 return;
             }
 
-            producto.setStock(nuevoStock);
+            try {
 
-            actualizarVistaProductos();
-        });
+                String id = datos[1];
+                String nombre = datos[2];
+
+                double precio =
+                        Double.parseDouble(datos[3]);
+
+                int stock =
+                        Integer.parseInt(datos[4]);
+
+                String categoria = datos[5];
+                String rutaImagen = datos[6];
+
+
+                SwingUtilities.invokeLater(() -> {
+
+                    inventario.sincronizarProductoDesdeServidor(
+                            id,
+                            nombre,
+                            precio,
+                            stock,
+                            categoria,
+                            rutaImagen
+                    );
+
+                    actualizarVistaProductos();
+                });
+
+            } catch (NumberFormatException e) {
+
+                return;
+            }
+
+            return;
+        }
+
+
+// =====================================
+// PRODUCTO ELIMINADO POR ADMIN
+// =====================================
+        if (mensaje.startsWith("PRODUCTO_ELIMINADO;")) {
+
+            String[] datos =
+                    mensaje.split(";");
+
+            if (datos.length != 2) {
+                return;
+            }
+
+
+            SwingUtilities.invokeLater(() -> {
+
+                inventario.eliminarProductoDesdeServidor(
+                        datos[1]
+                );
+
+                actualizarVistaProductos();
+            });
+
+            return;
+        }
+        // =========================
+        // ACTUALIZAR STOCK
+        // =========================
+        if (mensaje.startsWith("STOCK;")) {
+
+            String[] datos =
+                    mensaje.split(";");
+
+            if (datos.length != 3) {
+                return;
+            }
+
+
+            String idProducto =
+                    datos[1];
+
+            int nuevoStock;
+
+
+            try {
+
+                nuevoStock =
+                        Integer.parseInt(datos[2]);
+
+            } catch (NumberFormatException e) {
+
+                return;
+            }
+
+
+            SwingUtilities.invokeLater(() -> {
+
+                Producto producto =
+                        inventario.buscarProductoPorId(
+                                idProducto
+                        );
+
+
+                if (producto == null) {
+                    return;
+                }
+
+
+                producto.setStock(
+                        nuevoStock
+                );
+
+                actualizarVistaProductos();
+            });
+
+
+            return;
+        }
+
+
+        // =========================
+        // NUEVA VENTA
+        // =========================
+        if (mensaje.startsWith("VENTA_REALIZADA;")) {
+
+            String[] datos =
+                    mensaje.split(";", 6);
+
+
+            if (datos.length != 6) {
+                return;
+            }
+
+
+            String rut =
+                    datos[1].trim();
+
+
+            if (rut.isEmpty()) {
+                rut = "Sin RUT";
+            }
+
+
+            double subtotal;
+            double iva;
+            double total;
+
+
+            try {
+
+                subtotal =
+                        Double.parseDouble(datos[2]);
+
+                iva =
+                        Double.parseDouble(datos[3]);
+
+                total =
+                        Double.parseDouble(datos[4]);
+
+            } catch (NumberFormatException e) {
+
+                return;
+            }
+
+
+            java.util.List<String> articulos =
+                    new java.util.ArrayList<>();
+
+
+            if (!datos[5].trim().isEmpty()) {
+
+                String[] lista =
+                        datos[5].split("\\|");
+
+
+                for (String articulo : lista) {
+
+                    articulos.add(
+                            articulo
+                    );
+                }
+            }
+
+
+            String rutFinal = rut;
+            double subtotalFinal = subtotal;
+            double ivaFinal = iva;
+            double totalFinal = total;
+
+
+            SwingUtilities.invokeLater(() -> {
+
+                Backend.Compra compra =
+                        new Backend.Compra(
+                                rutFinal,
+                                articulos,
+                                totalFinal
+                        );
+
+
+                inventario.agregarCompraEnMemoria(
+                        compra
+                );
+
+
+                JOptionPane.showMessageDialog(
+                        this,
+                        "Nueva venta realizada\n\n"
+                                + "RUT: " + rutFinal
+                                + "\n\nProductos:\n"
+                                + String.join("\n", articulos)
+                                + "\n\nSubtotal: "
+                                + formatearPesos(subtotalFinal)
+                                + "\nIVA (19%): "
+                                + formatearPesos(ivaFinal)
+                                + "\nTotal: "
+                                + formatearPesos(totalFinal),
+                        "Venta realizada",
+                        JOptionPane.INFORMATION_MESSAGE
+                );
+            });
+        }
     }
 
     private void mostrarHistorialCompras() {
@@ -694,14 +919,57 @@ public class VistaPrincipalTienda extends BaseFrame {
                 dialogo.mostrar();
 
                 if (dialogo.isProductoBorrado()) {
-                    inventario.eliminarProductoPorId(producto.getId());
+
+                    String idProducto =
+                            producto.getId();
+
+
+                    inventario.eliminarProductoPorId(
+                            idProducto
+                    );
+
+
+                    if (conexionServidor.estaConectado()) {
+
+                        conexionServidor.eliminarProductoAdmin(
+                                idProducto
+                        );
+                    }
+
+
                     actualizarVistaProductos();
-                    JOptionPane.showMessageDialog(VistaPrincipalTienda.this, "Producto eliminado con éxito.", "Eliminado", JOptionPane.INFORMATION_MESSAGE);
+
+
+                    JOptionPane.showMessageDialog(
+                            VistaPrincipalTienda.this,
+                            "Producto eliminado con éxito.",
+                            "Eliminado",
+                            JOptionPane.INFORMATION_MESSAGE
+                    );
+
                 }
                 else if (dialogo.isGuardadoExitoso()) {
+
                     inventario.guardarEnCSV();
+
+
+                    if (conexionServidor.estaConectado()) {
+
+                        conexionServidor.enviarProductoAdmin(
+                                producto
+                        );
+                    }
+
+
                     actualizarVistaProductos();
-                    JOptionPane.showMessageDialog(VistaPrincipalTienda.this, "Producto modificado con éxito.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
+
+
+                    JOptionPane.showMessageDialog(
+                            VistaPrincipalTienda.this,
+                            "Producto modificado con éxito.",
+                            "Éxito",
+                            JOptionPane.INFORMATION_MESSAGE
+                    );
                 }
             }
         });

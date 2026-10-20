@@ -93,32 +93,107 @@ public class Inventario {
 
 
 
-    public void registrarProducto(String nombre, double precio, int stock, String categoria, String rutaImagen) {
+    public Producto registrarProducto(
+            String nombre,
+            double precio,
+            int stock,
+            String categoria,
+            String rutaImagen
+    ) {
 
-        // Confirmar si el producto ya existe
         for (Producto p : listaProductos) {
-            // Comparamos los nombres (ignorando mayúsculas/minúsculas)
+
             if (p.getNombre().equalsIgnoreCase(nombre)) {
-                System.out.println("El producto '" + nombre + "' ya existe. Actualizando stock...");
-                // Le sumamos la cantidad nueva al stock actual
+
                 p.setStock(p.getStock() + stock);
                 guardarEnCSV();
-                return;
+
+                return p;
             }
         }
 
-        // Crear ID
-        // Usamos String.format para que el ID se vea como "P001", "P002", etc.
-        String nuevoId = String.format("P%03d", contadorId);
-        // Aumentamos el contador para el próximo producto
+
+        String nuevoId =
+                String.format("P%03d", contadorId);
+
         contadorId++;
 
-        // Crear y guardar el producto
-        Producto nuevoProducto = new Producto(nombre, precio, stock, categoria, nuevoId, rutaImagen);
+
+        Producto nuevoProducto =
+                new Producto(
+                        nombre,
+                        precio,
+                        stock,
+                        categoria,
+                        nuevoId,
+                        rutaImagen
+                );
+
+
         listaProductos.add(nuevoProducto);
+
         guardarEnCSV();
 
-        System.out.println("Nuevo producto agregado: " + nombre + " con ID: " + nuevoId);
+        return nuevoProducto;
+    }
+
+    public void sincronizarProductoDesdeServidor(
+            String id,
+            String nombre,
+            double precio,
+            int stock,
+            String categoria,
+            String rutaImagen
+    ) {
+
+        Producto producto =
+                buscarProductoPorId(id);
+
+
+        if (producto == null) {
+
+            producto = new Producto(
+                    nombre,
+                    precio,
+                    stock,
+                    categoria,
+                    id,
+                    rutaImagen
+            );
+
+            listaProductos.add(producto);
+
+        } else {
+
+            producto.setNombre(nombre);
+            producto.setPrecio(precio);
+            producto.setStock(stock);
+            producto.setCategoria(categoria);
+            producto.setRutaImagen(rutaImagen);
+        }
+    }
+
+
+    public void eliminarProductoDesdeServidor(
+            String id
+    ) {
+
+        Producto producto =
+                buscarProductoPorId(id);
+
+        if (producto != null) {
+            listaProductos.remove(producto);
+        }
+    }
+
+
+    public void agregarCompraEnMemoria(
+            Compra compra
+    ) {
+
+        if (compra != null) {
+            historialCompras.add(compra);
+        }
     }
 
     public ArrayList<Producto> filtrarPorCategoria(String categoria) {

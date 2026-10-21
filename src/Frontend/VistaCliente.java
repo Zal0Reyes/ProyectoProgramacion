@@ -250,25 +250,39 @@ public class VistaCliente extends BaseFrame {
                         NAVY
                 );
 
+        JButton btnConfiguracion =
+                crearBoton(
+                        "*",
+                        new Color(90, 105, 125)
+                );
+
 
         // Los botones sí mantienen tamaño fijo
         btnFiltrar.setPreferredSize(
                 new Dimension(
-                        120,
+                        110,
                         45
                 )
         );
 
         btnLogin.setPreferredSize(
                 new Dimension(
-                        150,
+                        140,
                         45
                 )
         );
 
+        btnConfiguracion.setFont(new Font("SansSerif", Font.PLAIN, 23));
+        btnConfiguracion.setToolTipText("Configurar IP del host");
+        btnConfiguracion.setPreferredSize(new Dimension(45, 45));
+
 
         btnFiltrar.addActionListener(
                 e -> mostrarFiltros()
+        );
+
+        btnConfiguracion.addActionListener(
+                e -> mostrarConfiguracionConexion()
         );
 
 
@@ -325,6 +339,7 @@ public class VistaCliente extends BaseFrame {
 
         acciones.add(btnFiltrar);
         acciones.add(btnLogin);
+        acciones.add(btnConfiguracion);
 
 
         // =========================
@@ -372,6 +387,70 @@ public class VistaCliente extends BaseFrame {
 
 
         return contenedor;
+    }
+
+    private void mostrarConfiguracionConexion() {
+        JTextField txtHost = new JTextField(conexionServidor.getHost(), 18);
+        txtHost.setFont(new Font("SansSerif", Font.PLAIN, 14));
+
+        JLabel ayuda = new JLabel("Usa 127.0.0.1 si el host está en este mismo PC.");
+        ayuda.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        ayuda.setForeground(GRIS);
+
+        JPanel contenido = new JPanel();
+        contenido.setLayout(new BoxLayout(contenido, BoxLayout.Y_AXIS));
+        contenido.setBorder(new EmptyBorder(5, 5, 0, 5));
+
+        JLabel etiqueta = new JLabel("IP del host:");
+        etiqueta.setAlignmentX(Component.LEFT_ALIGNMENT);
+        txtHost.setAlignmentX(Component.LEFT_ALIGNMENT);
+        ayuda.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        contenido.add(etiqueta);
+        contenido.add(Box.createRigidArea(new Dimension(0, 6)));
+        contenido.add(txtHost);
+        contenido.add(Box.createRigidArea(new Dimension(0, 8)));
+        contenido.add(ayuda);
+
+        int opcion = JOptionPane.showConfirmDialog(
+                this,
+                contenido,
+                "Conectar al host",
+                JOptionPane.OK_CANCEL_OPTION,
+                JOptionPane.PLAIN_MESSAGE
+        );
+
+        if (opcion != JOptionPane.OK_OPTION) {
+            return;
+        }
+
+        String host = txtHost.getText().trim();
+        if (host.isEmpty()) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Ingresa una IP o nombre de host.",
+                    "IP inválida",
+                    JOptionPane.WARNING_MESSAGE
+            );
+            return;
+        }
+
+        if (conexionServidor.conectar(host)) {
+            conexionServidor.solicitarStockActual();
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Conectado al host " + host + ".",
+                    "Conexión exitosa",
+                    JOptionPane.INFORMATION_MESSAGE
+            );
+        } else {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "No se pudo conectar al host " + host + " en el puerto 65432.",
+                    "Error de conexión",
+                    JOptionPane.ERROR_MESSAGE
+            );
+        }
     }
 
     // =========================================================

@@ -7,9 +7,10 @@ import java.util.List;
 
 public class ConexionServidor {
 
-    private static final String HOST = "127.0.0.1";
+    private static final String HOST_PREDETERMINADO = "127.0.0.1";
     private static final int PUERTO = 65432;
 
+    private String host = HOST_PREDETERMINADO;
     private Socket socket;
     private BufferedReader entrada;
     private PrintWriter salida;
@@ -20,10 +21,21 @@ public class ConexionServidor {
 
 
     public boolean conectar() {
+        return conectar(host);
+    }
+
+    public boolean conectar(String host) {
+        if (host == null || host.trim().isEmpty()) {
+            System.out.println("La IP del servidor no puede estar vacía.");
+            return false;
+        }
+
+        cerrarConexion();
+        this.host = host.trim();
 
         try {
 
-            socket = new Socket(HOST, PUERTO);
+            socket = new Socket(this.host, PUERTO);
 
             entrada = new BufferedReader(
                     new InputStreamReader(
@@ -59,8 +71,14 @@ public class ConexionServidor {
         }
     }
 
+    public String getHost() {
+        return host;
+    }
+
 
     private void iniciarRecepcion() {
+        Socket socketConexion = socket;
+        BufferedReader entradaConexion = entrada;
 
         Thread hiloRecepcion = new Thread(() -> {
 
@@ -68,7 +86,7 @@ public class ConexionServidor {
 
                 String mensaje;
 
-                while ((mensaje = entrada.readLine()) != null) {
+                while ((mensaje = entradaConexion.readLine()) != null) {
 
                     System.out.println(
                             "[Servidor] "
@@ -85,7 +103,7 @@ public class ConexionServidor {
 
             } catch (IOException e) {
 
-                if (conectado) {
+                if (conectado && socket == socketConexion) {
 
                     System.out.println(
                             "Se perdió la conexión con el servidor."
@@ -94,7 +112,9 @@ public class ConexionServidor {
 
             } finally {
 
-                conectado = false;
+                if (socket == socketConexion) {
+                    conectado = false;
+                }
             }
         });
 

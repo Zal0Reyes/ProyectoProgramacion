@@ -252,6 +252,12 @@ public class ConexionServidor {
         );
     }
 
+    public void solicitarCarritosActivos() {
+
+        enviarMensaje(
+                "PEDIR_CARRITOS"
+        );
+    }
 
     public void solicitarDevolucion(
             String idProducto,

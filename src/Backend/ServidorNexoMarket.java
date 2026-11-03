@@ -78,7 +78,7 @@ public class ServidorNexoMarket {
                 System.out.println("Mensaje recibido: " + mensaje);
 
                 // =================================================
-                // ENRUTADOR DE COMANDOS (IF-ELSE GIGANTE)
+                // ENRUTADOR DE COMANDOS
                 // =================================================
 
                 // --- COMANDO: Cliente quiere apartar un producto ---
@@ -105,7 +105,7 @@ public class ServidorNexoMarket {
                 else if (mensaje.equals("PEDIR_STOCK")) {
                     enviarStockActual(salida);
                 }
-                // --- COMANDO (NUEVO): Admin pide ver los carritos en vivo ---
+                // --- COMANDO: Admin pide ver los carritos en vivo ---
                 else if (mensaje.equals("PEDIR_CARRITOS")) {
                     enviarCarritosActivos(salida);
                 }
@@ -165,6 +165,7 @@ public class ServidorNexoMarket {
                     cliente
             );
             System.out.println("Compra confirmada y enviada al ADMIN.");
+            notificarCarritosActivosATodos();
         }
     }
 
@@ -283,6 +284,7 @@ public class ServidorNexoMarket {
 
             // --- RESPUESTA: Avisamos a los demás del nuevo stock ---
             enviarATodos("STOCK;" + idProducto + ";" + nuevoStock, cliente);
+            notificarCarritosActivosATodos();
         }
     }
 
@@ -354,6 +356,7 @@ public class ServidorNexoMarket {
 
             // --- RESPUESTA: Avisar a los demás del stock recuperado ---
             enviarATodos("STOCK;" + idProducto + ";" + nuevoStock, cliente);
+            notificarCarritosActivosATodos();
         }
     }
 
@@ -427,7 +430,7 @@ public class ServidorNexoMarket {
                 inventarioServidor.guardarEnCSV();
             }
         }
-
+        notificarCarritosActivosATodos();
         reservasClientes.remove(cliente);
         clientes.remove(cliente);
         System.out.println("Clientes conectados: " + clientes.size());
@@ -440,5 +443,34 @@ public class ServidorNexoMarket {
                 cliente.println(mensaje);
             }
         }
+    }
+    private static void notificarCarritosActivosATodos() {
+        StringBuilder datosCarritos = new StringBuilder();
+        int contadorCliente = 1;
+        boolean hayCarritos = false;
+
+        synchronized (inventarioServidor) {
+            for (Map.Entry<PrintWriter, Map<String, Integer>> entradaCliente : reservasClientes.entrySet()) {
+                Map<String, Integer> reservas = entradaCliente.getValue();
+                if (reservas != null && !reservas.isEmpty()) {
+                    if (hayCarritos) datosCarritos.append("|");
+
+                    datosCarritos.append("Cliente ").append(contadorCliente).append(":");
+                    boolean primerProducto = true;
+
+                    for (Map.Entry<String, Integer> producto : reservas.entrySet()) {
+                        if (!primerProducto) datosCarritos.append("-");
+                        datosCarritos.append(producto.getKey()).append(",").append(producto.getValue());
+                        primerProducto = false;
+                    }
+                    hayCarritos = true;
+                }
+                contadorCliente++;
+            }
+        }
+
+        String mensaje = !hayCarritos ? "CARRITOS_ACTIVOS;VACIO" : "CARRITOS_ACTIVOS;" + datosCarritos.toString();
+        // Al enviar 'null' como emisor, el servidor le envía la actualización a todos los sockets conectados
+        enviarATodos(mensaje, null);
     }
 }

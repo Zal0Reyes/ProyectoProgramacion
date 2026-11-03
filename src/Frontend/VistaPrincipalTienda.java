@@ -831,7 +831,7 @@ public class VistaPrincipalTienda extends BaseFrame {
     }
 
     private ImageIcon cargarLogo() {
-        String[] rutas = {"imagenes/Logo NEXOMARKET.jepg", "imagenes/Logo NEXOMARKET.jpeg", "imagenes/Logo NEXOMARKET.jpg", "imagenes/Logo NEXOMARKET.png"};
+        String[] rutas = {"imagenes/logo sin fondo.png", "imagenes/Logo NEXOMARKET.jpeg", "imagenes/Logo NEXOMARKET.jpg", "imagenes/Logo NEXOMARKET.png"};
         for (String ruta : rutas) {
             java.io.File archivo = new java.io.File(ruta);
             if (archivo.isFile()) {

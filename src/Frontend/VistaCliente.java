@@ -782,27 +782,71 @@ public class VistaCliente extends BaseFrame {
     private void mostrarConfiguracionConexion() {
         JTextField txtHost = new JTextField(conexionServidor.getHost(), 18);
         txtHost.setFont(new Font("SansSerif", Font.PLAIN, 14));
+        txtHost.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(180, 190, 205)),
+                new EmptyBorder(8, 10, 8, 10)
+        ));
 
         JLabel ayuda = new JLabel("Usa 127.0.0.1 si el host está en este mismo PC.");
         ayuda.setFont(new Font("SansSerif", Font.PLAIN, 12));
         ayuda.setForeground(GRIS);
 
+        JDialog dialogo = new JDialog(this, "Conectar al host", true);
+        dialogo.setSize(430, 250);
+        dialogo.setLocationRelativeTo(this);
+        dialogo.setLayout(new BorderLayout());
+        dialogo.getContentPane().setBackground(FONDO);
+
+        JPanel cabecera = new JPanel(new BorderLayout());
+        cabecera.setBackground(NAVY);
+        cabecera.setBorder(new EmptyBorder(14, 20, 14, 20));
+        JLabel titulo = new JLabel("Conectar al host");
+        titulo.setFont(new Font("SansSerif", Font.BOLD, 18));
+        titulo.setForeground(Color.WHITE);
+        cabecera.add(titulo, BorderLayout.WEST);
+        dialogo.add(cabecera, BorderLayout.NORTH);
+
         JPanel contenido = new JPanel();
+        contenido.setOpaque(false);
         contenido.setLayout(new BoxLayout(contenido, BoxLayout.Y_AXIS));
-        contenido.setBorder(new EmptyBorder(5, 5, 0, 5));
-        contenido.add(new JLabel("IP del host:"));
+        contenido.setBorder(new EmptyBorder(18, 25, 10, 25));
+        JLabel etiqueta = new JLabel("IP del host:");
+        etiqueta.setFont(new Font("SansSerif", Font.BOLD, 14));
+        etiqueta.setForeground(NAVY);
+        contenido.add(etiqueta);
         contenido.add(Box.createRigidArea(new Dimension(0, 6)));
         contenido.add(txtHost);
         contenido.add(Box.createRigidArea(new Dimension(0, 8)));
         contenido.add(ayuda);
+        dialogo.add(contenido, BorderLayout.CENTER);
 
-        if (JOptionPane.showConfirmDialog(this, contenido, "Conectar al host", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE) != JOptionPane.OK_OPTION) return;
+        JPanel botones = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
+        botones.setOpaque(false);
+        JButton cancelar = crearBoton("Cancelar", new Color(149, 165, 166));
+        JButton conectar = crearBoton("Conectar", AZUL);
+        cancelar.setPreferredSize(new Dimension(105, 38));
+        conectar.setPreferredSize(new Dimension(105, 38));
+        final boolean[] confirmado = {false};
+        cancelar.addActionListener(e -> dialogo.dispose());
+        conectar.addActionListener(e -> {
+            if (txtHost.getText().trim().isEmpty()) {
+                mostrarError("Ingresa una IP o nombre de host.");
+                return;
+            }
+            confirmado[0] = true;
+            dialogo.dispose();
+        });
+        botones.add(cancelar);
+        botones.add(conectar);
+        dialogo.add(botones, BorderLayout.SOUTH);
+        dialogo.getRootPane().setDefaultButton(conectar);
+        dialogo.setVisible(true);
 
-        String host = txtHost.getText().trim();
-        if (host.isEmpty()) {
-            mostrarError("Ingresa una IP o nombre de host.");
+        if (!confirmado[0]) {
             return;
         }
+
+        String host = txtHost.getText().trim();
 
         if (conexionServidor.conectar(host)) {
             conexionServidor.solicitarStockActual();
@@ -907,7 +951,7 @@ public class VistaCliente extends BaseFrame {
     }
 
     private ImageIcon cargarLogo() {
-        String[] rutas = {"imagenes/Logo NEXOMARKET.jepg", "imagenes/Logo NEXOMARKET.jpeg", "imagenes/Logo NEXOMARKET.jpg", "imagenes/Logo NEXOMARKET.png"};
+        String[] rutas = {"imagenes/logo sin fondo.png", "imagenes/Logo NEXOMARKET.jpeg", "imagenes/Logo NEXOMARKET.jpg", "imagenes/Logo NEXOMARKET.png"};
         for (String ruta : rutas) {
             File archivo = new File(ruta);
             if (archivo.isFile()) {

@@ -9,7 +9,6 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.plaf.basic.BasicScrollBarUI;
 import java.awt.*;
-import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -21,21 +20,29 @@ public class VistaPrincipalTienda extends BaseFrame {
     // =========================================================
     // VARIABLES GLOBALES DE LA CLASE
     // =========================================================
-    private JPanel gridProductos;
     private final ConexionServidor conexionServidor;
 
-    // --- NUEVO: Instancia del Monitor de Carritos ---
-    private DialogoCarritosActivos monitorCarritos;
+    // --- GESTIÓN DE VISTAS (DASHBOARD) ---
+    private CardLayout gestorVistas;
+    private JPanel panelContenedorVistas;
+
+    // --- BOTONES DE PESTAÑAS (NAVEGACIÓN SUPERIOR) ---
+    private JButton btnNavProductos;
+    private JButton btnNavCarritos;
+
+    // --- PANELES INTERNOS ---
+    private JPanel gridProductos;
+    private JPanel panelCarritosGrid;
 
     // =========================================================
     // CONSTRUCTOR
     // =========================================================
     public VistaPrincipalTienda(Inventario inventario, Sistema sistema) {
-        super("Vista Admin", inventario, sistema);
+        super("NexoMarket - Panel de Administración", inventario, sistema);
         conexionServidor = new ConexionServidor();
 
-        // --- CONEXIÓN: Configurar qué hacer al recibir un mensaje ---
-        conexionServidor.setReceptorMensajes(mensaje -> procesarMensajeServidor(mensaje));
+        // --- CONEXIÓN: Configurar recepción de mensajes ---
+        conexionServidor.setReceptorMensajes(this::procesarMensajeServidor);
         conexionServidor.conectar();
     }
 
@@ -49,16 +56,50 @@ public class VistaPrincipalTienda extends BaseFrame {
         getContentPane().setBackground(new Color(238, 243, 249));
 
         // ==========================================
-        // 1. ZONA DE LA CABECERA SUPERIOR
+        // 1. CABECERA SUPERIOR (Pestañas Modernas)
         // ==========================================
+        add(crearCabeceraSuperior(), BorderLayout.NORTH);
+
+        // ==========================================
+        // 2. BARRA LATERAL (Acciones secundarias)
+        // ==========================================
+        add(crearBarraLateral(), BorderLayout.WEST);
+
+        // ==========================================
+        // 3. CONTENEDOR CENTRAL (CardLayout)
+        // ==========================================
+        gestorVistas = new CardLayout();
+        panelContenedorVistas = new JPanel(gestorVistas);
+        panelContenedorVistas.setOpaque(false);
+
+        // --- AGREGAMOS LAS VISTAS AL MAZO ---
+        panelContenedorVistas.add(crearVistaProductos(), "VISTA_PRODUCTOS");
+        panelContenedorVistas.add(crearVistaCarritos(), "VISTA_CARRITOS");
+
+        add(panelContenedorVistas, BorderLayout.CENTER);
+
+        // --- Carga inicial ---
+        actualizarVistaProductos("");
+        if (conexionServidor.estaConectado()) {
+            conexionServidor.solicitarStockActual();
+        }
+
+        setVisible(true);
+    }
+
+    // =========================================================
+    // CONSTRUCCIÓN DE LA INTERFAZ: CABECERA Y LATERAL
+    // =========================================================
+
+    private JPanel crearCabeceraSuperior() {
         JPanel contenedorCabecera = new JPanel(new BorderLayout());
         contenedorCabecera.setBackground(Color.WHITE);
 
-        JPanel panelCabecera = new JPanel(new BorderLayout(15, 0));
+        JPanel panelCabecera = new JPanel(new BorderLayout(20, 0));
         panelCabecera.setBackground(Color.WHITE);
-        panelCabecera.setBorder(new EmptyBorder(8, 20, 8, 20));
+        panelCabecera.setBorder(new EmptyBorder(0, 20, 0, 20)); // Sin padding arriba y abajo para que las pestañas toquen el borde
 
-        // --- SECCIÓN: LOGO ---
+        // --- LOGO (Mantiene la modificación de tu amigo: logo sin fondo) ---
         JLabel lblLogo = new JLabel();
         ImageIcon logo = cargarLogo();
         if (logo != null) {
@@ -68,75 +109,58 @@ public class VistaPrincipalTienda extends BaseFrame {
             lblLogo.setFont(new Font("SansSerif", Font.BOLD, 23));
             lblLogo.setForeground(new Color(19, 40, 72));
         }
+        lblLogo.setBorder(new EmptyBorder(10, 0, 10, 0));
         panelCabecera.add(lblLogo, BorderLayout.WEST);
 
-        // --- SECCIÓN: BARRA DE BÚSQUEDA ---
-        JTextField txtBuscar = new JTextField();
-        txtBuscar.setFont(new Font("SansSerif", Font.PLAIN, 15));
-        txtBuscar.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(180, 190, 205)),
-                new EmptyBorder(9, 12, 9, 12)
-        ));
+        // --- NAVEGACIÓN PRINCIPAL (Diseño de Pestañas / Tabs) ---
+        JPanel panelNavegacion = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
+        panelNavegacion.setOpaque(false);
 
-        JPanel panelBusqueda = new JPanel(new BorderLayout());
-        panelBusqueda.setOpaque(false);
-        panelBusqueda.setBorder(new EmptyBorder(15, 0, 15, 0));
-        panelBusqueda.add(txtBuscar, BorderLayout.CENTER);
-        panelCabecera.add(panelBusqueda, BorderLayout.CENTER);
+        btnNavProductos = crearBotonPestana("📦 Catálogo de Productos", true);
+        btnNavCarritos = crearBotonPestana("🛒 Carritos en Vivo", false);
 
-        // --- SECCIÓN: BOTONES DERECHA (CABECERA) ---
-        // BOTÓN: Monitor de Carritos Activos
-        JButton btnCarritos = new JButton("🛒 Carritos");
-        btnCarritos.setFont(new Font("SansSerif", Font.BOLD, 13));
-        btnCarritos.setForeground(Color.WHITE);
-        btnCarritos.setBackground(new Color(46, 139, 87)); // VERDE
-        btnCarritos.setPreferredSize(new Dimension(120, 45));
-        btnCarritos.setFocusPainted(false);
-        btnCarritos.setBorderPainted(false);
-        btnCarritos.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btnCarritos.addActionListener(e -> abrirMonitorCarritos());
+        btnNavProductos.addActionListener(e -> {
+            gestorVistas.show(panelContenedorVistas, "VISTA_PRODUCTOS");
+            activarPestana(btnNavProductos, btnNavCarritos);
+            actualizarVistaProductos("");
+        });
 
-        // BOTÓN: Filtrar
-        JButton btnFiltro = new JButton("Filtrar");
-        btnFiltro.setFont(new Font("SansSerif", Font.BOLD, 13));
-        btnFiltro.setForeground(Color.WHITE);
-        btnFiltro.setBackground(new Color(30, 105, 210)); // AZUL
-        btnFiltro.setPreferredSize(new Dimension(120, 45));
-        btnFiltro.setFocusPainted(false);
-        btnFiltro.setBorderPainted(false);
-        btnFiltro.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btnFiltro.addActionListener(e -> mostrarDialogoFiltros());
+        btnNavCarritos.addActionListener(e -> {
+            gestorVistas.show(panelContenedorVistas, "VISTA_CARRITOS");
+            activarPestana(btnNavCarritos, btnNavProductos);
+            if (conexionServidor.estaConectado()) conexionServidor.solicitarCarritosActivos();
+        });
 
-        JPanel acciones = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
-        acciones.setOpaque(false);
-        acciones.add(btnCarritos);
-        acciones.add(btnFiltro);
-        panelCabecera.add(acciones, BorderLayout.EAST);
+        panelNavegacion.add(btnNavProductos);
+        panelNavegacion.add(btnNavCarritos);
+        panelCabecera.add(panelNavegacion, BorderLayout.CENTER);
 
-        // FRANJA INFERIOR CABECERA
+        // --- PERFIL ADMIN (Opcional a la derecha) ---
+        JLabel lblAdminInfo = new JLabel("👤 Modo Administrador");
+        lblAdminInfo.setFont(new Font("SansSerif", Font.BOLD, 13));
+        lblAdminInfo.setForeground(new Color(130, 140, 150));
+        lblAdminInfo.setBorder(new EmptyBorder(10, 0, 10, 0));
+        panelCabecera.add(lblAdminInfo, BorderLayout.EAST);
+
+        // --- FRANJA INFERIOR ---
         JPanel franja = new JPanel();
-        franja.setBackground(new Color(19, 40, 72));
-        franja.setPreferredSize(new Dimension(0, 5));
+        franja.setBackground(new Color(225, 230, 240));
+        franja.setPreferredSize(new Dimension(0, 2));
 
         contenedorCabecera.add(panelCabecera, BorderLayout.CENTER);
         contenedorCabecera.add(franja, BorderLayout.SOUTH);
-        add(contenedorCabecera, BorderLayout.NORTH);
 
-        // ==========================================
-        // 2. ZONA DE LA BARRA LATERAL (MENÚ)
-        // ==========================================
+        return contenedorCabecera;
+    }
+
+    private JPanel crearBarraLateral() {
         JPanel barraLateral = new JPanel();
         barraLateral.setBackground(new Color(19, 40, 72));
         barraLateral.setPreferredSize(new Dimension(80, 0));
         barraLateral.setLayout(new BoxLayout(barraLateral, BoxLayout.Y_AXIS));
         barraLateral.setBorder(new EmptyBorder(30, 0, 30, 0));
 
-        // --- BOTÓN: Inicio ---
-        JButton btnInicio = crearBotonMenu("🏠", e -> actualizarVistaProductos());
-        barraLateral.add(btnInicio);
-        barraLateral.add(Box.createRigidArea(new Dimension(0, 30)));
-
-        // --- BOTÓN: Agregar Producto ---
+        // --- BOTONES LATERALES ---
         JButton btnAgregar = crearBotonMenu("➕", e -> {
             DialogoAgregarProducto dialogo = new DialogoAgregarProducto(VistaPrincipalTienda.this, inventario);
             dialogo.mostrar();
@@ -145,14 +169,15 @@ public class VistaPrincipalTienda extends BaseFrame {
                 if (productoGuardado != null && conexionServidor.estaConectado()) {
                     conexionServidor.enviarProductoAdmin(productoGuardado);
                 }
-                actualizarVistaProductos();
-                JOptionPane.showMessageDialog(VistaPrincipalTienda.this, "Producto agregado exitosamente.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
+                actualizarVistaProductos("");
+                registrarAccionAdmin("Agregó producto: " + productoGuardado.getNombre());
+                JOptionPane.showMessageDialog(this, "Producto agregado exitosamente.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
             }
         });
+        btnAgregar.setToolTipText("Agregar Nuevo Producto");
         barraLateral.add(btnAgregar);
         barraLateral.add(Box.createRigidArea(new Dimension(0, 30)));
 
-        // --- BOTÓN: Registrar Nuevo Admin ---
         JButton btnAgregarAdmin = crearBotonMenu("👨‍", e -> {
             DialogoRegistroAdmin dialogoAdmin = new DialogoRegistroAdmin(VistaPrincipalTienda.this, sistema);
             dialogoAdmin.mostrar();
@@ -161,64 +186,87 @@ public class VistaPrincipalTienda extends BaseFrame {
         barraLateral.add(btnAgregarAdmin);
         barraLateral.add(Box.createRigidArea(new Dimension(0, 30)));
 
-        // --- BOTÓN: Estadísticas ---
         JButton btnEstadisticas = crearBotonMenu("📊", e -> mostrarDialogoEstadisticas());
+        btnEstadisticas.setToolTipText("Estadísticas");
         barraLateral.add(btnEstadisticas);
         barraLateral.add(Box.createRigidArea(new Dimension(0, 30)));
 
-        // --- BOTÓN: Historial de Compras ---
-        JButton btnHistorial = crearBotonMenu("\uD83D\uDCCB", e -> mostrarHistorialCompras());
+        JButton btnHistorial = crearBotonMenu("\uD83D\uDCCB", e -> new DialogoHistorialCompras(this, inventario).mostrar());
         btnHistorial.setToolTipText("Historial de compras");
         barraLateral.add(btnHistorial);
         barraLateral.add(Box.createRigidArea(new Dimension(0, 30)));
 
-        // --- BOTÓN: Vaciar Inventario (Destrucción) ---
         JButton btnVaciar = crearBotonMenu("🗑", e -> {
             DialogoVaciarInventario dialogoVaciar = new DialogoVaciarInventario(VistaPrincipalTienda.this, inventario);
             dialogoVaciar.mostrar();
             if (dialogoVaciar.huboCambios()) {
-                actualizarVistaProductos();
+                actualizarVistaProductos("");
+                registrarAccionAdmin("Realizó un vaciado masivo del inventario");
             }
         });
         btnVaciar.setToolTipText("Gestión Masiva / Vaciar Inventario");
         barraLateral.add(btnVaciar);
+
         barraLateral.add(Box.createVerticalGlue());
 
-        // --- BOTÓN: Cerrar Sesión ---
         JButton btnCerrarSesion = crearBotonMenu("🚪", e -> {
-            int confirmacion = JOptionPane.showConfirmDialog(VistaPrincipalTienda.this, "¿Estás seguro de que deseas cerrar sesión?", "Cerrar Sesión", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+            int confirmacion = JOptionPane.showConfirmDialog(this, "¿Cerrar sesión?", "Salir", JOptionPane.YES_NO_OPTION);
             if (confirmacion == JOptionPane.YES_OPTION) {
                 sistema.cerrarSesion();
                 conexionServidor.cerrarConexion();
                 dispose();
-                VistaCliente vistaCliente = new VistaCliente(inventario, sistema);
-                vistaCliente.mostrar();
+                new VistaCliente(inventario, sistema).mostrar();
             }
         });
+        btnCerrarSesion.setToolTipText("Cerrar Sesión");
         barraLateral.add(btnCerrarSesion);
 
-        add(barraLateral, BorderLayout.WEST);
+        return barraLateral;
+    }
 
-        // ==========================================
-        // 3. ZONA CENTRAL (CATÁLOGO ADMIN)
-        // ==========================================
+    // =========================================================
+    // CONSTRUCCIÓN DE LAS "CARTAS" (VISTAS DEL DASHBOARD)
+    // =========================================================
+
+    // --- CARTA 1: VISTA DE PRODUCTOS ---
+    private JPanel crearVistaProductos() {
         JPanel panelCentral = new JPanel(new BorderLayout(15, 0));
         panelCentral.setOpaque(false);
         panelCentral.setBorder(new EmptyBorder(15, 18, 18, 18));
 
-        // --- ENCABEZADO CATÁLOGO ---
-        PanelRedondeado encabezado = new PanelRedondeado(12);
-        encabezado.setBackground(new Color(19, 40, 72));
-        encabezado.setLayout(new BorderLayout());
-        encabezado.setBorder(new EmptyBorder(9, 12, 9, 12));
+        // HERRAMIENTAS (Buscador y Filtro)
+        PanelRedondeado herramientas = new PanelRedondeado(12);
+        herramientas.setBackground(new Color(19, 40, 72));
+        herramientas.setLayout(new BorderLayout(10, 0));
+        herramientas.setBorder(new EmptyBorder(9, 12, 9, 12));
 
-        JLabel titulo = new JLabel("Gestión de Inventario");
+        JLabel titulo = new JLabel("Inventario Actual");
         titulo.setFont(new Font("SansSerif", Font.BOLD, 20));
         titulo.setForeground(Color.WHITE);
-        encabezado.add(titulo, BorderLayout.WEST);
-        panelCentral.add(encabezado, BorderLayout.NORTH);
+        herramientas.add(titulo, BorderLayout.WEST);
 
-        // --- GRILLA DE PRODUCTOS ---
+        JTextField txtBuscar = new JTextField();
+        txtBuscar.setFont(new Font("SansSerif", Font.PLAIN, 15));
+        txtBuscar.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
+        txtBuscar.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyReleased(java.awt.event.KeyEvent evt) {
+                actualizarVistaProductos(txtBuscar.getText());
+            }
+        });
+        herramientas.add(txtBuscar, BorderLayout.CENTER);
+
+        JButton btnFiltro = new JButton("Filtrar");
+        btnFiltro.setFont(new Font("SansSerif", Font.BOLD, 13));
+        btnFiltro.setForeground(new Color(19, 40, 72));
+        btnFiltro.setBackground(Color.WHITE);
+        btnFiltro.setFocusPainted(false);
+        btnFiltro.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnFiltro.addActionListener(e -> mostrarDialogoFiltros());
+        herramientas.add(btnFiltro, BorderLayout.EAST);
+
+        panelCentral.add(herramientas, BorderLayout.NORTH);
+
+        // GRILLA DE PRODUCTOS
         gridProductos = new JPanel(new GridLayout(0, 3, 12, 12));
         gridProductos.setOpaque(false);
 
@@ -235,23 +283,44 @@ public class VistaPrincipalTienda extends BaseFrame {
         configurarBarraScroll(scroll);
 
         panelCentral.add(scroll, BorderLayout.CENTER);
-        add(panelCentral, BorderLayout.CENTER);
+        return panelCentral;
+    }
 
-        // --- EVENTO: Búsqueda dinámica ---
-        txtBuscar.addKeyListener(new java.awt.event.KeyAdapter() {
-            @Override
-            public void keyReleased(java.awt.event.KeyEvent evt) {
-                actualizarVistaProductos(txtBuscar.getText());
-            }
-        });
+    // --- CARTA 2: VISTA DE CARRITOS ACTIVOS ---
+    private JPanel crearVistaCarritos() {
+        JPanel panelCentral = new JPanel(new BorderLayout(15, 0));
+        panelCentral.setOpaque(false);
+        panelCentral.setBorder(new EmptyBorder(15, 18, 18, 18));
 
-        // Carga inicial
-        actualizarVistaProductos();
-        if (conexionServidor.estaConectado()) {
-            conexionServidor.solicitarStockActual();
-        }
+        // ENCABEZADO 
+        PanelRedondeado encabezado = new PanelRedondeado(12);
+        encabezado.setBackground(new Color(19, 40, 72));
+        encabezado.setLayout(new BorderLayout());
+        encabezado.setBorder(new EmptyBorder(9, 12, 9, 12));
 
-        setVisible(true);
+        JLabel titulo = new JLabel("Monitoreo de Reservas en Vivo");
+        titulo.setFont(new Font("SansSerif", Font.BOLD, 20));
+        titulo.setForeground(Color.WHITE);
+        encabezado.add(titulo, BorderLayout.WEST);
+
+
+        panelCentral.add(encabezado, BorderLayout.NORTH);
+
+        // LISTA DE CARRITOS
+        panelCarritosGrid = new JPanel();
+        panelCarritosGrid.setLayout(new BoxLayout(panelCarritosGrid, BoxLayout.Y_AXIS));
+        panelCarritosGrid.setOpaque(false);
+        panelCarritosGrid.setBorder(new EmptyBorder(15, 0, 15, 0));
+
+        JScrollPane scroll = new JScrollPane(panelCarritosGrid);
+        scroll.setBorder(null);
+        scroll.setOpaque(false);
+        scroll.getViewport().setOpaque(false);
+        scroll.getVerticalScrollBar().setUnitIncrement(16);
+        configurarBarraScroll(scroll);
+
+        panelCentral.add(scroll, BorderLayout.CENTER);
+        return panelCentral;
     }
 
     // =========================================================
@@ -262,11 +331,7 @@ public class VistaPrincipalTienda extends BaseFrame {
         // --- ACCIÓN: Recepción de carritos activos en tiempo real ---
         if (mensaje.startsWith("CARRITOS_ACTIVOS;")) {
             String datos = mensaje.substring(17);
-            SwingUtilities.invokeLater(() -> {
-                if (monitorCarritos != null && monitorCarritos.isVisible()) {
-                    monitorCarritos.dibujarCarritos(datos);
-                }
-            });
+            SwingUtilities.invokeLater(() -> dibujarCarritosEnPanel(datos));
             return;
         }
 
@@ -274,22 +339,10 @@ public class VistaPrincipalTienda extends BaseFrame {
         if (mensaje.startsWith("PRODUCTO_ACTUALIZADO;")) {
             String[] datos = mensaje.split(";", 7);
             if (datos.length != 7) return;
-
             try {
-                String id = datos[1];
-                String nombre = datos[2];
-                double precio = Double.parseDouble(datos[3]);
-                int stock = Integer.parseInt(datos[4]);
-                String categoria = datos[5];
-                String rutaImagen = datos[6];
-
-                SwingUtilities.invokeLater(() -> {
-                    inventario.sincronizarProductoDesdeServidor(id, nombre, precio, stock, categoria, rutaImagen);
-                    actualizarVistaProductos();
-                });
-            } catch (NumberFormatException e) {
-                return;
-            }
+                inventario.sincronizarProductoDesdeServidor(datos[1], datos[2], Double.parseDouble(datos[3]), Integer.parseInt(datos[4]), datos[5], datos[6]);
+                SwingUtilities.invokeLater(() -> actualizarVistaProductos(""));
+            } catch (NumberFormatException e) { }
             return;
         }
 
@@ -297,105 +350,63 @@ public class VistaPrincipalTienda extends BaseFrame {
         if (mensaje.startsWith("PRODUCTO_ELIMINADO;")) {
             String[] datos = mensaje.split(";");
             if (datos.length != 2) return;
-
             SwingUtilities.invokeLater(() -> {
                 inventario.eliminarProductoDesdeServidor(datos[1]);
-                actualizarVistaProductos();
+                actualizarVistaProductos("");
             });
             return;
         }
 
-        // --- ACCIÓN: Stock Actualizado por reservas ---
+        // --- ACCIÓN: Stock Actualizado ---
         if (mensaje.startsWith("STOCK;")) {
             String[] datos = mensaje.split(";");
             if (datos.length != 3) return;
-
-            String idProducto = datos[1];
-            int nuevoStock;
-
             try {
-                nuevoStock = Integer.parseInt(datos[2]);
-            } catch (NumberFormatException e) {
-                return;
-            }
-
-            SwingUtilities.invokeLater(() -> {
-                Producto producto = inventario.buscarProductoPorId(idProducto);
-                if (producto == null) return;
-                producto.setStock(nuevoStock);
-                actualizarVistaProductos();
-            });
+                int nuevoStock = Integer.parseInt(datos[2]);
+                SwingUtilities.invokeLater(() -> {
+                    Producto producto = inventario.buscarProductoPorId(datos[1]);
+                    if (producto != null) producto.setStock(nuevoStock);
+                    actualizarVistaProductos("");
+                });
+            } catch (NumberFormatException e) { }
             return;
         }
 
-        // --- ACCIÓN: Notificación de Nueva Venta Confirmada ---
+        // --- ACCIÓN: Nueva Venta Confirmada ---
         if (mensaje.startsWith("VENTA_REALIZADA;")) {
             String[] datos = mensaje.split(";", 6);
             if (datos.length != 6) return;
 
-            String rut = datos[1].trim();
-            if (rut.isEmpty()) rut = "Sin RUT";
-
-            double subtotal, iva, total;
+            String rut = datos[1].trim().isEmpty() ? "Sin RUT" : datos[1].trim();
             try {
-                subtotal = Double.parseDouble(datos[2]);
-                iva = Double.parseDouble(datos[3]);
-                total = Double.parseDouble(datos[4]);
-            } catch (NumberFormatException e) {
-                return;
-            }
+                double subtotal = Double.parseDouble(datos[2]);
+                double iva = Double.parseDouble(datos[3]);
+                double total = Double.parseDouble(datos[4]);
 
-            java.util.List<String> articulos = new java.util.ArrayList<>();
-            if (!datos[5].trim().isEmpty()) {
-                String[] lista = datos[5].split("\\|");
-                for (String articulo : lista) articulos.add(articulo);
-            }
+                java.util.List<String> articulos = new java.util.ArrayList<>();
+                if (!datos[5].trim().isEmpty()) {
+                    for (String articulo : datos[5].split("\\|")) articulos.add(articulo);
+                }
 
-            String rutFinal = rut;
-            double subtotalFinal = subtotal, ivaFinal = iva, totalFinal = total;
-
-            SwingUtilities.invokeLater(() -> {
-                Backend.Compra compra = new Backend.Compra(rutFinal, articulos, totalFinal);
-                inventario.agregarCompraEnMemoria(compra);
-
-                JOptionPane.showMessageDialog(this,
-                        "Nueva venta realizada\n\n"
-                                + "RUT: " + rutFinal
-                                + "\n\nProductos:\n" + String.join("\n", articulos)
-                                + "\n\nSubtotal: " + formatearPesos(subtotalFinal)
-                                + "\nIVA (19%): " + formatearPesos(ivaFinal)
-                                + "\nTotal: " + formatearPesos(totalFinal),
-                        "Venta realizada", JOptionPane.INFORMATION_MESSAGE);
-            });
+                SwingUtilities.invokeLater(() -> {
+                    Backend.Compra compra = new Backend.Compra(rut, articulos, total);
+                    inventario.agregarCompraEnMemoria(compra);
+                });
+            } catch (NumberFormatException e) { }
         }
     }
 
     // =========================================================
-    // LÓGICA DE DIBUJO DE PRODUCTOS Y VISTAS
+    // LÓGICA DE DIBUJO DE VISTAS (PRODUCTOS Y CARRITOS)
     // =========================================================
-
-    // --- MÉTODO: Abre la ventana del monitor de carritos en vivo ---
-    private void abrirMonitorCarritos() {
-        if (monitorCarritos == null) {
-            monitorCarritos = new DialogoCarritosActivos(this, inventario, conexionServidor);
-        }
-        monitorCarritos.mostrar();
-    }
-
-    private void actualizarVistaProductos() {
-        actualizarVistaProductos("");
-    }
 
     private void actualizarVistaProductos(String textoBusqueda) {
-        if (gridProductos == null) return; // Validación anticrash
+        if (gridProductos == null) return;
         gridProductos.removeAll();
 
         String busqueda = textoBusqueda.toLowerCase();
         for (Producto p : inventario.getProductos()) {
-            boolean coincideNombre = p.getNombre().toLowerCase().contains(busqueda);
-            boolean coincideId = p.getId().toLowerCase().contains(busqueda);
-
-            if (textoBusqueda.isEmpty() || coincideNombre || coincideId) {
+            if (textoBusqueda.isEmpty() || p.getNombre().toLowerCase().contains(busqueda) || p.getId().toLowerCase().contains(busqueda)) {
                 gridProductos.add(crearTarjetaProducto(p));
             }
         }
@@ -421,15 +432,101 @@ public class VistaPrincipalTienda extends BaseFrame {
             else if (minimo >= 0) pasaPrecio = (p.getPrecio() >= minimo);
             else if (maximo >= 0) pasaPrecio = (p.getPrecio() <= maximo);
 
-            if (pasaCategoria && pasaPrecio) {
-                gridProductos.add(crearTarjetaProducto(p));
-            }
+            if (pasaCategoria && pasaPrecio) gridProductos.add(crearTarjetaProducto(p));
         }
         gridProductos.revalidate();
         gridProductos.repaint();
     }
 
-    // --- MÉTODO: Diseña la tarjeta individual de producto ---
+    private void dibujarCarritosEnPanel(String datosServidor) {
+        if (panelCarritosGrid == null) return;
+        panelCarritosGrid.removeAll();
+
+        if (datosServidor.equals("VACIO")) {
+            JLabel vacio = new JLabel("<html><center><b>No hay carritos activos en este momento</b><br><br>Los clientes no tienen productos reservados.</center></html>");
+            vacio.setFont(new Font("SansSerif", Font.PLAIN, 15));
+            vacio.setForeground(new Color(100, 110, 125));
+            vacio.setAlignmentX(Component.CENTER_ALIGNMENT);
+            panelCarritosGrid.add(Box.createRigidArea(new Dimension(0, 50)));
+            panelCarritosGrid.add(vacio);
+        } else {
+            String[] clientes = datosServidor.split("\\|");
+            for (String datosCliente : clientes) {
+                String[] partes = datosCliente.split(":");
+                if (partes.length == 2) {
+                    panelCarritosGrid.add(crearTarjetaCarrito(partes[0], partes[1]));
+                    panelCarritosGrid.add(Box.createRigidArea(new Dimension(0, 15)));
+                }
+            }
+        }
+        panelCarritosGrid.revalidate();
+        panelCarritosGrid.repaint();
+    }
+
+    // =========================================================
+    // CREACIÓN DE COMPONENTES VISUALES (TARJETAS Y PESTAÑAS)
+    // =========================================================
+
+    // --- ESTILIZADOR DE PESTAÑAS MATERIAL DESIGN ---
+    private JButton crearBotonPestana(String texto, boolean activo) {
+        JButton btn = new JButton(texto);
+        btn.setFont(new Font("SansSerif", Font.BOLD, 15));
+        btn.setFocusPainted(false);
+        btn.setContentAreaFilled(false);
+        btn.setOpaque(true);
+        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+        if (activo) {
+            btn.setForeground(new Color(30, 105, 210)); // Azul Primario
+            btn.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createMatteBorder(0, 0, 4, 0, new Color(30, 105, 210)), // Línea inferior activa
+                    new EmptyBorder(15, 25, 15, 25)
+            ));
+            btn.setBackground(new Color(245, 248, 255));
+        } else {
+            btn.setForeground(new Color(130, 140, 150)); // Gris
+            btn.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createMatteBorder(0, 0, 4, 0, Color.WHITE), // Invisible
+                    new EmptyBorder(15, 25, 15, 25)
+            ));
+            btn.setBackground(Color.WHITE);
+        }
+
+        // Efecto Hover suave para las pestañas inactivas
+        btn.addMouseListener(new MouseAdapter() {
+            public void mouseEntered(MouseEvent e) {
+                if (btn.getForeground().equals(new Color(130, 140, 150))) {
+                    btn.setForeground(new Color(80, 90, 100));
+                    btn.setBackground(new Color(250, 250, 250));
+                }
+            }
+            public void mouseExited(MouseEvent e) {
+                if (btn.getForeground().equals(new Color(80, 90, 100))) {
+                    btn.setForeground(new Color(130, 140, 150));
+                    btn.setBackground(Color.WHITE);
+                }
+            }
+        });
+
+        return btn;
+    }
+
+    private void activarPestana(JButton activa, JButton inactiva) {
+        activa.setForeground(new Color(30, 105, 210));
+        activa.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 4, 0, new Color(30, 105, 210)),
+                new EmptyBorder(15, 25, 15, 25)
+        ));
+        activa.setBackground(new Color(245, 248, 255));
+
+        inactiva.setForeground(new Color(130, 140, 150));
+        inactiva.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 4, 0, Color.WHITE),
+                new EmptyBorder(15, 25, 15, 25)
+        ));
+        inactiva.setBackground(Color.WHITE);
+    }
+
     private JPanel crearTarjetaProducto(Producto producto) {
         PanelRedondeado tarjeta = new PanelRedondeado(20);
         tarjeta.setBackground(Color.WHITE);
@@ -437,7 +534,6 @@ public class VistaPrincipalTienda extends BaseFrame {
         tarjeta.setBorder(new EmptyBorder(15, 15, 15, 15));
         tarjeta.setPreferredSize(new Dimension(200, 240));
 
-        // --- EVENTO: Al hacer clic en el producto (Modificar) ---
         tarjeta.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseEntered(MouseEvent e) {
@@ -445,9 +541,7 @@ public class VistaPrincipalTienda extends BaseFrame {
                 tarjeta.setCursor(new Cursor(Cursor.HAND_CURSOR));
             }
             @Override
-            public void mouseExited(MouseEvent e) {
-                tarjeta.setBackground(Color.WHITE);
-            }
+            public void mouseExited(MouseEvent e) { tarjeta.setBackground(Color.WHITE); }
             @Override
             public void mouseClicked(MouseEvent e) {
                 DialogoModificarProducto dialogo = new DialogoModificarProducto(VistaPrincipalTienda.this, producto, inventario);
@@ -456,21 +550,21 @@ public class VistaPrincipalTienda extends BaseFrame {
                 if (dialogo.isProductoBorrado()) {
                     String idProducto = producto.getId();
                     inventario.eliminarProductoPorId(idProducto);
-
                     if (conexionServidor.estaConectado()) conexionServidor.eliminarProductoAdmin(idProducto);
-                    actualizarVistaProductos();
+                    actualizarVistaProductos("");
+                    registrarAccionAdmin("Eliminó el producto: " + idProducto);
                     JOptionPane.showMessageDialog(VistaPrincipalTienda.this, "Producto eliminado con éxito.", "Eliminado", JOptionPane.INFORMATION_MESSAGE);
                 }
                 else if (dialogo.isGuardadoExitoso()) {
                     inventario.guardarEnCSV();
                     if (conexionServidor.estaConectado()) conexionServidor.enviarProductoAdmin(producto);
-                    actualizarVistaProductos();
-                    JOptionPane.showMessageDialog(VistaPrincipalTienda.this, "Producto modificado con éxito.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
+                    actualizarVistaProductos("");
+                    registrarAccionAdmin("Modificó el producto: " + producto.getNombre());
                 }
             }
         });
 
-        // --- IMAGEN ---
+        // --- IMAGEN Y TEXTOS ---
         JLabel lblImagen = new JLabel();
         lblImagen.setHorizontalAlignment(SwingConstants.CENTER);
         lblImagen.setOpaque(true);
@@ -484,7 +578,6 @@ public class VistaPrincipalTienda extends BaseFrame {
         }
         tarjeta.add(lblImagen, BorderLayout.CENTER);
 
-        // --- TEXTOS ---
         JPanel panelTextos = new JPanel();
         panelTextos.setLayout(new BoxLayout(panelTextos, BoxLayout.Y_AXIS));
         panelTextos.setOpaque(false);
@@ -494,16 +587,13 @@ public class VistaPrincipalTienda extends BaseFrame {
         JLabel lblCategoriaId = new JLabel(categoria + "  •  #" + producto.getId());
         lblCategoriaId.setFont(new Font("SansSerif", Font.BOLD, 10));
         lblCategoriaId.setForeground(new Color(150, 150, 150));
-        lblCategoriaId.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         JLabel lblNombre = new JLabel(producto.getNombre());
         lblNombre.setFont(new Font("SansSerif", Font.BOLD, 16));
         lblNombre.setForeground(new Color(40, 40, 40));
-        lblNombre.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         JPanel panelPrecioStock = new JPanel(new BorderLayout());
         panelPrecioStock.setOpaque(false);
-        panelPrecioStock.setAlignmentX(Component.LEFT_ALIGNMENT);
         panelPrecioStock.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
 
         JLabel lblPrecio = new JLabel(formatearPesos(producto.getPrecio()));
@@ -514,14 +604,11 @@ public class VistaPrincipalTienda extends BaseFrame {
         lblStock.setFont(new Font("SansSerif", Font.BOLD, 12));
         int stock = producto.getStock();
         if (stock == 0) {
-            lblStock.setText("¡Agotado!");
-            lblStock.setForeground(new Color(220, 53, 69));
+            lblStock.setText("¡Agotado!"); lblStock.setForeground(new Color(220, 53, 69));
         } else if (stock <= 5) {
-            lblStock.setText("Quedan: " + stock);
-            lblStock.setForeground(new Color(255, 140, 0));
+            lblStock.setText("Quedan: " + stock); lblStock.setForeground(new Color(255, 140, 0));
         } else {
-            lblStock.setText("Stock: " + stock);
-            lblStock.setForeground(new Color(120, 120, 120));
+            lblStock.setText("Stock: " + stock); lblStock.setForeground(new Color(120, 120, 120));
         }
 
         panelPrecioStock.add(lblPrecio, BorderLayout.WEST);
@@ -537,9 +624,87 @@ public class VistaPrincipalTienda extends BaseFrame {
         return tarjeta;
     }
 
+    private JPanel crearTarjetaCarrito(String nombreCliente, String productosStr) {
+        PanelRedondeado tarjeta = new PanelRedondeado(15);
+        tarjeta.setBackground(Color.WHITE);
+        tarjeta.setLayout(new BorderLayout());
+        tarjeta.setBorder(new EmptyBorder(15, 20, 15, 20));
+        tarjeta.setMaximumSize(new Dimension(Integer.MAX_VALUE, 200));
+
+        JLabel lblCliente = new JLabel("👤 " + nombreCliente);
+        lblCliente.setFont(new Font("SansSerif", Font.BOLD, 16));
+        lblCliente.setForeground(new Color(19, 40, 72));
+        lblCliente.setBorder(new EmptyBorder(0, 0, 10, 0));
+        tarjeta.add(lblCliente, BorderLayout.NORTH);
+
+        JPanel panelLista = new JPanel();
+        panelLista.setLayout(new BoxLayout(panelLista, BoxLayout.Y_AXIS));
+        panelLista.setOpaque(false);
+
+        String[] items = productosStr.split("-");
+        double totalCarrito = 0;
+
+        for (String item : items) {
+            String[] info = item.split(",");
+            if (info.length == 2) {
+                Producto p = inventario.buscarProductoPorId(info[0]);
+                int cantidad = Integer.parseInt(info[1]);
+                String nombreProd = (p != null) ? p.getNombre() : "Producto Eliminado";
+                totalCarrito += (p != null) ? p.getPrecio() * cantidad : 0;
+
+                JLabel lblItem = new JLabel(" • " + cantidad + "x " + nombreProd);
+                lblItem.setFont(new Font("SansSerif", Font.PLAIN, 14));
+                lblItem.setForeground(new Color(60, 70, 80));
+                panelLista.add(lblItem);
+            }
+        }
+        tarjeta.add(panelLista, BorderLayout.CENTER);
+
+        // --- BOTÓN: Anular Carrito (Lógica conectada al servidor) ---
+        JPanel panelSur = new JPanel(new BorderLayout());
+        panelSur.setOpaque(false);
+        panelSur.setBorder(new EmptyBorder(10, 0, 0, 0));
+
+        JLabel lblTotal = new JLabel("Total apartado: " + formatearPesos(totalCarrito));
+        lblTotal.setFont(new Font("SansSerif", Font.BOLD, 14));
+        lblTotal.setForeground(new Color(46, 139, 87));
+        panelSur.add(lblTotal, BorderLayout.WEST);
+
+        JButton btnAnular = new JButton("❌ Anular");
+        btnAnular.setFont(new Font("SansSerif", Font.BOLD, 12));
+        btnAnular.setBackground(new Color(231, 76, 60));
+        btnAnular.setForeground(Color.WHITE);
+        btnAnular.setFocusPainted(false);
+        btnAnular.setBorderPainted(false);
+        btnAnular.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+        btnAnular.addActionListener(e -> {
+            int confirm = JOptionPane.showConfirmDialog(this, "¿Forzar el vaciado del carrito de " + nombreCliente + "?", "Anular Carrito", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+            if (confirm == JOptionPane.YES_OPTION) {
+                if (conexionServidor.estaConectado()) conexionServidor.enviarMensaje("ADMIN_VACIAR_CARRITO;" + nombreCliente);
+                registrarAccionAdmin("Vació el carrito de " + nombreCliente);
+            }
+        });
+        panelSur.add(btnAnular, BorderLayout.EAST);
+        tarjeta.add(panelSur, BorderLayout.SOUTH);
+
+        return tarjeta;
+    }
+
     // =========================================================
-    // DIÁLOGOS (Estadísticas y Filtros)
+    // UTILIDADES GRÁFICAS, BITÁCORA Y DIÁLOGOS
     // =========================================================
+
+    private void registrarAccionAdmin(String accion) {
+        try {
+            java.io.FileWriter escritor = new java.io.FileWriter("historial_admin.txt", true);
+            String fecha = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
+            String nombreAdmin = sistema.getUsuarioActual() != null ? sistema.getUsuarioActual().getNombre() : "Admin";
+            escritor.write("[" + fecha + "] " + nombreAdmin + " -> " + accion + "\n");
+            escritor.close();
+        } catch (Exception e) { }
+    }
+
     private void mostrarDialogoEstadisticas() {
         JDialog dialog = new JDialog(this, "Estadísticas del Inventario", true);
         dialog.setSize(800, 800);
@@ -552,37 +717,9 @@ public class VistaPrincipalTienda extends BaseFrame {
         panelCabecera.setBorder(new EmptyBorder(15, 0, 15, 0));
         JLabel lblTitulo = new JLabel("📊 Estadísticas del Inventario");
         lblTitulo.setFont(new Font("SansSerif", Font.BOLD, 20));
-        lblTitulo.setForeground(new Color(40, 40, 40));
         panelCabecera.add(lblTitulo);
         dialog.add(panelCabecera, BorderLayout.NORTH);
 
-        JPanel panelContenido = crearPanelEstadisticas();
-        JScrollPane scroll = new JScrollPane(panelContenido);
-        scroll.setBorder(BorderFactory.createEmptyBorder());
-        scroll.setOpaque(false);
-        scroll.getViewport().setOpaque(false);
-        configurarBarraScroll(scroll);
-        dialog.add(scroll, BorderLayout.CENTER);
-
-        JPanel panelBotones = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
-        panelBotones.setOpaque(false);
-        panelBotones.setBorder(new EmptyBorder(10, 30, 20, 30));
-        JButton btnCerrar = new JButton("Cerrar");
-        btnCerrar.setFont(new Font("SansSerif", Font.BOLD, 14));
-        btnCerrar.setForeground(Color.WHITE);
-        btnCerrar.setBackground(new Color(149, 165, 166));
-        btnCerrar.setFocusPainted(false);
-        btnCerrar.setBorderPainted(false);
-        btnCerrar.setPreferredSize(new Dimension(110, 40));
-        btnCerrar.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btnCerrar.addActionListener(e -> dialog.dispose());
-        panelBotones.add(btnCerrar);
-        dialog.add(panelBotones, BorderLayout.SOUTH);
-
-        dialog.setVisible(true);
-    }
-
-    private JPanel crearPanelEstadisticas() {
         JPanel panelEstadisticas = new JPanel();
         panelEstadisticas.setLayout(new BoxLayout(panelEstadisticas, BoxLayout.Y_AXIS));
         panelEstadisticas.setOpaque(false);
@@ -593,16 +730,12 @@ public class VistaPrincipalTienda extends BaseFrame {
         panelTotal.setBackground(Color.WHITE);
         panelTotal.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(new Color(200, 200, 200)), new EmptyBorder(15, 20, 15, 20)));
         panelTotal.setMaximumSize(new Dimension(Integer.MAX_VALUE, 60));
-        panelTotal.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         JLabel lblTotalTexto = new JLabel("Valor total del inventario:");
         lblTotalTexto.setFont(new Font("SansSerif", Font.BOLD, 14));
-        lblTotalTexto.setForeground(new Color(80, 80, 80));
-
         JLabel lblTotalValor = new JLabel(formatearPesos(valorTotal));
         lblTotalValor.setFont(new Font("SansSerif", Font.BOLD, 16));
         lblTotalValor.setForeground(new Color(110, 216, 255));
-
         panelTotal.add(lblTotalTexto, BorderLayout.WEST);
         panelTotal.add(lblTotalValor, BorderLayout.EAST);
         panelEstadisticas.add(panelTotal);
@@ -610,26 +743,8 @@ public class VistaPrincipalTienda extends BaseFrame {
 
         Set<String> categorias = new LinkedHashSet<>();
         for (Producto producto : inventario.getProductos()) {
-            if (producto.getCategoria() != null && !producto.getCategoria().trim().isEmpty()) {
-                categorias.add(producto.getCategoria());
-            }
+            if (producto.getCategoria() != null && !producto.getCategoria().trim().isEmpty()) categorias.add(producto.getCategoria());
         }
-
-        if (categorias.isEmpty()) {
-            JLabel lblSinDatos = new JLabel("No hay categorías registradas aún.");
-            lblSinDatos.setFont(new Font("SansSerif", Font.BOLD, 14));
-            lblSinDatos.setForeground(new Color(120, 120, 120));
-            lblSinDatos.setAlignmentX(Component.CENTER_ALIGNMENT);
-            panelEstadisticas.add(lblSinDatos);
-            return panelEstadisticas;
-        }
-
-        JLabel lblTituloCat = new JLabel("Cálculos por Categoría");
-        lblTituloCat.setFont(new Font("SansSerif", Font.BOLD, 16));
-        lblTituloCat.setForeground(new Color(40, 40, 40));
-        lblTituloCat.setAlignmentX(Component.CENTER_ALIGNMENT);
-        panelEstadisticas.add(lblTituloCat);
-        panelEstadisticas.add(Box.createRigidArea(new Dimension(0, 15)));
 
         for (String categoria : categorias) {
             double promedio = inventario.calcularPrecioPromedioPorCategoria(categoria);
@@ -639,19 +754,12 @@ public class VistaPrincipalTienda extends BaseFrame {
             panelCategoria.setBackground(Color.WHITE);
             panelCategoria.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(new Color(200, 200, 200)), new EmptyBorder(15, 20, 15, 20)));
             panelCategoria.setMaximumSize(new Dimension(Integer.MAX_VALUE, 110));
-            panelCategoria.setAlignmentX(Component.CENTER_ALIGNMENT);
 
             JLabel lblCategoria = new JLabel("📁 " + categoria);
             lblCategoria.setFont(new Font("SansSerif", Font.BOLD, 15));
-            lblCategoria.setForeground(new Color(40, 40, 40));
-
             JLabel lblPromedio = new JLabel("Precio promedio: " + formatearPesos(promedio));
-            lblPromedio.setFont(new Font("SansSerif", Font.PLAIN, 14));
-            lblPromedio.setForeground(new Color(80, 80, 80));
-
             String menorStockTexto = (productoMenorStock == null) ? "Menor stock: sin productos" : "Menor stock: " + productoMenorStock.getNombre() + " (" + productoMenorStock.getStock() + " unids)";
             JLabel lblMenorStock = new JLabel(menorStockTexto);
-            lblMenorStock.setFont(new Font("SansSerif", Font.PLAIN, 14));
             lblMenorStock.setForeground(new Color(231, 76, 60));
 
             panelCategoria.add(lblCategoria);
@@ -660,11 +768,27 @@ public class VistaPrincipalTienda extends BaseFrame {
             panelEstadisticas.add(panelCategoria);
             panelEstadisticas.add(Box.createRigidArea(new Dimension(0, 12)));
         }
-        return panelEstadisticas;
-    }
 
-    private void mostrarHistorialCompras() {
-        new DialogoHistorialCompras(this, inventario).mostrar();
+        JScrollPane scroll = new JScrollPane(panelEstadisticas);
+        scroll.setBorder(BorderFactory.createEmptyBorder());
+        scroll.setOpaque(false);
+        scroll.getViewport().setOpaque(false);
+        configurarBarraScroll(scroll);
+        dialog.add(scroll, BorderLayout.CENTER);
+
+        JPanel panelBotones = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        panelBotones.setOpaque(false);
+        JButton btnCerrar = new JButton("Cerrar");
+        btnCerrar.setFont(new Font("SansSerif", Font.BOLD, 14));
+        btnCerrar.setBackground(new Color(149, 165, 166));
+        btnCerrar.setForeground(Color.WHITE);
+        btnCerrar.setFocusPainted(false);
+        btnCerrar.setBorderPainted(false);
+        btnCerrar.addActionListener(e -> dialog.dispose());
+        panelBotones.add(btnCerrar);
+        dialog.add(panelBotones, BorderLayout.SOUTH);
+
+        dialog.setVisible(true);
     }
 
     private void mostrarDialogoFiltros() {
@@ -673,7 +797,6 @@ public class VistaPrincipalTienda extends BaseFrame {
 
         String[] categoriasGuardadas = inventario.getCategoriasDisponibles();
         java.util.Arrays.sort(categoriasGuardadas);
-
         JPanel panelCategorias = new JPanel();
         panelCategorias.setLayout(new BoxLayout(panelCategorias, BoxLayout.Y_AXIS));
         panelCategorias.setBackground(Color.WHITE);
@@ -682,127 +805,33 @@ public class VistaPrincipalTienda extends BaseFrame {
         for (String cat : categoriasGuardadas) {
             JCheckBox checkBox = new JCheckBox(cat);
             checkBox.setBackground(Color.WHITE);
-            checkBox.setFocusPainted(false);
-            checkBox.setCursor(new Cursor(Cursor.HAND_CURSOR));
             listaCheckboxes.add(checkBox);
             panelCategorias.add(checkBox);
         }
 
         JScrollPane scrollCategorias = new JScrollPane(panelCategorias);
         scrollCategorias.setPreferredSize(new Dimension(250, 120));
-        scrollCategorias.setBorder(BorderFactory.createLineBorder(new Color(200, 200, 200)));
         configurarBarraScroll(scrollCategorias);
 
-        Object[] mensaje = {
-                "Selecciona las categorías:", scrollCategorias,
-                " ",
-                "Precio mínimo (opcional):", txtMinimo,
-                "Precio máximo (opcional):", txtMaximo
-        };
+        Object[] mensaje = { "Selecciona las categorías:", scrollCategorias, " ", "Precio mínimo:", txtMinimo, "Precio máximo:", txtMaximo };
 
         JOptionPane panelDialogo = new JOptionPane(mensaje, JOptionPane.PLAIN_MESSAGE, JOptionPane.OK_CANCEL_OPTION);
         JDialog dialogo = panelDialogo.createDialog(this, "Opciones de Filtro");
-        aplanarBotones(panelDialogo);
         dialogo.setVisible(true);
 
         Object valorOpcion = panelDialogo.getValue();
-        int opcion = valorOpcion instanceof Integer ? (Integer) valorOpcion : JOptionPane.CLOSED_OPTION;
-
-        if (opcion == JOptionPane.OK_OPTION) {
+        if (valorOpcion instanceof Integer && (Integer) valorOpcion == JOptionPane.OK_OPTION) {
             java.util.List<String> categoriasSeleccionadas = new java.util.ArrayList<>();
-            for (JCheckBox cb : listaCheckboxes) {
-                if (cb.isSelected()) categoriasSeleccionadas.add(cb.getText());
-            }
+            for (JCheckBox cb : listaCheckboxes) if (cb.isSelected()) categoriasSeleccionadas.add(cb.getText());
 
-            String minTxt = txtMinimo.getText().trim();
-            String maxTxt = txtMaximo.getText().trim();
             double minimo = -1, maximo = -1;
-
             try {
-                if (!minTxt.isEmpty()) minimo = Double.parseDouble(minTxt);
-                if (!maxTxt.isEmpty()) maximo = Double.parseDouble(maxTxt);
-
-                if ((minimo >= 0 && maximo >= 0) && (minimo > maximo)) {
-                    JOptionPane.showMessageDialog(this, "El precio mínimo no puede ser mayor que el máximo.", "Rango inválido", JOptionPane.ERROR_MESSAGE);
-                    return;
-                }
-            } catch (NumberFormatException ex) {
-                JOptionPane.showMessageDialog(this, "Ingrese valores numéricos válidos en los precios.", "Error", JOptionPane.ERROR_MESSAGE);
-                return;
-            }
+                if (!txtMinimo.getText().trim().isEmpty()) minimo = Double.parseDouble(txtMinimo.getText().trim());
+                if (!txtMaximo.getText().trim().isEmpty()) maximo = Double.parseDouble(txtMaximo.getText().trim());
+            } catch (NumberFormatException ex) { return; }
 
             actualizarVistaConFiltros(categoriasSeleccionadas, minimo, maximo);
         }
-    }
-
-    // =========================================================
-    // UTILIDADES GRÁFICAS Y TEXTO
-    // =========================================================
-    private String formatearPesos(double valor) {
-        return "$" + String.format("%,.0f", valor).replace(",", ".");
-    }
-
-    private void configurarBarraScroll(JScrollPane scroll) {
-        configurarBarraScroll(scroll.getVerticalScrollBar(), new Dimension(8, 0));
-        configurarBarraScroll(scroll.getHorizontalScrollBar(), new Dimension(0, 8));
-    }
-
-    private void configurarBarraScroll(JScrollBar barra, Dimension dimension) {
-        barra.setUI(new BasicScrollBarUI() {
-            @Override
-            protected void configureScrollBarColors() {
-                thumbColor = new Color(190, 198, 205);
-                trackColor = new Color(245, 247, 250);
-            }
-            @Override
-            protected JButton createDecreaseButton(int orientation) { return crearBotonBarraScroll(); }
-            @Override
-            protected JButton createIncreaseButton(int orientation) { return crearBotonBarraScroll(); }
-            private JButton crearBotonBarraScroll() {
-                JButton boton = new JButton();
-                boton.setPreferredSize(new Dimension(0, 0));
-                boton.setMinimumSize(new Dimension(0, 0));
-                boton.setMaximumSize(new Dimension(0, 0));
-                return boton;
-            }
-        });
-        barra.setPreferredSize(dimension);
-        barra.setOpaque(false);
-    }
-
-    private void aplanarBotones(Container contenedor) {
-        for (Component componente : contenedor.getComponents()) {
-            if (componente instanceof JButton) {
-                JButton boton = (JButton) componente;
-                boton.setFont(new Font("SansSerif", Font.PLAIN, 13));
-                boton.setForeground(new Color(60, 70, 80));
-                boton.setBackground(Color.WHITE);
-                boton.setBorder(BorderFactory.createLineBorder(new Color(205, 211, 217)));
-                boton.setFocusPainted(false);
-                boton.setContentAreaFilled(true);
-                boton.setOpaque(true);
-                boton.setCursor(new Cursor(Cursor.HAND_CURSOR));
-                boton.addMouseListener(new MouseAdapter() {
-                    @Override
-                    public void mouseEntered(MouseEvent e) { boton.setBackground(new Color(238, 248, 252)); }
-                    @Override
-                    public void mouseExited(MouseEvent e) { boton.setBackground(Color.WHITE); }
-                });
-            } else if (componente instanceof Container) {
-                aplanarBotones((Container) componente);
-            }
-        }
-    }
-
-    private ImageIcon crearIconoImagen(String rutaImagen) {
-        java.io.File archivo = ImagenesUtil.resolverRutaImagen(rutaImagen);
-        if (archivo == null) return null;
-
-        ImageIcon imagenOriginal = new ImageIcon(archivo.getAbsolutePath());
-        if (imagenOriginal.getIconWidth() <= 0 || imagenOriginal.getIconHeight() <= 0) return null;
-
-        Image imagenRedimensionada = imagenOriginal.getImage().getScaledInstance(170, 130, Image.SCALE_SMOOTH);
-        return new ImageIcon(imagenRedimensionada);
     }
 
     private JButton crearBotonMenu(String texto, ActionListener accion) {
@@ -815,31 +844,37 @@ public class VistaPrincipalTienda extends BaseFrame {
         btn.setContentAreaFilled(false);
         btn.setOpaque(true);
         btn.setAlignmentX(Component.CENTER_ALIGNMENT);
-
         if (accion != null) btn.addActionListener(accion);
-
         btn.addMouseListener(new MouseAdapter() {
-            public void mouseEntered(MouseEvent e) {
-                btn.setBackground(new Color(45, 77, 124));
-                btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-            }
-            public void mouseExited(MouseEvent e) {
-                btn.setBackground(new Color(19, 40, 72));
-            }
+            public void mouseEntered(MouseEvent e) { btn.setBackground(new Color(45, 77, 124)); btn.setCursor(new Cursor(Cursor.HAND_CURSOR)); }
+            public void mouseExited(MouseEvent e) { btn.setBackground(new Color(19, 40, 72)); }
         });
         return btn;
     }
 
+    private String formatearPesos(double valor) {
+        return "$" + String.format("%,.0f", valor).replace(",", ".");
+    }
+
+    private void configurarBarraScroll(JScrollPane scroll) {
+        scroll.getVerticalScrollBar().setPreferredSize(new Dimension(8, 0));
+        scroll.getVerticalScrollBar().setUI(new BasicScrollBarUI() {
+            @Override protected void configureScrollBarColors() { thumbColor = new Color(190, 198, 205); trackColor = new Color(245, 247, 250); }
+            @Override protected JButton createDecreaseButton(int o) { JButton b = new JButton(); b.setPreferredSize(new Dimension(0,0)); return b; }
+            @Override protected JButton createIncreaseButton(int o) { JButton b = new JButton(); b.setPreferredSize(new Dimension(0,0)); return b; }
+        });
+    }
+
+    private ImageIcon crearIconoImagen(String rutaImagen) {
+        java.io.File archivo = ImagenesUtil.resolverRutaImagen(rutaImagen);
+        if (archivo == null) return null;
+        ImageIcon img = new ImageIcon(archivo.getAbsolutePath());
+        return (img.getIconWidth() <= 0) ? null : new ImageIcon(img.getImage().getScaledInstance(170, 130, Image.SCALE_SMOOTH));
+    }
+
     private ImageIcon cargarLogo() {
         String[] rutas = {"imagenes/logo sin fondo.png", "imagenes/Logo NEXOMARKET.jpeg", "imagenes/Logo NEXOMARKET.jpg", "imagenes/Logo NEXOMARKET.png"};
-        for (String ruta : rutas) {
-            java.io.File archivo = new java.io.File(ruta);
-            if (archivo.isFile()) {
-                ImageIcon original = new ImageIcon(ruta);
-                Image escalada = original.getImage().getScaledInstance(180, 75, Image.SCALE_SMOOTH);
-                return new ImageIcon(escalada);
-            }
-        }
+        for (String r : rutas) if (new java.io.File(r).isFile()) return new ImageIcon(new ImageIcon(r).getImage().getScaledInstance(180, 75, Image.SCALE_SMOOTH));
         return null;
     }
 }

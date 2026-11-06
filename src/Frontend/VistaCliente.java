@@ -6,6 +6,7 @@ import Backend.Sistema;
 import Backend.Usuario;
 import Backend.Carrito;
 import Backend.ConexionServidor;
+import Backend.GeminiAPIClient;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -90,6 +91,7 @@ public class VistaCliente extends BaseFrame {
         contenido.add(crearCarrito(), BorderLayout.EAST);
 
         add(contenido, BorderLayout.CENTER);
+        add(crearAccesoChat(), BorderLayout.SOUTH);
 
         // --- EVENTO: Actualización en vivo del buscador ---
         txtBuscar.addKeyListener(new KeyAdapter() {
@@ -101,6 +103,157 @@ public class VistaCliente extends BaseFrame {
 
         actualizarProductos();
         setVisible(true);
+    }
+
+    private JPanel crearAccesoChat() {
+        JPanel contenedor = new JPanel(new FlowLayout(FlowLayout.LEFT, 18, 0));
+        contenedor.setOpaque(false);
+        contenedor.setBorder(new EmptyBorder(0, 18, 10, 0));
+
+        JButton botonChat = new JButton("\u2191");
+        botonChat.setFont(new Font("SansSerif", Font.BOLD, 22));
+        botonChat.setForeground(NAVY);
+        botonChat.setBackground(Color.WHITE);
+        botonChat.setBorder(BorderFactory.createLineBorder(new Color(180, 190, 205)));
+        botonChat.setFocusPainted(false);
+        botonChat.setToolTipText("Abrir chat con Gemini");
+        botonChat.setPreferredSize(new Dimension(44, 38));
+        botonChat.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        botonChat.addActionListener(e -> mostrarChatGemini());
+
+        contenedor.add(botonChat);
+        return contenedor;
+    }
+
+    private void mostrarChatGemini() {
+        JDialog dialogo = new JDialog(this, false);
+        dialogo.setUndecorated(true);
+        dialogo.setSize(390, 500);
+        dialogo.setLayout(new BorderLayout());
+        dialogo.getContentPane().setBackground(FONDO);
+
+        JPanel cabecera = new JPanel(new BorderLayout());
+        cabecera.setBackground(NAVY);
+        cabecera.setBorder(new EmptyBorder(10, 15, 10, 8));
+        Point[] posicionInicial = {null};
+        MouseAdapter arrastre = new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent evento) {
+                posicionInicial[0] = evento.getLocationOnScreen();
+            }
+
+            @Override
+            public void mouseDragged(MouseEvent evento) {
+                if (posicionInicial[0] == null) {
+                    return;
+                }
+                Point posicionActual = evento.getLocationOnScreen();
+                dialogo.setLocation(
+                        dialogo.getX() + posicionActual.x - posicionInicial[0].x,
+                        dialogo.getY() + posicionActual.y - posicionInicial[0].y
+                );
+                posicionInicial[0] = posicionActual;
+            }
+        };
+        cabecera.addMouseListener(arrastre);
+        cabecera.addMouseMotionListener(arrastre);
+
+        JLabel titulo = new JLabel("Asistente Gemini");
+        titulo.setFont(new Font("SansSerif", Font.BOLD, 16));
+        titulo.setForeground(Color.WHITE);
+        titulo.addMouseListener(arrastre);
+        titulo.addMouseMotionListener(arrastre);
+        cabecera.add(titulo, BorderLayout.WEST);
+
+        JButton cerrar = new JButton("X");
+        cerrar.setFont(new Font("SansSerif", Font.BOLD, 14));
+        cerrar.setText("X");
+        cerrar.setForeground(Color.WHITE);
+        cerrar.setBackground(new Color(215, 60, 70));
+        cerrar.setBorderPainted(false);
+        cerrar.setFocusPainted(false);
+        cerrar.setContentAreaFilled(true);
+        cerrar.setMargin(new Insets(0, 0, 0, 0));
+        cerrar.setPreferredSize(new Dimension(38, 30));
+        cerrar.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        cerrar.addActionListener(e -> dialogo.dispose());
+        cabecera.add(cerrar, BorderLayout.EAST);
+        dialogo.add(cabecera, BorderLayout.NORTH);
+
+        JTextArea mensajes = new JTextArea();
+        mensajes.setEditable(false);
+        mensajes.setLineWrap(true);
+        mensajes.setWrapStyleWord(true);
+        mensajes.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        mensajes.setForeground(NAVY);
+        mensajes.setBackground(Color.WHITE);
+        mensajes.setBorder(new EmptyBorder(12, 12, 12, 12));
+        JScrollPane scroll = new JScrollPane(mensajes);
+        scroll.setBorder(BorderFactory.createEmptyBorder(10, 10, 0, 10));
+        dialogo.add(scroll, BorderLayout.CENTER);
+
+        JTextField entrada = new JTextField();
+        entrada.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        entrada.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(180, 190, 205)),
+                new EmptyBorder(8, 10, 8, 10)
+        ));
+        JButton enviar = crearBoton("Enviar", AZUL);
+        enviar.setPreferredSize(new Dimension(85, 38));
+
+        JPanel panelEntrada = new JPanel(new BorderLayout(8, 0));
+        panelEntrada.setOpaque(false);
+        panelEntrada.setBorder(new EmptyBorder(10, 10, 10, 10));
+        panelEntrada.add(entrada, BorderLayout.CENTER);
+        panelEntrada.add(enviar, BorderLayout.EAST);
+        dialogo.add(panelEntrada, BorderLayout.SOUTH);
+
+        Runnable enviarMensaje = () -> {
+            String prompt = entrada.getText().trim();
+            if (prompt.isEmpty()) {
+                return;
+            }
+
+            entrada.setText("");
+            enviar.setEnabled(false);
+            mensajes.append("Tú: " + prompt + "\n");
+            mensajes.append("Gemini está escribiendo...\n\n");
+            mensajes.setCaretPosition(mensajes.getDocument().getLength());
+
+            new SwingWorker<String, Void>() {
+                @Override
+                protected String doInBackground() throws Exception {
+                    return GeminiAPIClient.callGeminiAPI(prompt);
+                }
+
+                @Override
+                protected void done() {
+                    try {
+                        String respuesta = get();
+                        mensajes.setText(mensajes.getText().replace(
+                                "Gemini está escribiendo...\n\n", ""));
+                        mensajes.append("Gemini: " + respuesta + "\n\n");
+                    } catch (Exception exception) {
+                        mensajes.append("Gemini: No se pudo obtener una respuesta. "
+                                + exception.getMessage() + "\n\n");
+                    } finally {
+                        enviar.setEnabled(true);
+                        entrada.requestFocusInWindow();
+                        mensajes.setCaretPosition(mensajes.getDocument().getLength());
+                    }
+                }
+            }.execute();
+        };
+
+        enviar.addActionListener(e -> enviarMensaje.run());
+        entrada.addActionListener(e -> enviarMensaje.run());
+
+        dialogo.setLocation(
+                getX() + 20,
+                getY() + getHeight() - dialogo.getHeight() - 55
+        );
+        dialogo.setVisible(true);
+        entrada.requestFocusInWindow();
     }
 
     // =========================================================

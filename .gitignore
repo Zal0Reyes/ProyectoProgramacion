@@ -25,6 +25,7 @@ bin/
 
 ### VS Code ###
 .vscode/
+gemini-api-key.txt
 
 ### Mac OS ###
 .DS_Store

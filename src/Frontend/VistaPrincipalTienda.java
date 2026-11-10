@@ -4,6 +4,7 @@ import Backend.Inventario;
 import Backend.Producto;
 import Backend.Sistema;
 import Backend.ConexionServidor;
+import Backend.GestorCupones;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -32,6 +33,7 @@ public class VistaPrincipalTienda extends BaseFrame {
 
     // --- PANELES INTERNOS ---
     private JPanel gridProductos;
+    private final GestorCupones gestorCupones;
     private JPanel panelCarritosGrid;
 
     // =========================================================
@@ -41,6 +43,8 @@ public class VistaPrincipalTienda extends BaseFrame {
         super("NexoMarket - Panel de Administración", inventario, sistema);
         conexionServidor = new ConexionServidor();
 
+        gestorCupones =
+                new GestorCupones();
         // --- CONEXIÓN: Configurar recepción de mensajes ---
         conexionServidor.setReceptorMensajes(this::procesarMensajeServidor);
         conexionServidor.conectar();
@@ -160,35 +164,131 @@ public class VistaPrincipalTienda extends BaseFrame {
         barraLateral.setLayout(new BoxLayout(barraLateral, BoxLayout.Y_AXIS));
         barraLateral.setBorder(new EmptyBorder(30, 0, 30, 0));
 
-        // --- BOTONES LATERALES ---
+        // --- BOTÓN AGREGAR PRODUCTO ---
         JButton btnAgregar = crearBotonMenu("➕", e -> {
-            DialogoAgregarProducto dialogo = new DialogoAgregarProducto(VistaPrincipalTienda.this, inventario);
+
+            DialogoAgregarProducto dialogo =
+                    new DialogoAgregarProducto(
+                            VistaPrincipalTienda.this,
+                            inventario
+                    );
+
             dialogo.mostrar();
+
             if (dialogo.isGuardadoExitoso()) {
-                Producto productoGuardado = dialogo.getProductoGuardado();
-                if (productoGuardado != null && conexionServidor.estaConectado()) {
-                    conexionServidor.enviarProductoAdmin(productoGuardado);
+
+                Producto productoGuardado =
+                        dialogo.getProductoGuardado();
+
+                if (productoGuardado != null
+                        && conexionServidor.estaConectado()) {
+
+                    conexionServidor.enviarProductoAdmin(
+                            productoGuardado
+                    );
                 }
+
                 actualizarVistaProductos("");
-                registrarAccionAdmin("Agregó producto: " + productoGuardado.getNombre());
-                JOptionPane.showMessageDialog(this, "Producto agregado exitosamente.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
+
+                registrarAccionAdmin(
+                        "Agregó producto: "
+                                + productoGuardado.getNombre()
+                );
+
+                JOptionPane.showMessageDialog(
+                        this,
+                        "Producto agregado exitosamente.",
+                        "Éxito",
+                        JOptionPane.INFORMATION_MESSAGE
+                );
             }
         });
-        btnAgregar.setToolTipText("Agregar Nuevo Producto");
+
+        btnAgregar.setToolTipText(
+                "Agregar Nuevo Producto"
+        );
+
         barraLateral.add(btnAgregar);
-        barraLateral.add(Box.createRigidArea(new Dimension(0, 30)));
 
-        JButton btnAgregarAdmin = crearBotonMenu("👨‍", e -> {
-            DialogoRegistroAdmin dialogoAdmin = new DialogoRegistroAdmin(VistaPrincipalTienda.this, sistema);
-            dialogoAdmin.mostrar();
-        });
-        btnAgregarAdmin.setToolTipText("Registrar Nuevo Administrador");
+
+// ESPACIO
+        barraLateral.add(
+                Box.createRigidArea(
+                        new Dimension(0, 30)
+                )
+        );
+
+
+// ==========================================
+// BOTÓN CREAR CUPÓN
+// ==========================================
+
+        JButton btnCupon =
+                crearBotonMenu(
+                        "🎟",
+                        e -> {
+
+                            DialogoCrearCupon dialogo =
+                                    new DialogoCrearCupon(
+                                            VistaPrincipalTienda.this,
+                                            gestorCupones
+                                    );
+
+                            dialogo.mostrar();
+                        }
+                );
+
+        btnCupon.setToolTipText(
+                "Crear cupón"
+        );
+
+        barraLateral.add(btnCupon);
+
+
+// ESPACIO
+        barraLateral.add(
+                Box.createRigidArea(
+                        new Dimension(0, 30)
+                )
+        );
+
+
+// --- BOTÓN AGREGAR ADMINISTRADOR ---
+        JButton btnAgregarAdmin =
+                crearBotonMenu(
+                        "👨‍",
+                        e -> {
+
+                            DialogoRegistroAdmin dialogoAdmin =
+                                    new DialogoRegistroAdmin(
+                                            VistaPrincipalTienda.this,
+                                            sistema
+                                    );
+
+                            dialogoAdmin.mostrar();
+                        }
+                );
+
+        btnAgregarAdmin.setToolTipText(
+                "Registrar Nuevo Administrador"
+        );
+
         barraLateral.add(btnAgregarAdmin);
-        barraLateral.add(Box.createRigidArea(new Dimension(0, 30)));
+        barraLateral.add(
+                Box.createRigidArea(
+                        new Dimension(0, 30)
+                )
+        );
 
-        JButton btnEstadisticas = crearBotonMenu("📊", e -> mostrarDialogoEstadisticas());
+        JButton btnEstadisticas =
+                crearBotonMenu(
+                        "📊",
+                        e -> mostrarDialogoEstadisticas()
+                );
+
         btnEstadisticas.setToolTipText("Estadísticas");
         barraLateral.add(btnEstadisticas);
+
         barraLateral.add(Box.createRigidArea(new Dimension(0, 30)));
 
         JButton btnHistorial = crearBotonMenu("\uD83D\uDCCB", e -> new DialogoHistorialCompras(this, inventario).mostrar());

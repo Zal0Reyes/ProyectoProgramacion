@@ -223,7 +223,11 @@ public class VistaCliente extends BaseFrame {
             new SwingWorker<String, Void>() {
                 @Override
                 protected String doInBackground() throws Exception {
-                    return GeminiAPIClient.callGeminiAPI(prompt);
+                    return GeminiAPIClient.callStoreAssistant(
+                            prompt,
+                            inventario.getProductos(),
+                            inventario.getCategoriasDisponibles()
+                    );
                 }
 
                 @Override

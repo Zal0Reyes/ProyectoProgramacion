@@ -7,10 +7,12 @@ public class Carrito {
 
     private final Map<Producto, Integer> productos;
     private final Inventario inventario;
+    private double costoEnvio;
 
     public Carrito(Inventario inventario) {
         this.inventario = inventario;
         this.productos = new LinkedHashMap<>();
+        this.costoEnvio = 0;
     }
 
     // Agrega una cantidad de un producto al carrito
@@ -166,12 +168,15 @@ public class Carrito {
         }
 
         productos.clear();
+        costoEnvio = 0;
     }
 
     // Se usa después de una compra realizada.
     // No devuelve stock porque los productos sí fueron comprados.
     public void limpiarDespuesDeCompra() {
+
         productos.clear();
+        costoEnvio = 0;
     }
 
     public Map<Producto, Integer> getProductos() {
@@ -209,12 +214,23 @@ public class Carrito {
 
         return subtotal;
     }
+    public double getCostoEnvio() {
+        return costoEnvio;
+    }
+
+    public void setCostoEnvio(double costoEnvio) {
+        if (costoEnvio < 0) {
+            this.costoEnvio = 0;
+        } else {
+            this.costoEnvio = costoEnvio;
+        }
+    }
 
     public double calcularIva() {
-        return calcularSubtotal() * 0.19;
+        return (calcularSubtotal() + costoEnvio) * 0.19;
     }
 
     public double calcularTotal() {
-        return calcularSubtotal() + calcularIva();
+        return calcularSubtotal() + costoEnvio + calcularIva();
     }
 }

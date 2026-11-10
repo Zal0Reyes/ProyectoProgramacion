@@ -2,6 +2,7 @@ package Backend;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 
 public class Cupon {
 
@@ -13,18 +14,30 @@ public class Cupon {
     private int usosRealizados;
 
 
-    public Cupon(String codigo,
-                 String tipoDescuento,
-                 double valorDescuento,
-                 String fechaLimite,
+    public Cupon(String codigo, String tipoDescuento,
+                 double valorDescuento, String fechaLimite,
                  int maximoUsos) {
 
-        this.codigo = codigo;
+        this.codigo = codigo.trim().toUpperCase();
         this.tipoDescuento = tipoDescuento;
         this.valorDescuento = valorDescuento;
         this.fechaLimite = fechaLimite;
         this.maximoUsos = maximoUsos;
         this.usosRealizados = 0;
+    }
+
+
+    // Se usa al cargar cupones desde el CSV
+    public Cupon(String codigo, String tipoDescuento,
+                 double valorDescuento, String fechaLimite,
+                 int maximoUsos, int usosRealizados) {
+
+        this.codigo = codigo.trim().toUpperCase();
+        this.tipoDescuento = tipoDescuento;
+        this.valorDescuento = valorDescuento;
+        this.fechaLimite = fechaLimite;
+        this.maximoUsos = maximoUsos;
+        this.usosRealizados = usosRealizados;
     }
 
 
@@ -60,16 +73,46 @@ public class Cupon {
 
     public boolean estaVigente() {
 
-        DateTimeFormatter formato =
-                DateTimeFormatter.ofPattern("dd-MM-yyyy");
+        try {
+            DateTimeFormatter formato =
+                    DateTimeFormatter.ofPattern("dd-MM-yyyy");
 
-        LocalDate fechaVencimiento =
-                LocalDate.parse(fechaLimite, formato);
+            LocalDate vencimiento =
+                    LocalDate.parse(fechaLimite, formato);
 
-        LocalDate fechaActual =
-                LocalDate.now();
+            return !LocalDate.now().isAfter(vencimiento);
 
-        return !fechaActual.isAfter(fechaVencimiento);
+        } catch (DateTimeParseException e) {
+            return false;
+        }
+    }
+
+
+    public double calcularDescuento(double subtotal) {
+
+        if (subtotal <= 0) {
+            return 0;
+        }
+
+        double descuento = 0;
+
+        if (tipoDescuento.equalsIgnoreCase("Porcentaje")) {
+
+            descuento =
+                    subtotal * valorDescuento / 100;
+
+        } else if (tipoDescuento.equalsIgnoreCase("Monto fijo")) {
+
+            descuento = valorDescuento;
+        }
+
+
+        // Nunca descontar más que el subtotal
+        if (descuento > subtotal) {
+            descuento = subtotal;
+        }
+
+        return descuento;
     }
 
 

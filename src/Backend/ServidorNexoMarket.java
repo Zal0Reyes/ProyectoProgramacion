@@ -109,6 +109,9 @@ public class ServidorNexoMarket {
                 else if (mensaje.equals("PEDIR_CARRITOS")) {
                     enviarCarritosActivos(salida);
                 }
+                else if (mensaje.startsWith("ADMIN_VACIAR_CARRITO;")) {
+                    procesarVaciarCarritoAdmin(mensaje, salida);
+                }
                 // --- COMANDO: Mensaje genérico (Se reenvía a todos) ---
                 else {
                     enviarATodos(mensaje, salida);
@@ -225,7 +228,44 @@ public class ServidorNexoMarket {
         }
         System.out.println("Stock actual enviado a un cliente.");
     }
+    // --- ACCIÓN: ADMIN ANULA UN CARRITO ACTIVO ---
+    private static void procesarVaciarCarritoAdmin(String mensaje, PrintWriter admin) {
+        String[] datos = mensaje.split(";");
+        if (datos.length != 2) return;
+        String nombreObjetivo = datos[1];
 
+        synchronized (inventarioServidor) {
+            int contadorCliente = 1;
+            for (Map.Entry<PrintWriter, Map<String, Integer>> entrada : reservasClientes.entrySet()) {
+                Map<String, Integer> reservas = entrada.getValue();
+
+                if (reservas != null && !reservas.isEmpty()) {
+                    String nombreActual = "Cliente " + contadorCliente;
+
+                    if (nombreActual.equals(nombreObjetivo)) {
+
+                        for (Map.Entry<String, Integer> prod : reservas.entrySet()) {
+                            Producto p = inventarioServidor.buscarProductoPorId(prod.getKey());
+                            if (p != null) {
+                                inventarioServidor.devolverStock(p, prod.getValue());
+                                enviarATodos("STOCK;" + p.getId() + ";" + p.getStock(), null);
+                            }
+                        }
+
+
+                        reservas.clear();
+                        inventarioServidor.guardarEnCSV();
+
+
+                        entrada.getKey().println("CARRITO_VACIADO_POR_ADMIN");
+                        break;
+                    }
+                }
+                contadorCliente++;
+            }
+        }
+        notificarCarritosActivosATodos();
+    }
     // --- ACCIÓN: RESERVAR PRODUCTO (AGREGAR AL CARRITO) ---
     private static void procesarReserva(String mensaje, PrintWriter cliente) {
         String[] datos = mensaje.split(";");

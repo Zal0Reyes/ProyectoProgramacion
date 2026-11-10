@@ -9,6 +9,7 @@ public class Compra {
     private final LocalDateTime fechaHora;
     private final List<String> articulos;
     private final double totalPagado;
+    private String estado = "Pendiente";
 
     public Compra(String rutUsuario, List<String> articulos) {
         this(rutUsuario, LocalDateTime.now(), articulos, 0);
@@ -41,5 +42,12 @@ public class Compra {
 
     public double getTotalPagado() {
         return totalPagado;
+    }
+    public String getEstado() {
+        return estado;
+    }
+
+    public void setEstado(String estado) {
+        this.estado = estado;
     }
 }

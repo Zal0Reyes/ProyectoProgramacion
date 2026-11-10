@@ -726,6 +726,18 @@ public class VistaCliente extends BaseFrame {
                 mostrarError("El producto ya no tiene stock disponible.");
             });
         }
+        // --- ACCIÓN: El administrador forzó el vaciado del carrito ---
+        if (mensaje.equals("CARRITO_VACIADO_POR_ADMIN")) {
+            SwingUtilities.invokeLater(() -> {
+                carrito.limpiarDespuesDeCompra();
+                actualizarCarrito();
+                actualizarProductos();
+                JOptionPane.showMessageDialog(this,
+                        "Tu carrito ha sido vaciado por el Administrador.",
+                        "Carrito Anulado", JOptionPane.WARNING_MESSAGE);
+            });
+            return;
+        }
     }
 
     // =========================================================

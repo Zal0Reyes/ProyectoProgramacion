@@ -7,6 +7,8 @@ import Backend.Usuario;
 import Backend.Carrito;
 import Backend.ConexionServidor;
 import Backend.GeminiAPIClient;
+import Backend.Cupon;
+import Backend.GestorCupones;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -36,15 +38,24 @@ public class VistaCliente extends BaseFrame {
 
     private JLabel lblCarritoTitulo;
     private JLabel lblSubtotalCarrito;
+    private JLabel lblDescuentoCarrito;
+    private JLabel lblSubtotalNetoCarrito;
     private JLabel lblIvaCarrito;
     private JLabel lblTotalCarrito;
+
+    private JTextField txtCupon;
+    private JButton btnAplicarCupon;
 
     private JButton btnComprar;
     private JButton btnVaciarCarrito;
 
+
+
     // --- LÓGICA DE NEGOCIO Y RED ---
     private final Carrito carrito;
     private final ConexionServidor conexionServidor;
+    private final GestorCupones gestorCupones;
+    private Cupon cuponAplicado;
 
     // --- FILTROS Y DATOS TEMPORALES ---
     private String rutCompra = "";
@@ -60,6 +71,8 @@ public class VistaCliente extends BaseFrame {
 
         this.carrito = new Carrito(inventario);
         this.conexionServidor = new ConexionServidor();
+        this.gestorCupones = new GestorCupones();
+        this.cuponAplicado = null;
 
         // --- CONEXIÓN: Configurar qué hacer al recibir un mensaje ---
         conexionServidor.setReceptorMensajes(mensaje -> procesarMensajeServidor(mensaje));
@@ -446,9 +459,47 @@ public class VistaCliente extends BaseFrame {
         inferior.setOpaque(false);
         inferior.setLayout(new BoxLayout(inferior, BoxLayout.Y_AXIS));
 
+        JLabel lblCupon = new JLabel("Código de cupón:");
+        lblCupon.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        lblCupon.setForeground(NAVY);
+
+        txtCupon = new JTextField();
+
+        txtCupon.setMaximumSize(
+                new Dimension(Integer.MAX_VALUE, 28)
+        );
+
+        btnAplicarCupon = crearBoton(
+                "Aplicar cupón",
+                AZUL
+        );
+
+        btnAplicarCupon.addActionListener(
+                e -> aplicarCupon()
+        );
+
         lblSubtotalCarrito = new JLabel("Subtotal: $0");
         lblSubtotalCarrito.setFont(new Font("SansSerif", Font.PLAIN, 14));
         lblSubtotalCarrito.setForeground(NAVY);
+
+        lblDescuentoCarrito =
+                new JLabel("Descuento: $0");
+
+        lblDescuentoCarrito.setFont(
+                new Font("SansSerif", Font.PLAIN, 14)
+        );
+
+        lblDescuentoCarrito.setForeground(NAVY);
+
+
+        lblSubtotalNetoCarrito =
+                new JLabel("Subtotal neto: $0");
+
+        lblSubtotalNetoCarrito.setFont(
+                new Font("SansSerif", Font.PLAIN, 14)
+        );
+
+        lblSubtotalNetoCarrito.setForeground(NAVY);
 
         lblIvaCarrito = new JLabel("IVA (19%): $0");
         lblIvaCarrito.setFont(new Font("SansSerif", Font.PLAIN, 14));
@@ -469,10 +520,63 @@ public class VistaCliente extends BaseFrame {
         btnComprar.addActionListener(e -> procederCompra());
 
         // --- ENSAMBLAJE CARRITO ---
+        inferior.add(lblCupon);
+
+        inferior.add(
+                Box.createRigidArea(
+                        new Dimension(0, 4)
+                )
+        );
+
+        inferior.add(txtCupon);
+
+        inferior.add(
+                Box.createRigidArea(
+                        new Dimension(0, 5)
+                )
+        );
+
+        inferior.add(btnAplicarCupon);
+
+        inferior.add(
+                Box.createRigidArea(
+                        new Dimension(0, 12)
+                )
+        );
+
+
         inferior.add(lblSubtotalCarrito);
-        inferior.add(Box.createRigidArea(new Dimension(0, 4)));
+
+        inferior.add(
+                Box.createRigidArea(
+                        new Dimension(0, 4)
+                )
+        );
+
+        inferior.add(lblDescuentoCarrito);
+
+        inferior.add(
+                Box.createRigidArea(
+                        new Dimension(0, 4)
+                )
+        );
+
+        inferior.add(lblSubtotalNetoCarrito);
+
+        inferior.add(
+                Box.createRigidArea(
+                        new Dimension(0, 4)
+                )
+        );
+
         inferior.add(lblIvaCarrito);
-        inferior.add(Box.createRigidArea(new Dimension(0, 5)));
+
+        inferior.add(
+                Box.createRigidArea(
+                        new Dimension(0, 5)
+                )
+        );
+
         inferior.add(lblTotalCarrito);
         inferior.add(Box.createRigidArea(new Dimension(0, 12)));
         inferior.add(btnVaciarCarrito);
@@ -670,6 +774,7 @@ public class VistaCliente extends BaseFrame {
 
                 SwingUtilities.invokeLater(() -> {
                     inventario.sincronizarProductoDesdeServidor(id, nombre, precio, stock, categoria, rutaImagen);
+                    actualizarCarrito();
                     actualizarProductos();
                 });
             } catch (NumberFormatException e) {
@@ -807,6 +912,13 @@ public class VistaCliente extends BaseFrame {
 
         // --- VISTA: Carrito Vacío ---
         if (carrito.estaVacio()) {
+
+            cuponAplicado = null;
+
+            if (txtCupon != null) {
+                txtCupon.setText("");
+            }
+
             JLabel vacio = new JLabel("<html><center><b>Tu carrito está vacío</b><br><br>Agrega productos para comenzar</center></html>");
             vacio.setHorizontalAlignment(SwingConstants.CENTER);
             vacio.setForeground(GRIS);
@@ -817,18 +929,72 @@ public class VistaCliente extends BaseFrame {
         }
 
         // --- ACTUALIZAR TOTALES ---
-        double subtotal = carrito.calcularSubtotal();
-        double iva = carrito.calcularIva();
-        double total = carrito.calcularTotal();
+        double subtotal =
+                carrito.calcularSubtotal();
 
-        lblCarritoTitulo.setText("Mi Carrito (" + carrito.getCantidadTotal() + ")");
-        lblSubtotalCarrito.setText("Subtotal: " + formatearPesos(subtotal));
-        lblIvaCarrito.setText("IVA (19%): " + formatearPesos(iva));
-        lblTotalCarrito.setText("Total: " + formatearPesos(total));
+
+        double descuento = 0;
+
+
+        if (cuponAplicado != null) {
+
+            descuento =
+                    cuponAplicado.calcularDescuento(
+                            subtotal
+                    );
+        }
+
+
+        double subtotalNeto =
+                subtotal - descuento;
+
+
+        double iva =
+                subtotalNeto * 0.19;
+
+
+        double total =
+                subtotalNeto + iva;
+
+        lblCarritoTitulo.setText(
+                "Mi Carrito (" + carrito.getCantidadTotal() + ")"
+        );
+
+
+        lblSubtotalCarrito.setText(
+                "Subtotal: "
+                        + formatearPesos(subtotal)
+        );
+
+
+        lblDescuentoCarrito.setText(
+                "Descuento: -"
+                        + formatearPesos(descuento)
+        );
+
+
+        lblSubtotalNetoCarrito.setText(
+                "Subtotal neto: "
+                        + formatearPesos(subtotalNeto)
+        );
+
+
+        lblIvaCarrito.setText(
+                "IVA (19%): "
+                        + formatearPesos(iva)
+        );
+
+
+        lblTotalCarrito.setText(
+                "Total: "
+                        + formatearPesos(total)
+        );
 
         boolean tieneProductos = !carrito.estaVacio();
         btnComprar.setEnabled(tieneProductos);
         btnVaciarCarrito.setEnabled(tieneProductos);
+
+        btnAplicarCupon.setEnabled(tieneProductos);
 
         panelArticulosCarrito.revalidate();
         panelArticulosCarrito.repaint();
@@ -864,6 +1030,85 @@ public class VistaCliente extends BaseFrame {
         conexionServidor.solicitarDevolucion(producto.getId(), cantidad);
     }
 
+    private void aplicarCupon() {
+
+        if (carrito.estaVacio()) {
+
+            mostrarError(
+                    "Primero debe agregar productos al carrito."
+            );
+
+            return;
+        }
+
+
+        String codigo =
+                txtCupon.getText().trim();
+
+
+        if (codigo.isEmpty()) {
+
+            mostrarError(
+                    "Ingrese un código de cupón."
+            );
+
+            return;
+        }
+
+
+        // Actualizamos la lista por si ADMIN creó
+        // un cupón después de abrir el cliente
+        gestorCupones.recargarCupones();
+
+
+        Cupon encontrado =
+                gestorCupones.buscarPorCodigo(codigo);
+
+
+        if (encontrado == null) {
+
+            mostrarError(
+                    "El cupón no existe."
+            );
+
+            return;
+        }
+
+
+        if (!encontrado.estaVigente()) {
+
+            mostrarError(
+                    "El cupón está vencido."
+            );
+
+            return;
+        }
+
+
+        if (!encontrado.quedanUsos()) {
+
+            mostrarError(
+                    "El cupón ya no tiene usos disponibles."
+            );
+
+            return;
+        }
+
+
+        cuponAplicado = encontrado;
+
+        actualizarCarrito();
+
+
+        JOptionPane.showMessageDialog(
+                this,
+                "Cupón "
+                        + encontrado.getCodigo()
+                        + " aplicado correctamente.",
+                "Cupón aplicado",
+                JOptionPane.INFORMATION_MESSAGE
+        );
+    }
     private void vaciarCarrito() {
         if (carrito.estaVacio()) return;
 

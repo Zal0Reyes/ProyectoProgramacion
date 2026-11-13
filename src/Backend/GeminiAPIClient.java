@@ -6,15 +6,61 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.List;
 
 public final class GeminiAPIClient {
     private static final String API_KEY_FILE = "gemini-api-key.txt";
+    private static final String STORE_ASSISTANT_PROMPT_FILE = "gemini-store-prompt.txt";
     private static final String API_URL = "https://generativelanguage.googleapis.com/v1/models/gemini-3.6-flash:generateContent?key=";
 
     private GeminiAPIClient() {
     }
 
     public static String callGeminiAPI(String prompt) throws IOException {
+        return callGeminiAPI(prompt, null);
+    }
+
+    public static String callStoreAssistant(
+            String prompt,
+            List<Producto> productos,
+            String[] categorias
+    ) throws IOException {
+        if (productos == null || categorias == null) {
+            throw new IllegalArgumentException("El catálogo de la tienda no puede ser nulo.");
+        }
+
+        StringBuilder context = new StringBuilder();
+        context.append("CATEGORÍAS DISPONIBLES:\n");
+        for (String categoria : categorias) {
+            context.append("- ").append(categoria).append('\n');
+        }
+        context.append("\nINVENTARIO ACTUAL:\n");
+        for (Producto producto : productos) {
+            context.append("- ID: ").append(producto.getId())
+                    .append(" | Producto: ").append(producto.getNombre())
+                    .append(" | Precio: ").append(producto.getPrecio())
+                    .append(" | Stock: ").append(producto.getStock())
+                    .append(" | Categoría: ").append(producto.getCategoria())
+                    .append('\n');
+        }
+
+        return callGeminiAPI(prompt, loadStoreAssistantPrompt() + "\n\n" + context);
+    }
+
+    private static String loadStoreAssistantPrompt() throws IOException {
+        String instruction = Files.readString(
+                java.nio.file.Paths.get(STORE_ASSISTANT_PROMPT_FILE),
+                StandardCharsets.UTF_8
+        ).trim();
+        if (instruction.isEmpty()) {
+            throw new IOException("El archivo " + STORE_ASSISTANT_PROMPT_FILE
+                    + " no puede estar vacío.");
+        }
+        return instruction;
+    }
+
+    private static String callGeminiAPI(String prompt, String systemInstruction)
+            throws IOException {
         if (prompt == null || prompt.trim().isEmpty()) {
             throw new IllegalArgumentException("El mensaje no puede estar vacío.");
         }
@@ -34,11 +80,18 @@ public final class GeminiAPIClient {
         connection.setReadTimeout(30000);
         connection.setDoOutput(true);
 
-        String requestBody = "{\"contents\":[{\"parts\":[{\"text\":\""
-                + escapeJson(prompt) + "\"}]}]}";
+        StringBuilder requestBody = new StringBuilder("{");
+        if (systemInstruction != null) {
+            requestBody.append("\"systemInstruction\":{\"parts\":[{\"text\":\"")
+                    .append(escapeJson(systemInstruction))
+                    .append("\"}]},");
+        }
+        requestBody.append("\"contents\":[{\"parts\":[{\"text\":\"")
+                .append(escapeJson(prompt))
+                .append("\"}]}]}");
 
         try (OutputStream output = connection.getOutputStream()) {
-            output.write(requestBody.getBytes(StandardCharsets.UTF_8));
+            output.write(requestBody.toString().getBytes(StandardCharsets.UTF_8));
         }
 
         try {

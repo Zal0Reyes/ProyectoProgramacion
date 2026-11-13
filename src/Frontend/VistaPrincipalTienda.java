@@ -30,11 +30,13 @@ public class VistaPrincipalTienda extends BaseFrame {
     // --- BOTONES DE PESTAÑAS (NAVEGACIÓN SUPERIOR) ---
     private JButton btnNavProductos;
     private JButton btnNavCarritos;
+    private JButton btnNavPedidos;
 
     // --- PANELES INTERNOS ---
     private JPanel gridProductos;
     private final GestorCupones gestorCupones;
     private JPanel panelCarritosGrid;
+    private JPanel panelPedidosGrid;
 
     // =========================================================
     // CONSTRUCTOR
@@ -79,6 +81,7 @@ public class VistaPrincipalTienda extends BaseFrame {
         // --- AGREGAMOS LAS VISTAS AL MAZO ---
         panelContenedorVistas.add(crearVistaProductos(), "VISTA_PRODUCTOS");
         panelContenedorVistas.add(crearVistaCarritos(), "VISTA_CARRITOS");
+        panelContenedorVistas.add(crearVistaPedidos(), "VISTA_PEDIDOS");
 
         add(panelContenedorVistas, BorderLayout.CENTER);
 
@@ -122,21 +125,29 @@ public class VistaPrincipalTienda extends BaseFrame {
 
         btnNavProductos = crearBotonPestana("📦 Catálogo de Productos", true);
         btnNavCarritos = crearBotonPestana("🛒 Carritos en Vivo", false);
+        btnNavPedidos = crearBotonPestana("🚚 Gestión de Pedidos", false);
 
         btnNavProductos.addActionListener(e -> {
             gestorVistas.show(panelContenedorVistas, "VISTA_PRODUCTOS");
-            activarPestana(btnNavProductos, btnNavCarritos);
+            activarPestana(btnNavProductos, btnNavCarritos,btnNavPedidos);
             actualizarVistaProductos("");
         });
 
         btnNavCarritos.addActionListener(e -> {
             gestorVistas.show(panelContenedorVistas, "VISTA_CARRITOS");
-            activarPestana(btnNavCarritos, btnNavProductos);
+            activarPestana(btnNavCarritos, btnNavProductos,btnNavPedidos);
             if (conexionServidor.estaConectado()) conexionServidor.solicitarCarritosActivos();
+        });
+
+        btnNavPedidos.addActionListener(e -> {
+            gestorVistas.show(panelContenedorVistas, "VISTA_PEDIDOS");
+            activarPestana(btnNavPedidos, btnNavProductos, btnNavCarritos);
+            dibujarPedidosEnPanel();
         });
 
         panelNavegacion.add(btnNavProductos);
         panelNavegacion.add(btnNavCarritos);
+        panelNavegacion.add(btnNavPedidos);
         panelCabecera.add(panelNavegacion, BorderLayout.CENTER);
 
         // --- PERFIL ADMIN (Opcional a la derecha) ---
@@ -611,20 +622,18 @@ public class VistaPrincipalTienda extends BaseFrame {
         return btn;
     }
 
-    private void activarPestana(JButton activa, JButton inactiva) {
+    private void activarPestana(JButton activa, JButton inactiva1, JButton inactiva2 ) {
         activa.setForeground(new Color(30, 105, 210));
-        activa.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(0, 0, 4, 0, new Color(30, 105, 210)),
-                new EmptyBorder(15, 25, 15, 25)
-        ));
+        activa.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createMatteBorder(0, 0, 4, 0, new Color(30, 105, 210)), new EmptyBorder(15, 25, 15, 25)));
         activa.setBackground(new Color(245, 248, 255));
 
-        inactiva.setForeground(new Color(130, 140, 150));
-        inactiva.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(0, 0, 4, 0, Color.WHITE),
-                new EmptyBorder(15, 25, 15, 25)
-        ));
-        inactiva.setBackground(Color.WHITE);
+        inactiva1.setForeground(new Color(130, 140, 150));
+        inactiva1.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createMatteBorder(0, 0, 4, 0, Color.WHITE), new EmptyBorder(15, 25, 15, 25)));
+        inactiva1.setBackground(Color.WHITE);
+
+        inactiva2.setForeground(new Color(130, 140, 150));
+        inactiva2.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createMatteBorder(0, 0, 4, 0, Color.WHITE), new EmptyBorder(15, 25, 15, 25)));
+        inactiva2.setBackground(Color.WHITE);
     }
 
     private JPanel crearTarjetaProducto(Producto producto) {
@@ -976,5 +985,130 @@ public class VistaPrincipalTienda extends BaseFrame {
         String[] rutas = {"imagenes/logo sin fondo.png", "imagenes/Logo NEXOMARKET.jpeg", "imagenes/Logo NEXOMARKET.jpg", "imagenes/Logo NEXOMARKET.png"};
         for (String r : rutas) if (new java.io.File(r).isFile()) return new ImageIcon(new ImageIcon(r).getImage().getScaledInstance(180, 75, Image.SCALE_SMOOTH));
         return null;
+    }
+    // --- VISTA DE PEDIDOS ---
+    private JPanel crearVistaPedidos() {
+        JPanel panel = new JPanel(new BorderLayout(15, 0));
+        panel.setOpaque(false);
+        panel.setBorder(new EmptyBorder(15, 18, 18, 18));
+
+        PanelRedondeado encabezado = new PanelRedondeado(12);
+        encabezado.setBackground(new Color(19, 40, 72));
+        encabezado.setLayout(new BorderLayout());
+        encabezado.setBorder(new EmptyBorder(9, 12, 9, 12));
+
+        JLabel titulo = new JLabel("Seguimiento y Estados de Pedidos");
+        titulo.setFont(new Font("SansSerif", Font.BOLD, 20));
+        titulo.setForeground(Color.WHITE);
+        encabezado.add(titulo, BorderLayout.WEST);
+        panel.add(encabezado, BorderLayout.NORTH);
+
+        panelPedidosGrid = new JPanel();
+        panelPedidosGrid.setLayout(new BoxLayout(panelPedidosGrid, BoxLayout.Y_AXIS));
+        panelPedidosGrid.setOpaque(false);
+        panelPedidosGrid.setBorder(new EmptyBorder(15, 0, 15, 0));
+
+        JScrollPane scroll = new JScrollPane(panelPedidosGrid);
+        scroll.setBorder(null); scroll.setOpaque(false); scroll.getViewport().setOpaque(false);
+        configurarBarraScroll(scroll);
+        panel.add(scroll, BorderLayout.CENTER);
+
+        return panel;
+    }
+
+    private void dibujarPedidosEnPanel() {
+        if (panelPedidosGrid == null) return;
+        panelPedidosGrid.removeAll();
+
+        java.util.List<Backend.Compra> historial = inventario.getHistorialCompras();
+
+        if (historial.isEmpty()) {
+            JLabel vacio = new JLabel("<html><center><b>Aún no hay pedidos registrados.</b></center></html>");
+            vacio.setFont(new Font("SansSerif", Font.PLAIN, 15)); vacio.setForeground(new Color(100, 110, 125)); vacio.setAlignmentX(Component.CENTER_ALIGNMENT);
+            panelPedidosGrid.add(Box.createRigidArea(new Dimension(0, 50))); panelPedidosGrid.add(vacio);
+        } else {
+            for (int i = historial.size() - 1; i >= 0; i--) {
+                panelPedidosGrid.add(crearTarjetaPedido(historial.get(i), i + 1));
+                panelPedidosGrid.add(Box.createRigidArea(new Dimension(0, 15)));
+            }
+        }
+        panelPedidosGrid.revalidate(); panelPedidosGrid.repaint();
+    }
+
+    private JPanel crearTarjetaPedido(Backend.Compra compra, int numeroPedido) {
+        PanelRedondeado tarjeta = new PanelRedondeado(15);
+        tarjeta.setBackground(Color.WHITE);
+        tarjeta.setLayout(new BoxLayout(tarjeta, BoxLayout.Y_AXIS));
+        tarjeta.setBorder(new EmptyBorder(15, 20, 15, 20));
+
+        tarjeta.setMaximumSize(new Dimension(Integer.MAX_VALUE, 155));
+        tarjeta.setPreferredSize(new Dimension(0, 155));
+
+        JPanel panelInfo = new JPanel(new GridLayout(4, 1, 0, 3));
+        panelInfo.setOpaque(false);
+        panelInfo.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JLabel lblTitulo = new JLabel("📦 Pedido #" + numeroPedido + "  |  " + compra.getFechaHora().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
+        lblTitulo.setFont(new Font("SansSerif", Font.BOLD, 15)); lblTitulo.setForeground(new Color(19, 40, 72));
+
+        JLabel lblRut = new JLabel("Cliente RUT: " + compra.getRutUsuario());
+        lblRut.setFont(new Font("SansSerif", Font.PLAIN, 13)); lblRut.setForeground(new Color(80, 80, 80));
+
+        JLabel lblArts = new JLabel("Artículos: " + String.join(", ", compra.getArticulos()));
+        lblArts.setFont(new Font("SansSerif", Font.PLAIN, 13)); lblArts.setForeground(new Color(100, 100, 100));
+
+        JLabel lblTotal = new JLabel("Total Pagado: " + formatearPesos(compra.getTotalPagado()));
+        lblTotal.setFont(new Font("SansSerif", Font.BOLD, 14)); lblTotal.setForeground(new Color(46, 139, 87));
+
+        panelInfo.add(lblTitulo);
+        panelInfo.add(lblRut);
+        panelInfo.add(lblArts);
+        panelInfo.add(lblTotal);
+
+        tarjeta.add(panelInfo);
+        tarjeta.add(Box.createRigidArea(new Dimension(0, 10)));
+
+        JPanel panelEstado = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        panelEstado.setOpaque(false);
+        panelEstado.setAlignmentX(Component.LEFT_ALIGNMENT);
+        panelEstado.setMaximumSize(new Dimension(Integer.MAX_VALUE, 35));
+
+        JLabel lblEstadoText = new JLabel("Estado del Despacho:");
+        lblEstadoText.setFont(new Font("SansSerif", Font.BOLD, 13));
+        lblEstadoText.setForeground(new Color(130, 140, 150));
+
+        String[] estados = {"Pendiente", "En preparación", "Despachado", "Entregado", "Cancelado"};
+        JComboBox<String> cbEstado = new JComboBox<>(estados);
+        cbEstado.setFont(new Font("SansSerif", Font.BOLD, 13));
+        cbEstado.setBackground(Color.WHITE);
+        cbEstado.setSelectedItem(compra.getEstado());
+        cbEstado.setPreferredSize(new Dimension(160, 30));
+
+        cbEstado.addActionListener(e -> {
+            String nuevoEstado = (String) cbEstado.getSelectedItem();
+            if (!nuevoEstado.equals(compra.getEstado())) {
+                if (nuevoEstado.equals("Cancelado")) {
+                    int resp = JOptionPane.showConfirmDialog(this, "¿Estás seguro de cancelar este pedido?\nEl stock será devuelto al inventario.", "Cancelar Pedido", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+                    if (resp == JOptionPane.YES_OPTION) {
+                        inventario.anularCompra(compra);
+                        registrarAccionAdmin("Canceló el pedido #" + numeroPedido);
+                        dibujarPedidosEnPanel();
+                    } else {
+                        cbEstado.setSelectedItem(compra.getEstado());
+                    }
+                } else {
+                    compra.setEstado(nuevoEstado);
+                    registrarAccionAdmin("Actualizó pedido #" + numeroPedido + " a: " + nuevoEstado);
+                    JOptionPane.showMessageDialog(this, "El pedido #" + numeroPedido + " ahora está: " + nuevoEstado);
+                }
+            }
+        });
+
+        panelEstado.add(lblEstadoText);
+        panelEstado.add(cbEstado);
+
+        tarjeta.add(panelEstado);
+
+        return tarjeta;
     }
 }

@@ -508,4 +508,27 @@ public class Inventario {
         }
         return cantidadEliminada;
     }
+    public void anularCompra(Compra compra) {
+        historialCompras.remove(compra);
+        guardarComprasEnCSV();
+
+        for (String articulo : compra.getArticulos()) {
+            try {
+                String[] partes = articulo.split(" x ", 2);
+                if (partes.length == 2) {
+                    int cantidad = Integer.parseInt(partes[0].trim());
+                    String nombreProd = partes[1].trim();
+
+                    for (Producto p : listaProductos) {
+                        if (p.getNombre().equalsIgnoreCase(nombreProd)) {
+                            p.setStock(p.getStock() + cantidad);
+                            break;
+                        }
+                    }
+                }
+            } catch (Exception e) {
+            }
+        }
+        guardarEnCSV();
+    }
 }

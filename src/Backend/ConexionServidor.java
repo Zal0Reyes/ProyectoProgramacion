@@ -208,11 +208,15 @@ public class ConexionServidor {
             double subtotal,
             double iva,
             double total,
-            List<String> articulos
+            List<String> articulos,
+            String codigoCupon
     ) {
 
         String rutEnviar =
                 rut == null ? "" : limpiarCampo(rut);
+
+        String cuponEnviar =
+                codigoCupon == null ? "" : limpiarCampo(codigoCupon);
 
 
         StringBuilder productos =
@@ -241,6 +245,7 @@ public class ConexionServidor {
                         + subtotal + ";"
                         + iva + ";"
                         + total + ";"
+                        + cuponEnviar + ";"
                         + productos
         );
     }

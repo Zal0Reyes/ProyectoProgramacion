@@ -56,6 +56,14 @@ public class VistaCliente extends BaseFrame {
     private final ConexionServidor conexionServidor;
     private final GestorCupones gestorCupones;
     private Cupon cuponAplicado;
+    private Backend.Compra compraPendiente;
+    private java.util.List<String> articulosCompraPendiente;
+
+    private double subtotalCompraPendiente;
+    private double ivaCompraPendiente;
+    private double totalCompraPendiente;
+
+    private boolean compraEnProceso = false;
 
     // --- FILTROS Y DATOS TEMPORALES ---
     private String rutCompra = "";
@@ -689,15 +697,67 @@ public class VistaCliente extends BaseFrame {
     // =========================================================
     private void procesarMensajeServidor(String mensaje) {
 
-        // --- ACCIÓN: Compra procesada ---
+        // --- ACCIÓN: Compra procesada correctamente ---
         if (mensaje.equals("COMPRA_OK")) {
-            System.out.println("El servidor confirmó la compra.");
+
+            SwingUtilities.invokeLater(() -> {
+                finalizarCompraConfirmada();
+            });
+
             return;
         }
 
-        // --- ACCIÓN: Error en compra ---
+
+// --- ACCIÓN: Error al confirmar compra ---
         if (mensaje.startsWith("ERROR_COMPRA;")) {
-            SwingUtilities.invokeLater(() -> mostrarError("El servidor no pudo confirmar la compra."));
+
+            String motivo =
+                    mensaje.substring(
+                            "ERROR_COMPRA;".length()
+                    );
+
+            SwingUtilities.invokeLater(() -> {
+
+                compraEnProceso = false;
+
+                compraPendiente = null;
+                articulosCompraPendiente = null;
+
+                subtotalCompraPendiente = 0;
+                ivaCompraPendiente = 0;
+                totalCompraPendiente = 0;
+
+
+                // Recargar cupones porque otro cliente
+                // pudo haber utilizado el último uso.
+                gestorCupones.recargarCupones();
+
+
+                if (cuponAplicado != null) {
+
+                    Cupon actualizado =
+                            gestorCupones.buscarPorCodigo(
+                                    cuponAplicado.getCodigo()
+                            );
+
+                    if (actualizado == null
+                            || !actualizado.estaVigente()
+                            || !actualizado.quedanUsos()) {
+
+                        cuponAplicado = null;
+
+                        if (txtCupon != null) {
+                            txtCupon.setText("");
+                        }
+                    }
+                }
+
+
+                actualizarCarrito();
+
+                mostrarError(motivo);
+            });
+
             return;
         }
 
@@ -899,6 +959,12 @@ public class VistaCliente extends BaseFrame {
                 btnMas.setEnabled(false);
             }
 
+            if (compraEnProceso) {
+                btnMenos.setEnabled(false);
+                btnMas.setEnabled(false);
+                btnEliminar.setEnabled(false);
+            }
+
             controles.add(btnMenos);
             controles.add(lblCantidadProducto);
             controles.add(btnMas);
@@ -990,22 +1056,44 @@ public class VistaCliente extends BaseFrame {
                         + formatearPesos(total)
         );
 
-        boolean tieneProductos = !carrito.estaVacio();
-        btnComprar.setEnabled(tieneProductos);
-        btnVaciarCarrito.setEnabled(tieneProductos);
+        boolean tieneProductos =
+                !carrito.estaVacio();
 
-        btnAplicarCupon.setEnabled(tieneProductos);
+        boolean puedeModificar =
+                tieneProductos && !compraEnProceso;
+
+
+        btnComprar.setEnabled(
+                puedeModificar
+        );
+
+        btnVaciarCarrito.setEnabled(
+                puedeModificar
+        );
+
+        btnAplicarCupon.setEnabled(
+                puedeModificar
+        );
 
         panelArticulosCarrito.revalidate();
         panelArticulosCarrito.repaint();
     }
 
     private void agregarAlCarrito(Producto producto) {
+
+        if (compraEnProceso) {
+            return;
+        }
+
         if (!conexionServidor.estaConectado()) {
             mostrarError("No hay conexión con el servidor.");
             return;
         }
-        conexionServidor.solicitarReserva(producto.getId(), 1);
+
+        conexionServidor.solicitarReserva(
+                producto.getId(),
+                1
+        );
     }
 
     private void cambiarCantidad(Producto producto, int nuevaCantidad) {
@@ -1125,69 +1213,322 @@ public class VistaCliente extends BaseFrame {
     // LÓGICA FINAL DE COMPRA Y BOLETA
     // =========================================================
     private void procederCompra() {
-        // --- 1. VALIDACIÓN DEL RUT DEL CLIENTE ---
-        if (sistema.getUsuarioActual() != null) {
-            rutCompra = sistema.getUsuarioActual().getRut();
-        } else {
-            int opcionRut = JOptionPane.showConfirmDialog(this, "¿Desea ingresar su RUT para asociarlo a la compra?", "RUT opcional", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
-            if (opcionRut == JOptionPane.YES_OPTION) {
-                String rutIngresado = JOptionPane.showInputDialog(this, "Ingrese su RUT:", "Ingresar RUT", JOptionPane.PLAIN_MESSAGE);
-                if (rutIngresado == null) return;
-                rutIngresado = rutIngresado.trim();
 
-                if (rutIngresado.isEmpty()) {
-                    mostrarError("Debe ingresar un RUT o elegir comprar sin RUT.");
+        // Evita enviar dos compras al mismo tiempo
+        if (compraEnProceso) {
+            return;
+        }
+
+
+        // =========================================
+        // 1. RUT DEL CLIENTE
+        // =========================================
+
+        if (sistema.getUsuarioActual() != null) {
+
+            rutCompra =
+                    sistema.getUsuarioActual().getRut();
+
+        } else {
+
+            int opcionRut =
+                    JOptionPane.showConfirmDialog(
+                            this,
+                            "¿Desea ingresar su RUT para asociarlo a la compra?",
+                            "RUT opcional",
+                            JOptionPane.YES_NO_OPTION,
+                            JOptionPane.QUESTION_MESSAGE
+                    );
+
+
+            if (opcionRut == JOptionPane.YES_OPTION) {
+
+                String rutIngresado =
+                        JOptionPane.showInputDialog(
+                                this,
+                                "Ingrese su RUT:",
+                                "Ingresar RUT",
+                                JOptionPane.PLAIN_MESSAGE
+                        );
+
+
+                if (rutIngresado == null) {
                     return;
                 }
-                rutCompra = rutIngresado;
+
+
+                rutIngresado =
+                        rutIngresado.trim();
+
+
+                if (rutIngresado.isEmpty()) {
+
+                    mostrarError(
+                            "Debe ingresar un RUT o elegir comprar sin RUT."
+                    );
+
+                    return;
+                }
+
+
+                rutCompra =
+                        rutIngresado;
+
             } else {
+
                 rutCompra = "";
             }
         }
 
-        // --- 2. CONFIRMACIÓN MONETARIA ---
-        int confirmar = JOptionPane.showConfirmDialog(
-                this,
-                "Subtotal: " + formatearPesos(carrito.calcularSubtotal())
-                        + "\nIVA (19%): " + formatearPesos(carrito.calcularIva())
-                        + "\nTotal: " + formatearPesos(carrito.calcularTotal())
-                        + "\n\n¿Desea confirmar la compra?",
-                "Confirmar compra",
-                JOptionPane.YES_NO_OPTION,
-                JOptionPane.QUESTION_MESSAGE
-        );
 
-        if (confirmar != JOptionPane.YES_OPTION) return;
-
-        // --- 3. CREACIÓN DE LISTA DE ARTÍCULOS ---
-        java.util.List<String> articulosComprados = new ArrayList<>();
-        for (Map.Entry<Producto, Integer> entrada : carrito.getProductos().entrySet()) {
-            articulosComprados.add(entrada.getValue() + " x " + entrada.getKey().getNombre());
-        }
-
-        double subtotalCompra = carrito.calcularSubtotal();
-        double ivaCompra = carrito.calcularIva();
-        double totalCompra = carrito.calcularTotal();
-        Backend.Compra nuevaCompra = new Backend.Compra(rutCompra, articulosComprados, totalCompra);
+        // =========================================
+        // 2. COMPROBAR CONEXIÓN
+        // =========================================
 
         if (!conexionServidor.estaConectado()) {
-            mostrarError("No se puede confirmar la compra porque no hay conexión con el servidor.");
+
+            mostrarError(
+                    "No se puede confirmar la compra porque no hay conexión con el servidor."
+            );
+
             return;
         }
 
-        // --- 4. ENVÍO AL SERVIDOR Y GUARDADO PERSISTENTE ---
-        conexionServidor.confirmarCompra(rutCompra, subtotalCompra, ivaCompra, totalCompra, articulosComprados);
-        inventario.registrarCompra(rutCompra, articulosComprados, totalCompra);
+
+        // =========================================
+        // 3. CALCULAR DESCUENTO Y TOTAL REAL
+        // =========================================
+
+        double subtotalCompra =
+                carrito.calcularSubtotal();
+
+
+        double descuentoCompra = 0;
+
+
+        if (cuponAplicado != null) {
+
+            descuentoCompra =
+                    cuponAplicado.calcularDescuento(
+                            subtotalCompra
+                    );
+        }
+
+
+        double subtotalNetoCompra =
+                subtotalCompra - descuentoCompra;
+
+
+        double ivaCompra =
+                subtotalNetoCompra * 0.19;
+
+
+        double totalCompra =
+                subtotalNetoCompra + ivaCompra;
+
+
+        // =========================================
+        // 4. RESUMEN DE LA COMPRA
+        // =========================================
+
+        String resumen =
+                "Subtotal: "
+                        + formatearPesos(subtotalCompra);
+
+
+        if (cuponAplicado != null) {
+
+            resumen +=
+                    "\nCupón: "
+                            + cuponAplicado.getCodigo()
+                            + "\nDescuento: -"
+                            + formatearPesos(descuentoCompra)
+                            + "\nSubtotal neto: "
+                            + formatearPesos(subtotalNetoCompra);
+        }
+
+
+        resumen +=
+                "\nIVA (19%): "
+                        + formatearPesos(ivaCompra)
+                        + "\nTotal: "
+                        + formatearPesos(totalCompra)
+                        + "\n\n¿Desea confirmar la compra?";
+
+
+        int confirmar =
+                JOptionPane.showConfirmDialog(
+                        this,
+                        resumen,
+                        "Confirmar compra",
+                        JOptionPane.YES_NO_OPTION,
+                        JOptionPane.QUESTION_MESSAGE
+                );
+
+
+        if (confirmar != JOptionPane.YES_OPTION) {
+            return;
+        }
+
+
+        // =========================================
+        // 5. LISTA DE PRODUCTOS COMPRADOS
+        // =========================================
+
+        java.util.List<String> articulosComprados =
+                new ArrayList<>();
+
+
+        for (Map.Entry<Producto, Integer> entrada
+                : carrito.getProductos().entrySet()) {
+
+            articulosComprados.add(
+                    entrada.getValue()
+                            + " x "
+                            + entrada.getKey().getNombre()
+            );
+        }
+
+
+        // =========================================
+        // 6. GUARDAR LOS DATOS COMO PENDIENTES
+        // =========================================
+
+        compraPendiente =
+                new Backend.Compra(
+                        rutCompra,
+                        articulosComprados,
+                        totalCompra
+                );
+
+
+        articulosCompraPendiente =
+                articulosComprados;
+
+
+        subtotalCompraPendiente =
+                subtotalNetoCompra;
+
+
+        ivaCompraPendiente =
+                ivaCompra;
+
+
+        totalCompraPendiente =
+                totalCompra;
+
+
+        // =========================================
+        // 7. OBTENER CÓDIGO DEL CUPÓN
+        // =========================================
+
+        String codigoCupon = "";
+
+
+        if (cuponAplicado != null) {
+
+            codigoCupon =
+                    cuponAplicado.getCodigo();
+        }
+
+
+        // =========================================
+        // 8. ENVIAR COMPRA AL SERVIDOR
+        // =========================================
+
+        compraEnProceso = true;
+
+        actualizarCarrito();
+
+
+        conexionServidor.confirmarCompra(
+                rutCompra,
+                subtotalNetoCompra,
+                ivaCompra,
+                totalCompra,
+                articulosComprados,
+                codigoCupon
+        );
+    }
+
+    private void finalizarCompraConfirmada() {
+
+        if (!compraEnProceso ||
+                compraPendiente == null) {
+
+            return;
+        }
+
+
+        // =========================================
+        // REGISTRAR COMPRA LOCALMENTE
+        // =========================================
+
+        inventario.registrarCompra(
+                rutCompra,
+                articulosCompraPendiente,
+                totalCompraPendiente
+        );
+
+
         inventario.confirmarCompra();
 
-        // --- 5. MOSTRAR BOLETA VISUAL ---
-        DialogoComprobante dialogoComprobante = new DialogoComprobante(this, nuevaCompra, carrito.getProductos(), subtotalCompra, ivaCompra, totalCompra);
+
+        // =========================================
+        // MOSTRAR COMPROBANTE
+        // =========================================
+
+        DialogoComprobante dialogoComprobante =
+                new DialogoComprobante(
+                        this,
+                        compraPendiente,
+                        carrito.getProductos(),
+                        subtotalCompraPendiente,
+                        ivaCompraPendiente,
+                        totalCompraPendiente
+                );
+
+
         dialogoComprobante.mostrar();
 
+
+        // =========================================
+        // LIMPIAR CARRITO Y CUPÓN
+        // =========================================
+
         carrito.limpiarDespuesDeCompra();
-        actualizarCarrito();
-        actualizarProductos();
+
+
+        cuponAplicado = null;
+
+
+        if (txtCupon != null) {
+            txtCupon.setText("");
+        }
+
+
+        // =========================================
+        // LIMPIAR DATOS TEMPORALES
+        // =========================================
+
         rutCompra = "";
+
+        compraPendiente = null;
+
+        articulosCompraPendiente = null;
+
+        subtotalCompraPendiente = 0;
+
+        ivaCompraPendiente = 0;
+
+        totalCompraPendiente = 0;
+
+        compraEnProceso = false;
+
+
+        actualizarCarrito();
+
+        actualizarProductos();
     }
 
     // =========================================================

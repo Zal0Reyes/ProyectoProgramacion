@@ -60,4 +60,16 @@ public class GestorDespacho {
     public void setMontoMinimoEnvioGratis(double montoMinimoEnvioGratis) {
         this.montoMinimoEnvioGratis = montoMinimoEnvioGratis;
     }
+    // Calcula cuántos días hábiles demora según la región seleccionada
+    public String obtenerTiempoEstimado(boolean esDespachoDomicilio, String region) {
+        if (!esDespachoDomicilio) {
+            return "Retiro inmediato en tienda";
+        }
+
+        TarifaEnvio tarifa = buscarPorRegion(region);
+        if (tarifa != null) {
+            return tarifa.getDiasEstimados() + " días hábiles";
+        }
+        return "5 días hábiles";
+    }
 }

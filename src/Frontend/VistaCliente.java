@@ -55,6 +55,7 @@ public class VistaCliente extends BaseFrame {
     // --- LÓGICA DE NEGOCIO Y RED ---
     private final Carrito carrito;
     private final ConexionServidor conexionServidor;
+    private final Backend.GestorDespacho gestorDespacho = new Backend.GestorDespacho();
     private final GestorCupones gestorCupones;
     private Cupon cuponAplicado;
 
@@ -1232,11 +1233,29 @@ public class VistaCliente extends BaseFrame {
                 rutCompra = "";
             }
         }
+        // --- 1.5 SELECCIÓN DE MODALIDAD DE ENTREGA Y DESPACHO ---
+        DialogoDespacho dialogoDespacho = new DialogoDespacho(
+                this,
+                gestorDespacho,
+                carrito.calcularSubtotal(),
+                sistema.getUsuarioActual()
+        );
+        dialogoDespacho.mostrar();
+
+        if (!dialogoDespacho.isConfirmado()) {
+            return; // Si cerró o canceló la ventana de despacho, no sigue con la compra
+        }
+
+        carrito.setCostoEnvio(dialogoDespacho.getCostoEnvioFinal());
 
         // --- 2. CONFIRMACIÓN MONETARIA ---
         int confirmar = JOptionPane.showConfirmDialog(
                 this,
-                "Subtotal: " + formatearPesos(carrito.calcularSubtotal())
+                "Modalidad: " + dialogoDespacho.getModalidadElegida()
+                        + "\nEntrega: " + dialogoDespacho.getDetalleDireccion()
+                        + "\nTiempo estimado: " + dialogoDespacho.getTiempoEstimado()
+                        + "\n\nSubtotal: " + formatearPesos(carrito.calcularSubtotal())
+                        + "\nCosto de envío: " + formatearPesos(carrito.getCostoEnvio())
                         + "\nIVA (19%): " + formatearPesos(carrito.calcularIva())
                         + "\nTotal: " + formatearPesos(carrito.calcularTotal())
                         + "\n\n¿Desea confirmar la compra?",
@@ -1244,7 +1263,6 @@ public class VistaCliente extends BaseFrame {
                 JOptionPane.YES_NO_OPTION,
                 JOptionPane.QUESTION_MESSAGE
         );
-
         if (confirmar != JOptionPane.YES_OPTION) return;
 
         // --- 3. CREACIÓN DE LISTA DE ARTÍCULOS ---

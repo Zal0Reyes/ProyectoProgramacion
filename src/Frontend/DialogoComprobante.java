@@ -80,6 +80,8 @@ public class DialogoComprobante extends JDialog {
 
         sb.append("----------------------------------------\n");
         sb.append(" Subtotal:               $").append(String.format("%,.0f", subtotal).replace(',', '.')).append("\n");
+        double envioCalculado = Math.max(0, (total - iva) - subtotal);
+        sb.append(" Costo de Envío:         $").append(String.format("%,.0f", envioCalculado).replace(',', '.')).append("\n");
         sb.append(" IVA (19%):              $").append(String.format("%,.0f", iva).replace(',', '.')).append("\n");
         sb.append("----------------------------------------\n");
         sb.append(" TOTAL A PAGAR:          $").append(String.format("%,.0f", total).replace(',', '.')).append("\n");

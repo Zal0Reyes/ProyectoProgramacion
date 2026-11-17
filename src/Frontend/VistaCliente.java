@@ -37,6 +37,11 @@ public class VistaCliente extends BaseFrame {
     private JLabel lblCantidad;
     private JPanel panelArticulosCarrito;
 
+    private CardLayout gestorVistas;
+    private JPanel panelContenedorVistas;
+    private JButton btnTabTienda;
+    private JButton btnTabCarrito;
+
     private JLabel lblCarritoTitulo;
     private JLabel lblSubtotalCarrito;
     private JLabel lblDescuentoCarrito;
@@ -105,24 +110,25 @@ public class VistaCliente extends BaseFrame {
         // --- PANELES PRINCIPALES ---
         add(crearCabecera(), BorderLayout.NORTH);
 
-        JPanel contenido = new JPanel(new BorderLayout(15, 0));
-        contenido.setBackground(FONDO);
-        contenido.setBorder(new EmptyBorder(15, 18, 18, 18));
+        gestorVistas = new CardLayout();
+        panelContenedorVistas = new JPanel(gestorVistas);
+        panelContenedorVistas.setBackground(FONDO);
+        panelContenedorVistas.setBorder(new EmptyBorder(15, 18, 18, 18));
 
-        contenido.add(crearCatalogo(), BorderLayout.CENTER);
-        contenido.add(crearCarrito(), BorderLayout.EAST);
+        panelContenedorVistas.add(crearCatalogo(), "VISTA_TIENDA");
+        panelContenedorVistas.add(crearVistaCarritoDashboard(), "VISTA_CARRITO");
 
-        add(contenido, BorderLayout.CENTER);
+        add(panelContenedorVistas, BorderLayout.CENTER);
         add(crearAccesoChat(), BorderLayout.SOUTH);
 
-        // --- EVENTO: Actualización en vivo del buscador ---
+
         txtBuscar.addKeyListener(new KeyAdapter() {
             @Override
             public void keyReleased(KeyEvent e) {
                 actualizarProductos();
             }
         });
-
+        cambiarVistaCliente("VISTA_TIENDA");
         actualizarProductos();
         setVisible(true);
     }
@@ -464,11 +470,32 @@ public class VistaCliente extends BaseFrame {
         cabecera.add(panelBusqueda, BorderLayout.CENTER);
         cabecera.add(acciones, BorderLayout.EAST);
 
+        JPanel barraPestanas = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        barraPestanas.setBackground(Color.WHITE);
+        barraPestanas.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(230, 236, 245)),
+                new EmptyBorder(0, 20, 0, 20)
+        ));
+
+        btnTabTienda = crearBotonPestana("🛍️ Tienda", true);
+        btnTabCarrito = crearBotonPestana("🛒 Mi Carrito (0)", false);
+
+        btnTabTienda.addActionListener(e -> cambiarVistaCliente("VISTA_TIENDA"));
+        btnTabCarrito.addActionListener(e -> cambiarVistaCliente("VISTA_CARRITO"));
+
+        barraPestanas.add(btnTabTienda);
+        barraPestanas.add(btnTabCarrito);
+
+        JPanel centroCabecera = new JPanel(new BorderLayout());
+        centroCabecera.setOpaque(false);
+        centroCabecera.add(cabecera, BorderLayout.NORTH);
+        centroCabecera.add(barraPestanas, BorderLayout.SOUTH);
+
         JPanel franja = new JPanel();
         franja.setBackground(NAVY);
-        franja.setPreferredSize(new Dimension(0, 5));
+        franja.setPreferredSize(new Dimension(0, 4));
 
-        contenedor.add(cabecera, BorderLayout.CENTER);
+        contenedor.add(centroCabecera, BorderLayout.CENTER);
         contenedor.add(franja, BorderLayout.SOUTH);
 
         return contenedor;
@@ -498,7 +525,7 @@ public class VistaCliente extends BaseFrame {
         encabezado.add(lblCantidad, BorderLayout.EAST);
 
         // --- GRILLA DE PRODUCTOS ---
-        gridProductos = new JPanel(new GridLayout(0, 3, 12, 12));
+        gridProductos = new JPanel(new GridLayout(0, 4, 14, 14));
         gridProductos.setOpaque(false);
 
         JPanel contenedor = new JPanel(new BorderLayout());
@@ -521,25 +548,35 @@ public class VistaCliente extends BaseFrame {
     // =========================================================
     // 3. ZONA DERECHA (Panel del Carrito)
     // =========================================================
-    private JPanel crearCarrito() {
-        PanelRedondeado carritoPanel = new PanelRedondeado(18);
-        carritoPanel.setBackground(AZUL_SUAVE);
-        carritoPanel.setPreferredSize(new Dimension(250, 0));
-        carritoPanel.setLayout(new BorderLayout());
-        carritoPanel.setBorder(new EmptyBorder(15, 15, 15, 15));
+    private JPanel crearVistaCarritoDashboard() {
+        JPanel vistaCarrito = new JPanel(new BorderLayout(18, 0));
+        vistaCarrito.setOpaque(false);
 
-        // --- TÍTULO CARRITO ---
-        PanelRedondeado cabecera = new PanelRedondeado(10);
-        cabecera.setBackground(NAVY);
-        cabecera.setLayout(new BorderLayout());
-        cabecera.setBorder(new EmptyBorder(9, 10, 9, 10));
+        // ==========================================
+        // COLUMNA IZQUIERDA: LISTA DE PRODUCTOS
+        // ==========================================
+        PanelRedondeado panelIzquierdo = new PanelRedondeado(18);
+        panelIzquierdo.setBackground(Color.WHITE);
+        panelIzquierdo.setLayout(new BorderLayout(0, 12));
+        panelIzquierdo.setBorder(new EmptyBorder(16, 18, 16, 18));
 
-        lblCarritoTitulo = new JLabel("Mi Carrito (0)");
-        lblCarritoTitulo.setFont(new Font("SansSerif", Font.BOLD, 17));
+        PanelRedondeado cabeceraLista = new PanelRedondeado(12);
+        cabeceraLista.setBackground(NAVY);
+        cabeceraLista.setLayout(new BorderLayout(10, 0));
+        cabeceraLista.setBorder(new EmptyBorder(11, 15, 11, 15));
+
+        lblCarritoTitulo = new JLabel("🛒 Mi Carrito (0)");
+        lblCarritoTitulo.setFont(new Font("SansSerif", Font.BOLD, 18));
         lblCarritoTitulo.setForeground(Color.WHITE);
-        cabecera.add(lblCarritoTitulo);
 
-        // --- LISTA DE ARTÍCULOS ---
+        //lblTemporizadorCarrito = new JLabel("");
+        //lblTemporizadorCarrito.setFont(new Font("SansSerif", Font.BOLD, 13));
+        //lblTemporizadorCarrito.setForeground(new Color(205, 215, 230));
+        //lblTemporizadorCarrito.setVisible(false);
+
+        cabeceraLista.add(lblCarritoTitulo, BorderLayout.WEST);
+        //cabeceraLista.add(lblTemporizadorCarrito, BorderLayout.EAST);
+
         panelArticulosCarrito = new JPanel();
         panelArticulosCarrito.setOpaque(false);
         panelArticulosCarrito.setLayout(new BoxLayout(panelArticulosCarrito, BoxLayout.Y_AXIS));
@@ -548,146 +585,156 @@ public class VistaCliente extends BaseFrame {
         scrollCarrito.setBorder(null);
         scrollCarrito.setOpaque(false);
         scrollCarrito.getViewport().setOpaque(false);
-        scrollCarrito.getVerticalScrollBar().setUnitIncrement(12);
+        scrollCarrito.getVerticalScrollBar().setUnitIncrement(14);
 
-        // --- TOTALES Y BOTONES DE COMPRA ---
-        JPanel inferior = new JPanel();
-        inferior.setOpaque(false);
-        inferior.setLayout(new BoxLayout(inferior, BoxLayout.Y_AXIS));
+        panelIzquierdo.add(cabeceraLista, BorderLayout.NORTH);
+        panelIzquierdo.add(scrollCarrito, BorderLayout.CENTER);
 
-        JLabel lblCupon = new JLabel("Código de cupón:");
-        lblCupon.setFont(new Font("SansSerif", Font.PLAIN, 13));
-        lblCupon.setForeground(NAVY);
+        // ==========================================
+        // COLUMNA DERECHA: CUPÓN Y RESUMEN FINANCIERO
+        // ==========================================
+        PanelRedondeado panelDerecho = new PanelRedondeado(18);
+        panelDerecho.setBackground(Color.WHITE);
+        panelDerecho.setPreferredSize(new Dimension(360, 0));
+        panelDerecho.setLayout(new BorderLayout());
+        panelDerecho.setBorder(new EmptyBorder(18, 18, 18, 18));
+
+        JPanel contenidoResumen = new JPanel();
+        contenidoResumen.setOpaque(false);
+        contenidoResumen.setLayout(new BoxLayout(contenidoResumen, BoxLayout.Y_AXIS));
+
+        JLabel lblResumenTitulo = new JLabel("Resumen de compra");
+        lblResumenTitulo.setFont(new Font("SansSerif", Font.BOLD, 18));
+        lblResumenTitulo.setForeground(NAVY);
+        lblResumenTitulo.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        // Cupón
+        JLabel lblCupon = new JLabel("🎟️ Cupón de descuento");
+        lblCupon.setFont(new Font("SansSerif", Font.BOLD, 13));
+        lblCupon.setForeground(GRIS);
+        lblCupon.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JPanel filaCupon = new JPanel(new BorderLayout(8, 0));
+        filaCupon.setOpaque(false);
+        filaCupon.setAlignmentX(Component.LEFT_ALIGNMENT);
+        filaCupon.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
 
         txtCupon = new JTextField();
+        txtCupon.setFont(new Font("SansSerif", Font.PLAIN, 14));
+        txtCupon.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(200, 210, 222)),
+                new EmptyBorder(6, 10, 6, 10)
+        ));
 
-        txtCupon.setMaximumSize(
-                new Dimension(Integer.MAX_VALUE, 28)
-        );
+        btnAplicarCupon = crearBoton("Aplicar", NAVY);
+        btnAplicarCupon.setPreferredSize(new Dimension(90, 36));
+        btnAplicarCupon.addActionListener(e -> aplicarCupon());
 
-        btnAplicarCupon = crearBoton(
-                "Aplicar cupón",
-                AZUL
-        );
+        filaCupon.add(txtCupon, BorderLayout.CENTER);
+        filaCupon.add(btnAplicarCupon, BorderLayout.EAST);
 
-        btnAplicarCupon.addActionListener(
-                e -> aplicarCupon()
-        );
+        // Caja de desglose
+        PanelRedondeado cajaResumen = new PanelRedondeado(14);
+        cajaResumen.setBackground(new Color(246, 249, 253));
+        cajaResumen.setLayout(new BoxLayout(cajaResumen, BoxLayout.Y_AXIS));
+        cajaResumen.setBorder(new EmptyBorder(14, 15, 14, 15));
+        cajaResumen.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        lblSubtotalCarrito = new JLabel("Subtotal: $0");
-        lblSubtotalCarrito.setFont(new Font("SansSerif", Font.PLAIN, 14));
-        lblSubtotalCarrito.setForeground(NAVY);
+        lblSubtotalCarrito = new JLabel("$0");
+        lblDescuentoCarrito = new JLabel("-$0");
+        lblDescuentoCarrito.setForeground(new Color(35, 145, 85));
+        lblSubtotalNetoCarrito = new JLabel("$0");
+        lblIvaCarrito = new JLabel("$0");
+        lblTotalCarrito = new JLabel("$0");
 
-        lblDescuentoCarrito =
-                new JLabel("Descuento: $0");
+        cajaResumen.add(crearFilaResumen("Subtotal:", lblSubtotalCarrito, false));
+        cajaResumen.add(Box.createRigidArea(new Dimension(0, 7)));
+        cajaResumen.add(crearFilaResumen("Descuento:", lblDescuentoCarrito, false));
+        cajaResumen.add(Box.createRigidArea(new Dimension(0, 7)));
+        cajaResumen.add(crearFilaResumen("Subtotal neto:", lblSubtotalNetoCarrito, false));
+        cajaResumen.add(Box.createRigidArea(new Dimension(0, 7)));
+        cajaResumen.add(crearFilaResumen("IVA (19%):", lblIvaCarrito, false));
+        cajaResumen.add(Box.createRigidArea(new Dimension(0, 10)));
 
-        lblDescuentoCarrito.setFont(
-                new Font("SansSerif", Font.PLAIN, 14)
-        );
+        JSeparator separador = new JSeparator();
+        separador.setForeground(new Color(215, 223, 234));
+        separador.setMaximumSize(new Dimension(Integer.MAX_VALUE, 2));
+        cajaResumen.add(separador);
+        cajaResumen.add(Box.createRigidArea(new Dimension(0, 10)));
 
-        lblDescuentoCarrito.setForeground(NAVY);
+        cajaResumen.add(crearFilaResumen("Total a pagar:", lblTotalCarrito, true));
 
-
-        lblSubtotalNetoCarrito =
-                new JLabel("Subtotal neto: $0");
-
-        lblSubtotalNetoCarrito.setFont(
-                new Font("SansSerif", Font.PLAIN, 14)
-        );
-
-        lblSubtotalNetoCarrito.setForeground(NAVY);
-
-        lblIvaCarrito = new JLabel("IVA (19%): $0");
-        lblIvaCarrito.setFont(new Font("SansSerif", Font.PLAIN, 14));
-        lblIvaCarrito.setForeground(NAVY);
-
-        lblTotalCarrito = new JLabel("Total: $0");
-        lblTotalCarrito.setFont(new Font("SansSerif", Font.BOLD, 17));
-        lblTotalCarrito.setForeground(NAVY);
-
-        // --- BOTÓN: Vaciar Carrito ---
-        btnVaciarCarrito = crearBoton("Vaciar carrito", new Color(215, 60, 70));
-        btnVaciarCarrito.setEnabled(false);
-        btnVaciarCarrito.addActionListener(e -> vaciarCarrito());
-
-        // --- BOTÓN: Proceder a Compra ---
-        btnComprar = crearBoton("Proceder a la compra", AZUL);
+        // Botones
+        btnComprar = crearBoton("Confirmar compra  →", AZUL);
+        btnComprar.setFont(new Font("SansSerif", Font.BOLD, 15));
+        btnComprar.setAlignmentX(Component.LEFT_ALIGNMENT);
+        btnComprar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 44));
+        btnComprar.setPreferredSize(new Dimension(0, 44));
         btnComprar.setEnabled(false);
         btnComprar.addActionListener(e -> procederCompra());
 
-        // --- ENSAMBLAJE CARRITO ---
-        inferior.add(lblCupon);
+        btnVaciarCarrito = crearBoton("Vaciar carrito", new Color(235, 87, 87));
+        btnVaciarCarrito.setFont(new Font("SansSerif", Font.BOLD, 13));
+        btnVaciarCarrito.setAlignmentX(Component.LEFT_ALIGNMENT);
+        btnVaciarCarrito.setMaximumSize(new Dimension(Integer.MAX_VALUE, 35));
+        btnVaciarCarrito.setPreferredSize(new Dimension(0, 35));
+        btnVaciarCarrito.setEnabled(false);
+        btnVaciarCarrito.addActionListener(e -> vaciarCarrito());
 
-        inferior.add(
-                Box.createRigidArea(
-                        new Dimension(0, 4)
-                )
-        );
+        JButton btnSeguirComprando = crearBoton("← Seguir comprando", new Color(100, 110, 125));
+        btnSeguirComprando.setFont(new Font("SansSerif", Font.BOLD, 13));
+        btnSeguirComprando.setAlignmentX(Component.LEFT_ALIGNMENT);
+        btnSeguirComprando.setMaximumSize(new Dimension(Integer.MAX_VALUE, 35));
+        btnSeguirComprando.setPreferredSize(new Dimension(0, 35));
+        btnSeguirComprando.addActionListener(e -> cambiarVistaCliente("VISTA_TIENDA"));
 
-        inferior.add(txtCupon);
+        contenidoResumen.add(lblResumenTitulo);
+        contenidoResumen.add(Box.createRigidArea(new Dimension(0, 14)));
+        contenidoResumen.add(lblCupon);
+        contenidoResumen.add(Box.createRigidArea(new Dimension(0, 5)));
+        contenidoResumen.add(filaCupon);
+        contenidoResumen.add(Box.createRigidArea(new Dimension(0, 16)));
+        contenidoResumen.add(cajaResumen);
+        contenidoResumen.add(Box.createRigidArea(new Dimension(0, 16)));
+        contenidoResumen.add(btnComprar);
+        contenidoResumen.add(Box.createRigidArea(new Dimension(0, 8)));
+        contenidoResumen.add(btnVaciarCarrito);
+        contenidoResumen.add(Box.createRigidArea(new Dimension(0, 8)));
+        contenidoResumen.add(btnSeguirComprando);
 
-        inferior.add(
-                Box.createRigidArea(
-                        new Dimension(0, 5)
-                )
-        );
+        panelDerecho.add(contenidoResumen, BorderLayout.NORTH);
 
-        inferior.add(btnAplicarCupon);
-
-        inferior.add(
-                Box.createRigidArea(
-                        new Dimension(0, 12)
-                )
-        );
-
-
-        inferior.add(lblSubtotalCarrito);
-
-        inferior.add(
-                Box.createRigidArea(
-                        new Dimension(0, 4)
-                )
-        );
-
-        inferior.add(lblDescuentoCarrito);
-
-        inferior.add(
-                Box.createRigidArea(
-                        new Dimension(0, 4)
-                )
-        );
-
-        inferior.add(lblSubtotalNetoCarrito);
-
-        inferior.add(
-                Box.createRigidArea(
-                        new Dimension(0, 4)
-                )
-        );
-
-        inferior.add(lblIvaCarrito);
-
-        inferior.add(
-                Box.createRigidArea(
-                        new Dimension(0, 5)
-                )
-        );
-
-        inferior.add(lblTotalCarrito);
-        inferior.add(Box.createRigidArea(new Dimension(0, 12)));
-        inferior.add(btnVaciarCarrito);
-        inferior.add(Box.createRigidArea(new Dimension(0, 7)));
-        inferior.add(btnComprar);
-
-        carritoPanel.add(cabecera, BorderLayout.NORTH);
-        carritoPanel.add(scrollCarrito, BorderLayout.CENTER);
-        carritoPanel.add(inferior, BorderLayout.SOUTH);
+        vistaCarrito.add(panelIzquierdo, BorderLayout.CENTER);
+        vistaCarrito.add(panelDerecho, BorderLayout.EAST);
 
         actualizarCarrito();
-
-        return carritoPanel;
+        return vistaCarrito;
     }
 
+    private JPanel crearFilaResumen(String etiqueta, JLabel lblValor, boolean esTotal) {
+        JPanel fila = new JPanel(new BorderLayout());
+        fila.setOpaque(false);
+        fila.setMaximumSize(new Dimension(Integer.MAX_VALUE, esTotal ? 24 : 18));
+
+        JLabel lblIzq = new JLabel(etiqueta);
+        if (esTotal) {
+            lblIzq.setFont(new Font("SansSerif", Font.BOLD, 15));
+            lblIzq.setForeground(NAVY);
+            lblValor.setFont(new Font("SansSerif", Font.BOLD, 16));
+            lblValor.setForeground(NAVY);
+        } else {
+            lblIzq.setFont(new Font("SansSerif", Font.PLAIN, 13));
+            lblIzq.setForeground(GRIS);
+            lblValor.setFont(new Font("SansSerif", Font.BOLD, 13));
+            if (lblValor != lblDescuentoCarrito) {
+                lblValor.setForeground(NAVY);
+            }
+        }
+
+        fila.add(lblIzq, BorderLayout.WEST);
+        fila.add(lblValor, BorderLayout.EAST);
+        return fila;
+    }
     // =========================================================
     // LÓGICA DE DIBUJO Y FILTRADO DE PRODUCTOS
     // =========================================================
@@ -1113,6 +1160,9 @@ public class VistaCliente extends BaseFrame {
         lblCarritoTitulo.setText(
                 "Mi Carrito (" + carrito.getCantidadTotal() + ")"
         );
+        if (btnTabCarrito != null) {
+            btnTabCarrito.setText("🛒 Mi Carrito (" + carrito.getCantidadTotal() + ")");
+        }
 
 
         lblSubtotalCarrito.setText(
@@ -1820,5 +1870,40 @@ public class VistaCliente extends BaseFrame {
 
     private void mostrarError(String mensaje) {
         JOptionPane.showMessageDialog(this, mensaje, "Error", JOptionPane.ERROR_MESSAGE);
+    }
+    private void cambiarVistaCliente(String nombreVista) {
+        gestorVistas.show(panelContenedorVistas, nombreVista);
+        boolean enTienda = nombreVista.equals("VISTA_TIENDA");
+        estilizarPestana(btnTabTienda, enTienda);
+        estilizarPestana(btnTabCarrito, !enTienda);
+    }
+
+    private JButton crearBotonPestana(String texto, boolean activa) {
+        JButton btn = new JButton(texto);
+        btn.setFont(new Font("SansSerif", Font.BOLD, 14));
+        btn.setFocusPainted(false);
+        btn.setContentAreaFilled(false);
+        btn.setOpaque(true);
+        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        estilizarPestana(btn, activa);
+        return btn;
+    }
+
+    private void estilizarPestana(JButton btn, boolean activa) {
+        if (activa) {
+            btn.setForeground(AZUL);
+            btn.setBackground(new Color(245, 248, 255));
+            btn.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createMatteBorder(0, 0, 3, 0, AZUL),
+                    new EmptyBorder(10, 22, 10, 22)
+            ));
+        } else {
+            btn.setForeground(GRIS);
+            btn.setBackground(Color.WHITE);
+            btn.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createMatteBorder(0, 0, 3, 0, Color.WHITE),
+                    new EmptyBorder(10, 22, 10, 22)
+            ));
+        }
     }
 }

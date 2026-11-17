@@ -17,6 +17,7 @@ import java.awt.event.*;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 public class VistaCliente extends BaseFrame {
@@ -137,7 +138,7 @@ public class VistaCliente extends BaseFrame {
         botonChat.setBackground(Color.WHITE);
         botonChat.setBorder(BorderFactory.createLineBorder(new Color(180, 190, 205)));
         botonChat.setFocusPainted(false);
-        botonChat.setToolTipText("Abrir chat con Gemini");
+        botonChat.setToolTipText("Abrir chat con Asistente");
         botonChat.setPreferredSize(new Dimension(44, 38));
         botonChat.setCursor(new Cursor(Cursor.HAND_CURSOR));
         botonChat.addActionListener(e -> mostrarChatGemini());
@@ -179,7 +180,7 @@ public class VistaCliente extends BaseFrame {
         cabecera.addMouseListener(arrastre);
         cabecera.addMouseMotionListener(arrastre);
 
-        JLabel titulo = new JLabel("Asistente Gemini");
+        JLabel titulo = new JLabel("Asistente");
         titulo.setFont(new Font("SansSerif", Font.BOLD, 16));
         titulo.setForeground(Color.WHITE);
         titulo.addMouseListener(arrastre);
@@ -201,16 +202,13 @@ public class VistaCliente extends BaseFrame {
         cabecera.add(cerrar, BorderLayout.EAST);
         dialogo.add(cabecera, BorderLayout.NORTH);
 
-        JTextArea mensajes = new JTextArea();
-        mensajes.setEditable(false);
-        mensajes.setLineWrap(true);
-        mensajes.setWrapStyleWord(true);
-        mensajes.setFont(new Font("SansSerif", Font.PLAIN, 13));
-        mensajes.setForeground(NAVY);
+        JPanel mensajes = new JPanel();
+        mensajes.setLayout(new BoxLayout(mensajes, BoxLayout.Y_AXIS));
         mensajes.setBackground(Color.WHITE);
-        mensajes.setBorder(new EmptyBorder(12, 12, 12, 12));
+        mensajes.setBorder(new EmptyBorder(10, 10, 10, 10));
         JScrollPane scroll = new JScrollPane(mensajes);
         scroll.setBorder(BorderFactory.createEmptyBorder(10, 10, 0, 10));
+        scroll.getVerticalScrollBar().setUnitIncrement(14);
         dialogo.add(scroll, BorderLayout.CENTER);
 
         JTextField entrada = new JTextField();
@@ -237,9 +235,11 @@ public class VistaCliente extends BaseFrame {
 
             entrada.setText("");
             enviar.setEnabled(false);
-            mensajes.append("Tú: " + prompt + "\n");
-            mensajes.append("Gemini está escribiendo...\n\n");
-            mensajes.setCaretPosition(mensajes.getDocument().getLength());
+            mensajes.add(crearBurbujaMensaje("Tú", prompt, true));
+            JPanel cargando = crearBurbujaMensaje("Asistente", "Está escribiendo...", false);
+            mensajes.add(cargando);
+            mensajes.revalidate();
+            desplazarChatAlFinal(scroll);
 
             new SwingWorker<String, Void>() {
                 @Override
@@ -255,16 +255,20 @@ public class VistaCliente extends BaseFrame {
                 protected void done() {
                     try {
                         String respuesta = get();
-                        mensajes.setText(mensajes.getText().replace(
-                                "Gemini está escribiendo...\n\n", ""));
-                        mensajes.append("Gemini: " + respuesta + "\n\n");
+                        mensajes.remove(cargando);
+                        mensajes.add(crearBurbujaRespuesta(respuesta));
                     } catch (Exception exception) {
-                        mensajes.append("Gemini: No se pudo obtener una respuesta. "
-                                + exception.getMessage() + "\n\n");
+                        mensajes.remove(cargando);
+                        mensajes.add(crearBurbujaMensaje(
+                                "Asistente",
+                                "No se pudo obtener una respuesta. " + exception.getMessage(),
+                                false
+                        ));
                     } finally {
                         enviar.setEnabled(true);
                         entrada.requestFocusInWindow();
-                        mensajes.setCaretPosition(mensajes.getDocument().getLength());
+                        mensajes.revalidate();
+                        desplazarChatAlFinal(scroll);
                     }
                 }
             }.execute();
@@ -279,6 +283,90 @@ public class VistaCliente extends BaseFrame {
         );
         dialogo.setVisible(true);
         entrada.requestFocusInWindow();
+    }
+
+    private JPanel crearBurbujaMensaje(String autor, String texto, boolean delUsuario) {
+        JPanel fila = new JPanel(new FlowLayout(
+                delUsuario ? FlowLayout.RIGHT : FlowLayout.LEFT, 0, 4));
+        fila.setOpaque(false);
+        fila.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JPanel burbuja = new JPanel(new BorderLayout(0, 4));
+        burbuja.setBackground(delUsuario ? AZUL_SUAVE : new Color(238, 243, 249));
+        burbuja.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(delUsuario
+                        ? new Color(190, 210, 235)
+                        : new Color(215, 222, 232)),
+                new EmptyBorder(8, 10, 8, 10)
+        ));
+        burbuja.setMaximumSize(new Dimension(320, Integer.MAX_VALUE));
+
+        JLabel etiquetaAutor = new JLabel(autor);
+        etiquetaAutor.setFont(new Font("SansSerif", Font.BOLD, 12));
+        etiquetaAutor.setForeground(delUsuario ? NAVY : AZUL);
+        burbuja.add(etiquetaAutor, BorderLayout.NORTH);
+
+        JTextArea contenido = new JTextArea(texto);
+        contenido.setEditable(false);
+        contenido.setLineWrap(true);
+        contenido.setWrapStyleWord(true);
+        contenido.setRows(Math.max(2, Math.min(8, (texto.length() / 36) + 1)));
+        contenido.setColumns(25);
+        contenido.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        contenido.setForeground(NAVY);
+        contenido.setBackground(burbuja.getBackground());
+        contenido.setBorder(null);
+        burbuja.add(contenido, BorderLayout.CENTER);
+
+        fila.add(burbuja);
+        return fila;
+    }
+
+    private JPanel crearBurbujaRespuesta(String respuesta) {
+        JPanel fila = crearBurbujaMensaje("Asistente", respuesta, false);
+        JPanel burbuja = (JPanel) fila.getComponent(0);
+        List<Producto> recomendados = encontrarProductosEnTexto(respuesta);
+
+        if (!recomendados.isEmpty()) {
+            JPanel acciones = new JPanel();
+            acciones.setOpaque(false);
+            acciones.setLayout(new BoxLayout(acciones, BoxLayout.Y_AXIS));
+            acciones.setBorder(new EmptyBorder(6, 0, 0, 0));
+
+            for (Producto producto : recomendados) {
+                JButton agregar = crearBoton("Agregar al carrito", AZUL);
+                agregar.setAlignmentX(Component.LEFT_ALIGNMENT);
+                agregar.setPreferredSize(new Dimension(170, 32));
+                agregar.setMaximumSize(new Dimension(170, 32));
+                agregar.addActionListener(e -> agregarAlCarrito(producto));
+                acciones.add(agregar);
+                acciones.add(Box.createRigidArea(new Dimension(0, 4)));
+            }
+            burbuja.add(acciones, BorderLayout.SOUTH);
+        }
+        return fila;
+    }
+
+    private List<Producto> encontrarProductosEnTexto(String texto) {
+        List<Producto> encontrados = new ArrayList<>();
+        String respuestaNormalizada = texto.toLowerCase();
+        for (Producto producto : inventario.getProductos()) {
+            String nombre = producto.getNombre();
+            if (nombre != null
+                    && !nombre.trim().isEmpty()
+                    && respuestaNormalizada.contains(nombre.toLowerCase())
+                    && encontrados.stream().noneMatch(
+                            existente -> existente.getId().equals(producto.getId()))) {
+                encontrados.add(producto);
+            }
+        }
+        return encontrados;
+    }
+
+    private void desplazarChatAlFinal(JScrollPane scroll) {
+        SwingUtilities.invokeLater(() ->
+                scroll.getVerticalScrollBar().setValue(
+                        scroll.getVerticalScrollBar().getMaximum()));
     }
 
     // =========================================================

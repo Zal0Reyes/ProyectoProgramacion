@@ -11,7 +11,7 @@ import java.util.List;
 public final class GeminiAPIClient {
     private static final String API_KEY_FILE = "gemini-api-key.txt";
     private static final String STORE_ASSISTANT_PROMPT_FILE = "gemini-store-prompt.txt";
-    private static final String API_URL = "https://generativelanguage.googleapis.com/v1/models/gemini-3.6-flash:generateContent?key=";
+    private static final String API_URL = "https://generativelanguage.googleapis.com/v1/models/gemini-3.5-flash-lite:generateContent?key=";
 
     private GeminiAPIClient() {
     }

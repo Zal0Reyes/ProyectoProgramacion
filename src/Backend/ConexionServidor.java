@@ -208,6 +208,7 @@ public class ConexionServidor {
             double subtotal,
             double iva,
             double total,
+            double descuento,
             List<String> articulos,
             String codigoCupon
     ) {
@@ -246,6 +247,7 @@ public class ConexionServidor {
                         + iva + ";"
                         + total + ";"
                         + cuponEnviar + ";"
+                        + descuento + ";"
                         + productos
         );
     }

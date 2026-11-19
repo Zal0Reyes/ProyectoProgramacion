@@ -139,38 +139,231 @@ public class DialogoHistorialCompras extends JDialog {
         panelCompras.repaint();
     }
 
-    private JPanel crearTarjetaCompra(Compra compra, int numero) {
-        JPanel tarjeta = new JPanel(new GridLayout(4, 1, 0, 6));
-        tarjeta.setBackground(Color.WHITE);
-        tarjeta.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(200, 200, 200)),
-                new EmptyBorder(15, 20, 15, 20)
-        ));
-        tarjeta.setMaximumSize(new Dimension(Integer.MAX_VALUE, 125));
-        tarjeta.setAlignmentX(Component.CENTER_ALIGNMENT);
+    private JPanel crearTarjetaCompra(
+            Compra compra,
+            int numero
+    ) {
 
-        JLabel lblCompra = new JLabel("Compra #" + numero + "  |  "
-                + compra.getFechaHora().format(FORMATO_FECHA));
-        lblCompra.setFont(new Font("SansSerif", Font.BOLD, 15));
-        lblCompra.setForeground(new Color(40, 40, 40));
+        JPanel tarjeta =
+                new JPanel(
+                        new GridLayout(
+                                6,
+                                1,
+                                0,
+                                6
+                        )
+                );
 
-        JLabel lblRut = new JLabel("RUT: " + compra.getRutUsuario());
-        lblRut.setFont(new Font("SansSerif", Font.PLAIN, 14));
-        lblRut.setForeground(new Color(80, 80, 80));
 
-        JLabel lblArticulos = new JLabel("Artículos: " + String.join(", ", compra.getArticulos()));
-        lblArticulos.setFont(new Font("SansSerif", Font.PLAIN, 14));
-        lblArticulos.setForeground(new Color(80, 80, 80));
+        tarjeta.setBackground(
+                Color.WHITE
+        );
 
-        JLabel lblTotal = new JLabel("Total pagado: $" +
-                String.format("%,.0f", compra.getTotalPagado()).replace(',', '.'));
-        lblTotal.setFont(new Font("SansSerif", Font.BOLD, 14));
-        lblTotal.setForeground(new Color(46, 139, 87));
+
+        tarjeta.setBorder(
+                BorderFactory.createCompoundBorder(
+                        BorderFactory.createLineBorder(
+                                new Color(200, 200, 200)
+                        ),
+                        new EmptyBorder(
+                                15,
+                                20,
+                                15,
+                                20
+                        )
+                )
+        );
+
+
+        tarjeta.setMaximumSize(
+                new Dimension(
+                        Integer.MAX_VALUE,
+                        180
+                )
+        );
+
+
+        tarjeta.setAlignmentX(
+                Component.CENTER_ALIGNMENT
+        );
+
+
+        // =====================================
+        // COMPRA Y FECHA
+        // =====================================
+
+        JLabel lblCompra =
+                new JLabel(
+                        "Compra #"
+                                + numero
+                                + "  |  "
+                                + compra.getFechaHora()
+                                .format(FORMATO_FECHA)
+                );
+
+
+        lblCompra.setFont(
+                new Font(
+                        "SansSerif",
+                        Font.BOLD,
+                        15
+                )
+        );
+
+
+        lblCompra.setForeground(
+                new Color(40, 40, 40)
+        );
+
+
+        // =====================================
+        // RUT
+        // =====================================
+
+        JLabel lblRut =
+                new JLabel(
+                        "RUT: "
+                                + compra.getRutUsuario()
+                );
+
+
+        lblRut.setFont(
+                new Font(
+                        "SansSerif",
+                        Font.PLAIN,
+                        14
+                )
+        );
+
+
+        lblRut.setForeground(
+                new Color(80, 80, 80)
+        );
+
+
+        // =====================================
+        // ARTÍCULOS
+        // =====================================
+
+        JLabel lblArticulos =
+                new JLabel(
+                        "Artículos: "
+                                + String.join(
+                                ", ",
+                                compra.getArticulos()
+                        )
+                );
+
+
+        lblArticulos.setFont(
+                new Font(
+                        "SansSerif",
+                        Font.PLAIN,
+                        14
+                )
+        );
+
+
+        lblArticulos.setForeground(
+                new Color(80, 80, 80)
+        );
+
+
+        // =====================================
+        // CUPÓN
+        // =====================================
+
+        String textoCupon =
+                compra.getCodigoCupon().isEmpty()
+                        ? "No utilizado"
+                        : compra.getCodigoCupon();
+
+
+        JLabel lblCupon =
+                new JLabel(
+                        "Cupón: "
+                                + textoCupon
+                );
+
+
+        lblCupon.setFont(
+                new Font(
+                        "SansSerif",
+                        Font.PLAIN,
+                        14
+                )
+        );
+
+
+        lblCupon.setForeground(
+                new Color(80, 80, 80)
+        );
+
+
+        // =====================================
+        // DESCUENTO
+        // =====================================
+
+        JLabel lblDescuento =
+                new JLabel(
+                        "Descuento aplicado: -$"
+                                + String.format(
+                                "%,.0f",
+                                compra.getDescuento()
+                        ).replace(',', '.')
+                );
+
+
+        lblDescuento.setFont(
+                new Font(
+                        "SansSerif",
+                        Font.BOLD,
+                        14
+                )
+        );
+
+
+        lblDescuento.setForeground(
+                new Color(35, 145, 85)
+        );
+
+
+        // =====================================
+        // TOTAL
+        // =====================================
+
+        JLabel lblTotal =
+                new JLabel(
+                        "Total pagado: $"
+                                + String.format(
+                                "%,.0f",
+                                compra.getTotalPagado()
+                        ).replace(',', '.')
+                );
+
+
+        lblTotal.setFont(
+                new Font(
+                        "SansSerif",
+                        Font.BOLD,
+                        14
+                )
+        );
+
+
+        lblTotal.setForeground(
+                new Color(46, 139, 87)
+        );
+
 
         tarjeta.add(lblCompra);
         tarjeta.add(lblRut);
         tarjeta.add(lblArticulos);
+        tarjeta.add(lblCupon);
+        tarjeta.add(lblDescuento);
         tarjeta.add(lblTotal);
+
+
         return tarjeta;
     }
 

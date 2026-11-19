@@ -67,9 +67,13 @@ public class VistaCliente extends BaseFrame {
     private java.util.List<String> articulosCompraPendiente;
     private TemporizadorCarrito temporizadorCarrito;
 
+    private double subtotalOriginalCompraPendiente;
+    private double descuentoCompraPendiente;
     private double subtotalCompraPendiente;
     private double ivaCompraPendiente;
     private double totalCompraPendiente;
+
+    private String codigoCuponCompraPendiente = "";
 
     private boolean compraEnProceso = false;
 
@@ -905,9 +909,13 @@ public class VistaCliente extends BaseFrame {
                 compraPendiente = null;
                 articulosCompraPendiente = null;
 
+                subtotalOriginalCompraPendiente = 0;
+                descuentoCompraPendiente = 0;
                 subtotalCompraPendiente = 0;
                 ivaCompraPendiente = 0;
                 totalCompraPendiente = 0;
+
+                codigoCuponCompraPendiente = "";
 
 
                 // Recargar cupones porque otro cliente
@@ -1592,14 +1600,28 @@ public class VistaCliente extends BaseFrame {
 
 
         // =========================================
-        // 6. GUARDAR LOS DATOS COMO PENDIENTES
+        // 6. OBTENER CÓDIGO DEL CUPÓN
+        // =========================================
+
+        String codigoCupon = "";
+
+        if (cuponAplicado != null) {
+            codigoCupon =
+                    cuponAplicado.getCodigo();
+        }
+
+
+        // =========================================
+        // 7. GUARDAR LOS DATOS COMO PENDIENTES
         // =========================================
 
         compraPendiente =
                 new Backend.Compra(
                         rutCompra,
                         articulosComprados,
-                        totalCompra
+                        totalCompra,
+                        codigoCupon,
+                        descuentoCompra
                 );
 
 
@@ -1607,6 +1629,15 @@ public class VistaCliente extends BaseFrame {
                 articulosComprados;
 
 
+        subtotalOriginalCompraPendiente =
+                subtotalCompra;
+
+
+        descuentoCompraPendiente =
+                descuentoCompra;
+
+
+        // Este es el subtotal DESPUÉS del descuento
         subtotalCompraPendiente =
                 subtotalNetoCompra;
 
@@ -1619,18 +1650,8 @@ public class VistaCliente extends BaseFrame {
                 totalCompra;
 
 
-        // =========================================
-        // 7. OBTENER CÓDIGO DEL CUPÓN
-        // =========================================
-
-        String codigoCupon = "";
-
-
-        if (cuponAplicado != null) {
-
-            codigoCupon =
-                    cuponAplicado.getCodigo();
-        }
+        codigoCuponCompraPendiente =
+                codigoCupon;
 
 
         // =========================================
@@ -1647,6 +1668,7 @@ public class VistaCliente extends BaseFrame {
                 subtotalNetoCompra,
                 ivaCompra,
                 totalCompra,
+                descuentoCompra,
                 articulosComprados,
                 codigoCupon
         );
@@ -1668,7 +1690,9 @@ public class VistaCliente extends BaseFrame {
         inventario.registrarCompra(
                 rutCompra,
                 articulosCompraPendiente,
-                totalCompraPendiente
+                totalCompraPendiente,
+                codigoCuponCompraPendiente,
+                descuentoCompraPendiente
         );
 
 
@@ -1684,6 +1708,8 @@ public class VistaCliente extends BaseFrame {
                         this,
                         compraPendiente,
                         carrito.getProductos(),
+                        subtotalOriginalCompraPendiente,
+                        descuentoCompraPendiente,
                         subtotalCompraPendiente,
                         ivaCompraPendiente,
                         totalCompraPendiente
@@ -1718,11 +1744,13 @@ public class VistaCliente extends BaseFrame {
 
         articulosCompraPendiente = null;
 
+        subtotalOriginalCompraPendiente = 0;
+        descuentoCompraPendiente = 0;
         subtotalCompraPendiente = 0;
-
         ivaCompraPendiente = 0;
-
         totalCompraPendiente = 0;
+
+        codigoCuponCompraPendiente = "";
 
         compraEnProceso = false;
 

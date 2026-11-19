@@ -372,8 +372,40 @@ public class Inventario {
         guardarEnCSV();
     }
 
-    public void registrarCompra(String rutUsuario, List<String> articulos, double totalPagado) {
-        historialCompras.add(new Compra(rutUsuario, articulos, totalPagado));
+    public void registrarCompra(
+            String rutUsuario,
+            List<String> articulos,
+            double totalPagado
+    ) {
+
+        registrarCompra(
+                rutUsuario,
+                articulos,
+                totalPagado,
+                "",
+                0
+        );
+    }
+
+
+    public void registrarCompra(
+            String rutUsuario,
+            List<String> articulos,
+            double totalPagado,
+            String codigoCupon,
+            double descuento
+    ) {
+
+        historialCompras.add(
+                new Compra(
+                        rutUsuario,
+                        articulos,
+                        totalPagado,
+                        codigoCupon,
+                        descuento
+                )
+        );
+
         guardarComprasEnCSV();
         guardarEnCSV();
     }
@@ -383,47 +415,146 @@ public class Inventario {
     }
 
     private void guardarComprasEnCSV() {
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(ARCHIVO_COMPRAS_CSV))) {
-            writer.write("rut,fechaHora,articulos,totalPagado\n");
+
+        try (BufferedWriter writer =
+                     new BufferedWriter(
+                             new FileWriter(ARCHIVO_COMPRAS_CSV)
+                     )) {
+
+            writer.write(
+                    "rut,fechaHora,articulos,totalPagado,codigoCupon,descuento\n"
+            );
+
 
             for (Compra compra : historialCompras) {
-                String articulos = String.join(" | ", compra.getArticulos())
-                        .replace("\n", " ")
-                        .replace("\r", " ");
-                writer.write(String.format("%s,%s,%s,%s\n",
-                        compra.getRutUsuario(), compra.getFechaHora(), articulos, compra.getTotalPagado()));
+
+                String articulos =
+                        String.join(
+                                        " | ",
+                                        compra.getArticulos()
+                                )
+                                .replace("\n", " ")
+                                .replace("\r", " ")
+                                .replace(",", ";");
+
+
+                String codigoCupon =
+                        compra.getCodigoCupon()
+                                .replace(",", ";");
+
+
+                writer.write(
+                        String.format(
+                                "%s,%s,%s,%s,%s,%s\n",
+                                compra.getRutUsuario(),
+                                compra.getFechaHora(),
+                                articulos,
+                                compra.getTotalPagado(),
+                                codigoCupon,
+                                compra.getDescuento()
+                        )
+                );
             }
+
         } catch (IOException e) {
-            System.out.println("No se pudo guardar el historial de compras: " + e.getMessage());
+
+            System.out.println(
+                    "No se pudo guardar el historial de compras: "
+                            + e.getMessage()
+            );
         }
     }
 
     private void cargarComprasDesdeCSV() {
-        File archivo = new File(ARCHIVO_COMPRAS_CSV);
+
+        File archivo =
+                new File(ARCHIVO_COMPRAS_CSV);
+
+
         if (!archivo.exists()) {
             return;
         }
 
-        try (BufferedReader reader = new BufferedReader(new FileReader(archivo))) {
+
+        try (BufferedReader reader =
+                     new BufferedReader(
+                             new FileReader(archivo)
+                     )) {
+
             reader.readLine();
+
             String linea;
+
+
             while ((linea = reader.readLine()) != null) {
-                String[] datos = linea.split(",", 4);
+
+                String[] datos =
+                        linea.split(",", -1);
+
+
                 if (datos.length < 4) {
                     continue;
                 }
 
-                List<String> articulos = datos[2].trim().isEmpty()
-                        ? new ArrayList<>()
-                        : Arrays.asList(datos[2].split(" \\| "));
-                historialCompras.add(new Compra(
-                        datos[0].trim(),
-                        LocalDateTime.parse(datos[1].trim()),
-                        articulos,
-                        Double.parseDouble(datos[3].trim())));
+
+                List<String> articulos =
+                        datos[2].trim().isEmpty()
+                                ? new ArrayList<>()
+                                : Arrays.asList(
+                                datos[2].split(" \\| ")
+                        );
+
+
+                // =====================================
+                // FORMATO NUEVO
+                // =====================================
+
+                if (datos.length >= 6) {
+
+                    historialCompras.add(
+                            new Compra(
+                                    datos[0].trim(),
+                                    LocalDateTime.parse(
+                                            datos[1].trim()
+                                    ),
+                                    articulos,
+                                    Double.parseDouble(
+                                            datos[3].trim()
+                                    ),
+                                    datos[4].trim(),
+                                    Double.parseDouble(
+                                            datos[5].trim()
+                                    )
+                            )
+                    );
+
+                } else {
+
+                    // =================================
+                    // FORMATO ANTIGUO
+                    // =================================
+
+                    historialCompras.add(
+                            new Compra(
+                                    datos[0].trim(),
+                                    LocalDateTime.parse(
+                                            datos[1].trim()
+                                    ),
+                                    articulos,
+                                    Double.parseDouble(
+                                            datos[3].trim()
+                                    )
+                            )
+                    );
+                }
             }
+
         } catch (IOException | RuntimeException e) {
-            System.out.println("No se pudo leer el historial de compras: " + e.getMessage());
+
+            System.out.println(
+                    "No se pudo leer el historial de compras: "
+                            + e.getMessage()
+            );
         }
     }
 

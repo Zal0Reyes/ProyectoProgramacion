@@ -530,25 +530,90 @@ public class VistaPrincipalTienda extends BaseFrame {
 
         // --- ACCIÓN: Nueva Venta Confirmada ---
         if (mensaje.startsWith("VENTA_REALIZADA;")) {
-            String[] datos = mensaje.split(";", 6);
-            if (datos.length != 6) return;
 
-            String rut = datos[1].trim().isEmpty() ? "Sin RUT" : datos[1].trim();
+            String[] datos =
+                    mensaje.split(";", 8);
+
+
+            if (datos.length != 8) {
+                return;
+            }
+
+
+            String rut =
+                    datos[1].trim().isEmpty()
+                            ? "Sin RUT"
+                            : datos[1].trim();
+
+
             try {
-                double subtotal = Double.parseDouble(datos[2]);
-                double iva = Double.parseDouble(datos[3]);
-                double total = Double.parseDouble(datos[4]);
 
-                java.util.List<String> articulos = new java.util.ArrayList<>();
-                if (!datos[5].trim().isEmpty()) {
-                    for (String articulo : datos[5].split("\\|")) articulos.add(articulo);
+                double total =
+                        Double.parseDouble(
+                                datos[4]
+                        );
+
+
+                String codigoCupon =
+                        datos[5].trim();
+
+
+                double descuento =
+                        Double.parseDouble(
+                                datos[6]
+                        );
+
+
+                java.util.List<String> articulos =
+                        new java.util.ArrayList<>();
+
+
+                if (!datos[7].trim().isEmpty()) {
+
+                    for (String articulo
+                            : datos[7].split("\\|")) {
+
+                        articulos.add(
+                                articulo
+                        );
+                    }
                 }
 
+
                 SwingUtilities.invokeLater(() -> {
-                    Backend.Compra compra = new Backend.Compra(rut, articulos, total);
-                    inventario.agregarCompraEnMemoria(compra);
+
+                    Backend.Compra compra =
+                            new Backend.Compra(
+                                    rut,
+                                    articulos,
+                                    total,
+                                    codigoCupon,
+                                    descuento
+                            );
+
+
+                    inventario.agregarCompraEnMemoria(
+                            compra
+                    );
+
+
+                    // Si está mirando pedidos,
+                    // actualizamos la vista también.
+                    if (panelPedidosGrid != null) {
+                        dibujarPedidosEnPanel();
+                    }
                 });
-            } catch (NumberFormatException e) { }
+
+
+            } catch (NumberFormatException e) {
+
+                System.out.println(
+                        "Error al recibir los datos de la venta."
+                );
+            }
+
+
+            return;
         }
     }
 

@@ -256,14 +256,15 @@ public class ServidorNexoMarket {
          * 3 = IVA
          * 4 = total
          * 5 = código cupón
-         * 6 = productos
+         * 6 = descuento
+         * 7 = productos
          */
 
         String[] datos =
-                mensaje.split(";", 7);
+                mensaje.split(";", 8);
 
 
-        if (datos.length != 7) {
+        if (datos.length != 8) {
 
             cliente.println(
                     "ERROR_COMPRA;Datos incorrectos"
@@ -276,14 +277,8 @@ public class ServidorNexoMarket {
         synchronized (inventarioServidor) {
 
             Map<String, Integer> reservas =
-                    reservasClientes.get(
-                            cliente
-                    );
+                    reservasClientes.get(cliente);
 
-
-            // =====================================
-            // VALIDAR QUE EXISTAN PRODUCTOS
-            // =====================================
 
             if (reservas == null ||
                     reservas.isEmpty()) {
@@ -329,27 +324,10 @@ public class ServidorNexoMarket {
             // CONFIRMAR COMPRA
             // =====================================
 
-            /*
-             * El stock ya fue descontado cuando
-             * el cliente agregó los productos
-             * al carrito.
-             *
-             * Por eso NO devolvemos stock.
-             *
-             * Solamente eliminamos las reservas
-             * porque ahora los productos fueron
-             * comprados definitivamente.
-             */
-
             reservas.clear();
-
 
             inventarioServidor.guardarEnCSV();
 
-
-            // =====================================
-            // AVISAR AL CLIENTE
-            // =====================================
 
             cliente.println(
                     "COMPRA_OK"
@@ -360,32 +338,19 @@ public class ServidorNexoMarket {
             // INFORMAR VENTA AL ADMIN
             // =====================================
 
-            /*
-             * Por ahora seguimos enviando:
-             *
-             * RUT
-             * subtotal neto
-             * IVA
-             * total
-             * productos
-             *
-             * En el próximo avance agregaremos
-             * cupón y descuento al registro ADMIN.
-             */
-
             enviarATodos(
                     "VENTA_REALIZADA;"
-                            + datos[1] + ";"
-                            + datos[2] + ";"
-                            + datos[3] + ";"
-                            + datos[4] + ";"
-                            + datos[6],
+                            + datos[1] + ";"  // RUT
+                            + datos[2] + ";"  // subtotal neto
+                            + datos[3] + ";"  // IVA
+                            + datos[4] + ";"  // total
+                            + datos[5] + ";"  // cupón
+                            + datos[6] + ";"  // descuento
+                            + datos[7],       // productos
                     cliente
             );
 
 
-            // El carrito comprado debe desaparecer
-            // inmediatamente de la vista del ADMIN.
             notificarCarritosActivosATodos();
 
 

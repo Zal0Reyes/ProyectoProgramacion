@@ -21,23 +21,18 @@ public class ServidorNexoMarket {
     // =====================================================
 
     // Inventario central compartido
-    private static final Inventario inventarioServidor =
-            new Inventario();
+    private static final Inventario inventarioServidor = new Inventario();
 
     // Gestor central de cupones
-    private static final GestorCupones gestorCuponesServidor =
-            new GestorCupones();
+    private static final GestorCupones gestorCuponesServidor = new GestorCupones();
 
     // Clientes conectados
-    private static final List<PrintWriter> clientes =
-            new ArrayList<>();
+    private static final List<PrintWriter> clientes = new ArrayList<>();
 
     // Cliente -> (ID producto -> cantidad reservada)
-    private static final Map<PrintWriter, Map<String, Integer>>
-            reservasClientes =
-            new HashMap<>();
+    private static final Map<PrintWriter, Map<String, Integer>> reservasClientes = new HashMap<>();
 
-
+    private static int tiempoReservaSegundos = 60;
     // =====================================================
     // INICIO DEL SERVIDOR
     // =====================================================
@@ -79,15 +74,7 @@ public class ServidorNexoMarket {
                                 + socketCliente.getInetAddress()
                 );
 
-
-                Thread hiloCliente =
-                        new Thread(
-                                () -> atenderCliente(
-                                        socketCliente
-                                )
-                        );
-
-
+                Thread hiloCliente = new Thread(() -> atenderCliente(socketCliente));
                 hiloCliente.start();
             }
 
@@ -105,45 +92,23 @@ public class ServidorNexoMarket {
     // ATENDER CLIENTE
     // =====================================================
 
-    private static void atenderCliente(
-            Socket socketCliente
-    ) {
+    private static void atenderCliente(Socket socketCliente) {
 
         PrintWriter salida = null;
 
-
         try {
 
-            BufferedReader entrada =
-                    new BufferedReader(
-                            new InputStreamReader(
-                                    socketCliente.getInputStream()
-                            )
-                    );
-
-
-            salida =
-                    new PrintWriter(
-                            socketCliente.getOutputStream(),
-                            true
-                    );
-
+            BufferedReader entrada = new BufferedReader(new InputStreamReader(socketCliente.getInputStream()));
+            salida = new PrintWriter(socketCliente.getOutputStream(), true);
 
             agregarCliente(salida);
 
 
-            salida.println(
-                    "{\"type\":\"message\","
-                            + "\"content\":\"Conectado al servidor NexoMarket\"}"
-            );
-
+            salida.println("{\"type\":\"message\"," + "\"content\":\"Conectado al servidor NexoMarket\"}");
 
             String mensaje;
 
-
-            while ((mensaje =
-                    entrada.readLine()) != null) {
-
+            while ((mensaje = entrada.readLine()) != null) {
 
                 if (mensaje.trim().isEmpty()) {
                     continue;
@@ -222,7 +187,19 @@ public class ServidorNexoMarket {
                             salida
                     );
 
-                } else {
+                }
+                else if (mensaje.startsWith("ADMIN_SET_TIEMPO_CARRITO;")) {
+                    try {
+                        int nuevosSegundos = Integer.parseInt(mensaje.split(";")[1]);
+                        if (nuevosSegundos > 0) {
+                            tiempoReservaSegundos = nuevosSegundos;
+                            enviarATodos("TIEMPO_RESERVA;" + tiempoReservaSegundos, null);
+                            System.out.println("Tiempo de reserva actualizado a: " + tiempoReservaSegundos + " seg.");
+                        }
+                    } catch (Exception ignored) {}
+                }
+
+                else {
 
                     enviarATodos(
                             mensaje,
@@ -581,10 +558,8 @@ public class ServidorNexoMarket {
             }
         }
 
-
-        System.out.println(
-                "Stock actual enviado a un cliente."
-        );
+        cliente.println("TIEMPO_RESERVA;" + tiempoReservaSegundos);
+        System.out.println("Stock actual enviado a un cliente.");
     }
 
 

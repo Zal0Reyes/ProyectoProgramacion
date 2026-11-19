@@ -9,14 +9,14 @@ import Backend.ConexionServidor;
 import Backend.GeminiAPIClient;
 import Backend.Cupon;
 import Backend.GestorCupones;
-
+import Backend.TemporizadorCarrito;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.File;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
+
 import java.util.List;
 import java.util.Map;
 
@@ -36,6 +36,7 @@ public class VistaCliente extends BaseFrame {
     private JPanel gridProductos;
     private JLabel lblCantidad;
     private JPanel panelArticulosCarrito;
+    private JLabel lblTemporizadorCarrito;
 
     private CardLayout gestorVistas;
     private JPanel panelContenedorVistas;
@@ -64,6 +65,7 @@ public class VistaCliente extends BaseFrame {
     private Cupon cuponAplicado;
     private Backend.Compra compraPendiente;
     private java.util.List<String> articulosCompraPendiente;
+    private TemporizadorCarrito temporizadorCarrito;
 
     private double subtotalCompraPendiente;
     private double ivaCompraPendiente;
@@ -76,6 +78,7 @@ public class VistaCliente extends BaseFrame {
     private String categoriaFiltro = "Todas";
     private double precioMinimo = -1;
     private double precioMaximo = -1;
+    private final Map<String, ImageIcon> cacheImagenes = new java.util.HashMap<>();
 
     // =========================================================
     // CONSTRUCTOR
@@ -88,6 +91,39 @@ public class VistaCliente extends BaseFrame {
         this.gestorCupones = new GestorCupones();
         this.cuponAplicado = null;
 
+
+        //Inicializar Temporizador
+        this.temporizadorCarrito = new TemporizadorCarrito(new TemporizadorCarrito.EventoTemporizador() {
+            @Override
+            public void alActualizarTiempo(String tiempoFormateado, int segundosRestantes) {
+                SwingUtilities.invokeLater(() -> {
+                    if (lblTemporizadorCarrito != null) {
+                        lblTemporizadorCarrito.setText("⏳ Expira en: " + tiempoFormateado);
+                        // Cambia a amarillo/naranja cuando falta 1 minuto o menos
+                        if (segundosRestantes <= 60) {
+                            lblTemporizadorCarrito.setForeground(new Color(255, 210, 90));
+                        } else {
+                            lblTemporizadorCarrito.setForeground(new Color(205, 215, 230));
+                        }
+                    }
+                });
+            }
+
+            @Override
+            public void alFaltarUnMinuto() {
+                SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(
+                        VistaCliente.this,
+                        "¡Atención! Tu carrito expirará en 1 minuto si no realizas cambios o confirmas tu compra.",
+                        "Carrito por expirar",
+                        JOptionPane.WARNING_MESSAGE
+                ));
+            }
+
+            @Override
+            public void alExpirar() {
+                SwingUtilities.invokeLater(() -> liberarCarritoPorExpiracion());
+            }
+        });
         // --- CONEXIÓN: Configurar qué hacer al recibir un mensaje ---
         conexionServidor.setReceptorMensajes(mensaje -> procesarMensajeServidor(mensaje));
         conexionServidor.conectar();
@@ -569,13 +605,13 @@ public class VistaCliente extends BaseFrame {
         lblCarritoTitulo.setFont(new Font("SansSerif", Font.BOLD, 18));
         lblCarritoTitulo.setForeground(Color.WHITE);
 
-        //lblTemporizadorCarrito = new JLabel("");
-        //lblTemporizadorCarrito.setFont(new Font("SansSerif", Font.BOLD, 13));
-        //lblTemporizadorCarrito.setForeground(new Color(205, 215, 230));
-        //lblTemporizadorCarrito.setVisible(false);
+        lblTemporizadorCarrito = new JLabel("");
+        lblTemporizadorCarrito.setFont(new Font("SansSerif", Font.BOLD, 13));
+        lblTemporizadorCarrito.setForeground(new Color(205, 215, 230));
+        lblTemporizadorCarrito.setVisible(false);
 
         cabeceraLista.add(lblCarritoTitulo, BorderLayout.WEST);
-        //cabeceraLista.add(lblTemporizadorCarrito, BorderLayout.EAST);
+        cabeceraLista.add(lblTemporizadorCarrito, BorderLayout.EAST);
 
         panelArticulosCarrito = new JPanel();
         panelArticulosCarrito.setOpaque(false);
@@ -841,6 +877,17 @@ public class VistaCliente extends BaseFrame {
 
             return;
         }
+        // --- ACCIÓN: Actualizar tiempo límite de reserva desde el servidor ---
+        if (mensaje.startsWith("TIEMPO_RESERVA;")) {
+            try {
+                int segundos = Integer.parseInt(mensaje.split(";")[1]);
+                temporizadorCarrito.setTiempoLimiteSegundos(segundos);
+                if (temporizadorCarrito.estaActivo()) {
+                    temporizadorCarrito.iniciarOReiniciar();
+                }
+            } catch (Exception ignored) {}
+            return;
+        }
 
 
 // --- ACCIÓN: Error al confirmar compra ---
@@ -921,6 +968,11 @@ public class VistaCliente extends BaseFrame {
                 carrito.devolverProductoConfirmado(producto, cantidadDevuelta);
                 actualizarCarrito();
                 actualizarProductos();
+                if (carrito.estaVacio()) {
+                    temporizadorCarrito.detener();
+                } else {
+                    temporizadorCarrito.iniciarOReiniciar();
+                }
             });
             return;
         }
@@ -950,6 +1002,7 @@ public class VistaCliente extends BaseFrame {
                 carrito.agregarProductoConfirmado(producto, cantidadReservada);
                 actualizarCarrito();
                 actualizarProductos();
+                temporizadorCarrito.iniciarOReiniciar();
             });
             return;
         }
@@ -1034,6 +1087,7 @@ public class VistaCliente extends BaseFrame {
         if (mensaje.equals("CARRITO_VACIADO_POR_ADMIN")) {
             SwingUtilities.invokeLater(() -> {
                 carrito.limpiarDespuesDeCompra();
+                temporizadorCarrito.detener();
                 actualizarCarrito();
                 actualizarProductos();
                 JOptionPane.showMessageDialog(this,
@@ -1116,6 +1170,13 @@ public class VistaCliente extends BaseFrame {
 
             cuponAplicado = null;
 
+            if (temporizadorCarrito != null) {
+                temporizadorCarrito.detener();
+            }
+            if (lblTemporizadorCarrito != null) {
+                lblTemporizadorCarrito.setText("");
+                lblTemporizadorCarrito.setVisible(false);
+            }
             if (txtCupon != null) {
                 txtCupon.setText("");
             }
@@ -1193,6 +1254,10 @@ public class VistaCliente extends BaseFrame {
                 "Total: "
                         + formatearPesos(total)
         );
+
+        if (lblTemporizadorCarrito != null) {
+            lblTemporizadorCarrito.setVisible(!carrito.estaVacio());
+        }
 
         boolean tieneProductos =
                 !carrito.estaVacio();
@@ -1351,12 +1416,10 @@ public class VistaCliente extends BaseFrame {
     // LÓGICA FINAL DE COMPRA Y BOLETA
     // =========================================================
     private void procederCompra() {
-
         // Evita enviar dos compras al mismo tiempo
         if (compraEnProceso) {
             return;
         }
-
 
         // =========================================
         // 1. RUT DEL CLIENTE
@@ -1635,7 +1698,7 @@ public class VistaCliente extends BaseFrame {
         // =========================================
 
         carrito.limpiarDespuesDeCompra();
-
+        temporizadorCarrito.detener();
 
         cuponAplicado = null;
 
@@ -1855,9 +1918,15 @@ public class VistaCliente extends BaseFrame {
     }
 
     private ImageIcon cargarImagen(String ruta) {
+        if (ruta == null || ruta.trim().isEmpty()) return null;
+        if (cacheImagenes.containsKey(ruta)) {
+            return cacheImagenes.get(ruta);
+        }
         File archivo = ImagenesUtil.resolverRutaImagen(ruta);
         if (archivo == null) return null;
-        return new ImageIcon(new ImageIcon(archivo.getPath()).getImage().getScaledInstance(160, 95, Image.SCALE_SMOOTH));
+        ImageIcon icono = new ImageIcon(new ImageIcon(archivo.getPath()).getImage().getScaledInstance(160, 95, Image.SCALE_SMOOTH));
+        cacheImagenes.put(ruta, icono);
+        return icono;
     }
 
     private String acortar(String texto, int maximo) {
@@ -1905,5 +1974,26 @@ public class VistaCliente extends BaseFrame {
                     new EmptyBorder(10, 22, 10, 22)
             ));
         }
+    }
+    private void liberarCarritoPorExpiracion() {
+        if (carrito.estaVacio()) return;
+
+        if (conexionServidor.estaConectado()) {
+            Map<Producto, Integer> productosCarrito = carrito.getProductos();
+            for (Map.Entry<Producto, Integer> entrada : productosCarrito.entrySet()) {
+                conexionServidor.solicitarDevolucion(entrada.getKey().getId(), entrada.getValue());
+            }
+        } else {
+            carrito.limpiarDespuesDeCompra();
+            actualizarCarrito();
+            actualizarProductos();
+        }
+
+        JOptionPane.showMessageDialog(
+                this,
+                "El tiempo de reserva ha expirado. Los productos de tu carrito han vuelto al inventario.",
+                "Carrito Expirado",
+                JOptionPane.INFORMATION_MESSAGE
+        );
     }
 }

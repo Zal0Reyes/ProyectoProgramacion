@@ -37,6 +37,8 @@ public class VistaPrincipalTienda extends BaseFrame {
     private final GestorCupones gestorCupones;
     private JPanel panelCarritosGrid;
     private JPanel panelPedidosGrid;
+    private final java.util.Map<String, ImageIcon> cacheImagenes = new java.util.HashMap<>();
+    private javax.swing.Timer timerRefrescoProductos;
 
     // =========================================================
     // CONSTRUCTOR
@@ -414,6 +416,48 @@ public class VistaPrincipalTienda extends BaseFrame {
         titulo.setForeground(Color.WHITE);
         encabezado.add(titulo, BorderLayout.WEST);
 
+        JButton btnConfigTiempo = new JButton("⏱️ Configurar Tiempo");
+        btnConfigTiempo.setFont(new Font("SansSerif", Font.BOLD, 13));
+        btnConfigTiempo.setForeground(new Color(19, 40, 72));
+        btnConfigTiempo.setBackground(Color.WHITE);
+        btnConfigTiempo.setFocusPainted(false);
+        btnConfigTiempo.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnConfigTiempo.addActionListener(e -> {
+            JSpinner spMinutos = new JSpinner(new SpinnerNumberModel(15, 0, 120, 1));
+            JSpinner spSegundos = new JSpinner(new SpinnerNumberModel(0, 0, 59, 5));
+
+            JPanel panelForm = new JPanel(new GridLayout(2, 2, 10, 8));
+            panelForm.add(new JLabel("Minutos:"));
+            panelForm.add(spMinutos);
+            panelForm.add(new JLabel("Segundos:"));
+            panelForm.add(spSegundos);
+
+            int opcion = JOptionPane.showConfirmDialog(
+                    this,
+                    panelForm,
+                    "Configurar tiempo de reserva",
+                    JOptionPane.OK_CANCEL_OPTION,
+                    JOptionPane.PLAIN_MESSAGE
+            );
+
+            if (opcion == JOptionPane.OK_OPTION) {
+                int minutos = (Integer) spMinutos.getValue();
+                int segundos = (Integer) spSegundos.getValue();
+                int totalSegundos = (minutos * 60) + segundos;
+
+                if (totalSegundos <= 0) {
+                    JOptionPane.showMessageDialog(this, "El tiempo debe ser mayor a 0 segundos.", "Error", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+
+                if (conexionServidor.estaConectado()) {
+                    conexionServidor.enviarMensaje("ADMIN_SET_TIEMPO_CARRITO;" + totalSegundos);
+                }
+                registrarAccionAdmin("Configuró tiempo de reserva a " + minutos + "m " + segundos + "s");
+                JOptionPane.showMessageDialog(this, "Tiempo actualizado a " + minutos + " min " + segundos + " seg.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
+            }
+        });
+        encabezado.add(btnConfigTiempo, BorderLayout.EAST);
 
         panelCentral.add(encabezado, BorderLayout.NORTH);
 
@@ -452,6 +496,7 @@ public class VistaPrincipalTienda extends BaseFrame {
             if (datos.length != 7) return;
             try {
                 inventario.sincronizarProductoDesdeServidor(datos[1], datos[2], Double.parseDouble(datos[3]), Integer.parseInt(datos[4]), datos[5], datos[6]);
+                cacheImagenes.remove(datos[6]);
                 SwingUtilities.invokeLater(() -> actualizarVistaProductos(""));
             } catch (NumberFormatException e) { }
             return;
@@ -477,7 +522,7 @@ public class VistaPrincipalTienda extends BaseFrame {
                 SwingUtilities.invokeLater(() -> {
                     Producto producto = inventario.buscarProductoPorId(datos[1]);
                     if (producto != null) producto.setStock(nuevoStock);
-                    actualizarVistaProductos("");
+                    programarActualizacionProductos();
                 });
             } catch (NumberFormatException e) { }
             return;
@@ -485,25 +530,90 @@ public class VistaPrincipalTienda extends BaseFrame {
 
         // --- ACCIÓN: Nueva Venta Confirmada ---
         if (mensaje.startsWith("VENTA_REALIZADA;")) {
-            String[] datos = mensaje.split(";", 6);
-            if (datos.length != 6) return;
 
-            String rut = datos[1].trim().isEmpty() ? "Sin RUT" : datos[1].trim();
+            String[] datos =
+                    mensaje.split(";", 8);
+
+
+            if (datos.length != 8) {
+                return;
+            }
+
+
+            String rut =
+                    datos[1].trim().isEmpty()
+                            ? "Sin RUT"
+                            : datos[1].trim();
+
+
             try {
-                double subtotal = Double.parseDouble(datos[2]);
-                double iva = Double.parseDouble(datos[3]);
-                double total = Double.parseDouble(datos[4]);
 
-                java.util.List<String> articulos = new java.util.ArrayList<>();
-                if (!datos[5].trim().isEmpty()) {
-                    for (String articulo : datos[5].split("\\|")) articulos.add(articulo);
+                double total =
+                        Double.parseDouble(
+                                datos[4]
+                        );
+
+
+                String codigoCupon =
+                        datos[5].trim();
+
+
+                double descuento =
+                        Double.parseDouble(
+                                datos[6]
+                        );
+
+
+                java.util.List<String> articulos =
+                        new java.util.ArrayList<>();
+
+
+                if (!datos[7].trim().isEmpty()) {
+
+                    for (String articulo
+                            : datos[7].split("\\|")) {
+
+                        articulos.add(
+                                articulo
+                        );
+                    }
                 }
 
+
                 SwingUtilities.invokeLater(() -> {
-                    Backend.Compra compra = new Backend.Compra(rut, articulos, total);
-                    inventario.agregarCompraEnMemoria(compra);
+
+                    Backend.Compra compra =
+                            new Backend.Compra(
+                                    rut,
+                                    articulos,
+                                    total,
+                                    codigoCupon,
+                                    descuento
+                            );
+
+
+                    inventario.agregarCompraEnMemoria(
+                            compra
+                    );
+
+
+                    // Si está mirando pedidos,
+                    // actualizamos la vista también.
+                    if (panelPedidosGrid != null) {
+                        dibujarPedidosEnPanel();
+                    }
                 });
-            } catch (NumberFormatException e) { }
+
+
+            } catch (NumberFormatException e) {
+
+                System.out.println(
+                        "Error al recibir los datos de la venta."
+                );
+            }
+
+
+            return;
         }
     }
 
@@ -524,7 +634,13 @@ public class VistaPrincipalTienda extends BaseFrame {
         gridProductos.revalidate();
         gridProductos.repaint();
     }
-
+    private void programarActualizacionProductos() {
+        if (timerRefrescoProductos == null) {
+            timerRefrescoProductos = new javax.swing.Timer(50, e -> actualizarVistaProductos(""));
+            timerRefrescoProductos.setRepeats(false);
+        }
+        timerRefrescoProductos.restart();
+    }
     private void actualizarVistaConFiltros(java.util.List<String> categoriasFiltro, double minimo, double maximo) {
         if (gridProductos == null) return;
         gridProductos.removeAll();
@@ -975,10 +1091,20 @@ public class VistaPrincipalTienda extends BaseFrame {
     }
 
     private ImageIcon crearIconoImagen(String rutaImagen) {
+        if (rutaImagen == null || rutaImagen.trim().isEmpty()) return null;
+        if (cacheImagenes.containsKey(rutaImagen)) {
+            return cacheImagenes.get(rutaImagen);
+        }
+
         java.io.File archivo = ImagenesUtil.resolverRutaImagen(rutaImagen);
         if (archivo == null) return null;
+
         ImageIcon img = new ImageIcon(archivo.getAbsolutePath());
-        return (img.getIconWidth() <= 0) ? null : new ImageIcon(img.getImage().getScaledInstance(170, 130, Image.SCALE_SMOOTH));
+        if (img.getIconWidth() <= 0) return null;
+
+        ImageIcon escalada = new ImageIcon(img.getImage().getScaledInstance(170, 130, Image.SCALE_SMOOTH));
+        cacheImagenes.put(rutaImagen, escalada);
+        return escalada;
     }
 
     private ImageIcon cargarLogo() {

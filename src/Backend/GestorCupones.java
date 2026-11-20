@@ -77,6 +77,37 @@ public class GestorCupones {
         return listaCupones;
     }
 
+    public synchronized String consumirCupon(String codigo) {
+
+        if (codigo == null || codigo.trim().isEmpty()) {
+            return "";
+        }
+
+        // Leemos nuevamente el CSV para tener
+        // la cantidad de usos más reciente
+        recargarCupones();
+
+        Cupon cupon =
+                buscarPorCodigo(codigo);
+
+        if (cupon == null) {
+            return "El cupón no existe.";
+        }
+
+        if (!cupon.estaVigente()) {
+            return "El cupón está vencido.";
+        }
+
+        if (!cupon.quedanUsos()) {
+            return "El cupón ya no tiene usos disponibles.";
+        }
+
+        cupon.usarCupon();
+
+        guardarEnCSV();
+
+        return "";
+    }
 
     public void guardarEnCSV() {
 

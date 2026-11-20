@@ -15,502 +15,1292 @@ public class ServidorNexoMarket {
 
     private static final int PUERTO = 65432;
 
+
     // =====================================================
-    // ESTRUCTURAS DE DATOS GLOBALES (MEMORIA DEL SERVIDOR)
+    // ESTRUCTURAS DE DATOS GLOBALES
     // =====================================================
 
-    // --- INVENTARIO: Inventario central compartido por todos ---
+    // Inventario central compartido
     private static final Inventario inventarioServidor = new Inventario();
 
-    // --- CLIENTES: Lista de conexiones activas (Sockets) ---
+    // Gestor central de cupones
+    private static final GestorCupones gestorCuponesServidor = new GestorCupones();
+
+    // Clientes conectados
     private static final List<PrintWriter> clientes = new ArrayList<>();
 
-    // --- RESERVAS: Guarda lo que tiene apartado cada cliente ---
-    // Estructura: Cliente (PrintWriter) -> (ID producto -> cantidad)
+    // Cliente -> (ID producto -> cantidad reservada)
     private static final Map<PrintWriter, Map<String, Integer>> reservasClientes = new HashMap<>();
 
+    private static int tiempoReservaSegundos = 60;
     // =====================================================
-    // MÉTODO PRINCIPAL: INICIO DEL SERVIDOR
+    // INICIO DEL SERVIDOR
     // =====================================================
+
     public static void main(String[] args) {
-        try (ServerSocket servidor = new ServerSocket(PUERTO)) {
-            System.out.println("================================");
-            System.out.println("SERVIDOR NEXOMARKET INICIADO");
-            System.out.println("Puerto: " + PUERTO);
-            System.out.println("Esperando clientes...");
-            System.out.println("================================");
 
-            // --- BUCLE INFINITO: Acepta nuevas conexiones ---
+        try (ServerSocket servidor =
+                     new ServerSocket(PUERTO)) {
+
+            System.out.println(
+                    "================================"
+            );
+
+            System.out.println(
+                    "SERVIDOR NEXOMARKET INICIADO"
+            );
+
+            System.out.println(
+                    "Puerto: " + PUERTO
+            );
+
+            System.out.println(
+                    "Esperando clientes..."
+            );
+
+            System.out.println(
+                    "================================"
+            );
+
+
             while (true) {
-                Socket socketCliente = servidor.accept();
-                System.out.println("Nuevo cliente conectado: " + socketCliente.getInetAddress());
 
-                // Se crea un hilo (Thread) por cada cliente para atenderlos en simultáneo
+                Socket socketCliente =
+                        servidor.accept();
+
+
+                System.out.println(
+                        "Nuevo cliente conectado: "
+                                + socketCliente.getInetAddress()
+                );
+
                 Thread hiloCliente = new Thread(() -> atenderCliente(socketCliente));
                 hiloCliente.start();
             }
 
         } catch (IOException e) {
-            System.out.println("Error en el servidor: " + e.getMessage());
+
+            System.out.println(
+                    "Error en el servidor: "
+                            + e.getMessage()
+            );
         }
     }
 
+
     // =====================================================
-    // RECEPCIÓN DE MENSAJES (EL CEREBRO DEL SERVIDOR)
+    // ATENDER CLIENTE
     // =====================================================
+
     private static void atenderCliente(Socket socketCliente) {
+
         PrintWriter salida = null;
 
         try {
+
             BufferedReader entrada = new BufferedReader(new InputStreamReader(socketCliente.getInputStream()));
             salida = new PrintWriter(socketCliente.getOutputStream(), true);
 
-            // --- REGISTRO: Guardamos al nuevo cliente ---
             agregarCliente(salida);
-            salida.println("{\"type\":\"message\",\"content\":\"Conectado al servidor NexoMarket\"}");
+
+
+            salida.println("{\"type\":\"message\"," + "\"content\":\"Conectado al servidor NexoMarket\"}");
 
             String mensaje;
 
-            // --- BUCLE DE ESCUCHA: Lee todo lo que envía este cliente ---
             while ((mensaje = entrada.readLine()) != null) {
-                if (mensaje.trim().isEmpty()) continue;
 
-                System.out.println("Mensaje recibido: " + mensaje);
+                if (mensaje.trim().isEmpty()) {
+                    continue;
+                }
 
-                // =================================================
+
+                System.out.println(
+                        "Mensaje recibido: "
+                                + mensaje
+                );
+
+
+                // =========================================
                 // ENRUTADOR DE COMANDOS
-                // =================================================
+                // =========================================
 
-                // --- COMANDO: Cliente quiere apartar un producto ---
-                if (mensaje.startsWith("RESERVAR;")) {
-                    procesarReserva(mensaje, salida);
+                if (mensaje.startsWith(
+                        "RESERVAR;")) {
+
+                    procesarReserva(
+                            mensaje,
+                            salida
+                    );
+
+                } else if (mensaje.startsWith(
+                        "DEVOLVER;")) {
+
+                    procesarDevolucion(
+                            mensaje,
+                            salida
+                    );
+
+                } else if (mensaje.startsWith(
+                        "ADMIN_GUARDAR_PRODUCTO;")) {
+
+                    procesarProductoAdmin(
+                            mensaje,
+                            salida
+                    );
+
+                } else if (mensaje.startsWith(
+                        "ADMIN_ELIMINAR_PRODUCTO;")) {
+
+                    procesarEliminarProductoAdmin(
+                            mensaje,
+                            salida
+                    );
+
+                } else if (mensaje.startsWith(
+                        "CONFIRMAR_COMPRA;")) {
+
+                    procesarCompra(
+                            mensaje,
+                            salida
+                    );
+
+                } else if (mensaje.equals(
+                        "PEDIR_STOCK")) {
+
+                    enviarStockActual(
+                            salida
+                    );
+
+                } else if (mensaje.equals(
+                        "PEDIR_CARRITOS")) {
+
+                    enviarCarritosActivos(
+                            salida
+                    );
+
+                } else if (mensaje.startsWith(
+                        "ADMIN_VACIAR_CARRITO;")) {
+
+                    procesarVaciarCarritoAdmin(
+                            mensaje,
+                            salida
+                    );
+
                 }
-                // --- COMANDO: Cliente devuelve un producto del carrito ---
-                else if (mensaje.startsWith("DEVOLVER;")) {
-                    procesarDevolucion(mensaje, salida);
+                else if (mensaje.startsWith("ADMIN_SET_TIEMPO_CARRITO;")) {
+                    try {
+                        int nuevosSegundos = Integer.parseInt(mensaje.split(";")[1]);
+                        if (nuevosSegundos > 0) {
+                            tiempoReservaSegundos = nuevosSegundos;
+                            enviarATodos("TIEMPO_RESERVA;" + tiempoReservaSegundos, null);
+                            System.out.println("Tiempo de reserva actualizado a: " + tiempoReservaSegundos + " seg.");
+                        }
+                    } catch (Exception ignored) {}
                 }
-                // --- COMANDO: Admin crea o edita un producto ---
-                else if (mensaje.startsWith("ADMIN_GUARDAR_PRODUCTO;")) {
-                    procesarProductoAdmin(mensaje, salida);
-                }
-                // --- COMANDO: Admin elimina un producto del catálogo ---
-                else if (mensaje.startsWith("ADMIN_ELIMINAR_PRODUCTO;")) {
-                    procesarEliminarProductoAdmin(mensaje, salida);
-                }
-                // --- COMANDO: Cliente finaliza su compra ---
-                else if (mensaje.startsWith("CONFIRMAR_COMPRA;")) {
-                    procesarCompra(mensaje, salida);
-                }
-                // --- COMANDO: Cliente recién conectado pide el catálogo actual ---
-                else if (mensaje.equals("PEDIR_STOCK")) {
-                    enviarStockActual(salida);
-                }
-                // --- COMANDO: Admin pide ver los carritos en vivo ---
-                else if (mensaje.equals("PEDIR_CARRITOS")) {
-                    enviarCarritosActivos(salida);
-                }
-                else if (mensaje.startsWith("ADMIN_VACIAR_CARRITO;")) {
-                    procesarVaciarCarritoAdmin(mensaje, salida);
-                }
-                // --- COMANDO: Mensaje genérico (Se reenvía a todos) ---
+
                 else {
-                    enviarATodos(mensaje, salida);
+
+                    enviarATodos(
+                            mensaje,
+                            salida
+                    );
                 }
             }
 
         } catch (IOException e) {
-            System.out.println("Un cliente se desconectó de forma abrupta.");
+
+            System.out.println(
+                    "Un cliente se desconectó de forma abrupta."
+            );
+
         } finally {
-            // --- LIMPIEZA: Si el cliente se va, devolvemos sus reservas ---
+
             if (salida != null) {
-                eliminarCliente(salida);
+
+                eliminarCliente(
+                        salida
+                );
             }
+
+
             try {
+
                 socketCliente.close();
+
             } catch (IOException e) {
-                System.out.println("Error cerrando socket del cliente.");
+
+                System.out.println(
+                        "Error cerrando socket del cliente."
+                );
             }
         }
     }
 
+
     // =====================================================
-    // MÉTODOS DE PROCESAMIENTO DE COMANDOS
+    // CONFIRMAR COMPRA
     // =====================================================
 
-    // --- ACCIÓN: CONFIRMAR COMPRA ---
-    private static void procesarCompra(String mensaje, PrintWriter cliente) {
-        String[] datos = mensaje.split(";", 6);
+    private static void procesarCompra(
+            String mensaje,
+            PrintWriter cliente
+    ) {
 
-        if (datos.length != 6) {
-            cliente.println("ERROR_COMPRA;Datos incorrectos");
+        /*
+         * Formato recibido:
+         *
+         * 0 = CONFIRMAR_COMPRA
+         * 1 = RUT
+         * 2 = subtotal neto
+         * 3 = IVA
+         * 4 = total
+         * 5 = código cupón
+         * 6 = descuento
+         * 7 = productos
+         */
+
+        String[] datos =
+                mensaje.split(";", 8);
+
+
+        if (datos.length != 8) {
+
+            cliente.println(
+                    "ERROR_COMPRA;Datos incorrectos"
+            );
+
             return;
         }
 
-        // --- CONCURRENCIA: Bloqueamos el inventario para evitar choques ---
-        synchronized (inventarioServidor) {
-            Map<String, Integer> reservas = reservasClientes.get(cliente);
 
-            if (reservas == null || reservas.isEmpty()) {
-                cliente.println("ERROR_COMPRA;No hay productos reservados");
+        synchronized (inventarioServidor) {
+
+            Map<String, Integer> reservas =
+                    reservasClientes.get(cliente);
+
+
+            if (reservas == null ||
+                    reservas.isEmpty()) {
+
+                cliente.println(
+                        "ERROR_COMPRA;No hay productos reservados"
+                );
+
                 return;
             }
 
-            // La compra se confirma. NO se devuelve el stock (se vacía el carrito virtual)
+
+            // =====================================
+            // VALIDAR Y CONSUMIR CUPÓN
+            // =====================================
+
+            String codigoCupon =
+                    datos[5].trim();
+
+
+            if (!codigoCupon.isEmpty()) {
+
+                String errorCupon =
+                        gestorCuponesServidor
+                                .consumirCupon(
+                                        codigoCupon
+                                );
+
+
+                if (!errorCupon.isEmpty()) {
+
+                    cliente.println(
+                            "ERROR_COMPRA;"
+                                    + errorCupon
+                    );
+
+                    return;
+                }
+            }
+
+
+            // =====================================
+            // CONFIRMAR COMPRA
+            // =====================================
+
             reservas.clear();
+
             inventarioServidor.guardarEnCSV();
 
-            // --- RESPUESTA: Avisar al comprador que todo salió bien ---
-            cliente.println("COMPRA_OK");
 
-            // --- RESPUESTA: Avisar a todos (y al Admin) sobre la nueva venta ---
+            cliente.println(
+                    "COMPRA_OK"
+            );
+
+
+            // =====================================
+            // INFORMAR VENTA AL ADMIN
+            // =====================================
+
             enviarATodos(
-                    "VENTA_REALIZADA;" + datos[1] + ";" + datos[2] + ";" + datos[3] + ";" + datos[4] + ";" + datos[5],
+                    "VENTA_REALIZADA;"
+                            + datos[1] + ";"  // RUT
+                            + datos[2] + ";"  // subtotal neto
+                            + datos[3] + ";"  // IVA
+                            + datos[4] + ";"  // total
+                            + datos[5] + ";"  // cupón
+                            + datos[6] + ";"  // descuento
+                            + datos[7],       // productos
                     cliente
             );
-            System.out.println("Compra confirmada y enviada al ADMIN.");
+
+
             notificarCarritosActivosATodos();
+
+
+            System.out.println(
+                    "Compra confirmada y enviada al ADMIN."
+            );
         }
     }
 
-    // --- ACCIÓN: ADMIN GUARDA PRODUCTO ---
-    private static void procesarProductoAdmin(String mensaje, PrintWriter admin) {
-        String[] datos = mensaje.split(";", 7);
-        if (datos.length != 7) return;
 
-        String id = datos[1];
-        String nombre = datos[2];
-        double precio;
-        int stock;
+    // =====================================================
+    // ADMIN GUARDA O MODIFICA PRODUCTO
+    // =====================================================
 
-        try {
-            precio = Double.parseDouble(datos[3]);
-            stock = Integer.parseInt(datos[4]);
-        } catch (NumberFormatException e) {
+    private static void procesarProductoAdmin(
+            String mensaje,
+            PrintWriter admin
+    ) {
+
+        String[] datos =
+                mensaje.split(";", 7);
+
+
+        if (datos.length != 7) {
             return;
         }
 
-        String categoria = datos[5];
-        String rutaImagen = datos[6];
 
-        // --- CONCURRENCIA: Modificamos el catálogo real ---
+        String id =
+                datos[1];
+
+        String nombre =
+                datos[2];
+
+
+        double precio;
+
+        int stock;
+
+
+        try {
+
+            precio =
+                    Double.parseDouble(
+                            datos[3]
+                    );
+
+            stock =
+                    Integer.parseInt(
+                            datos[4]
+                    );
+
+        } catch (NumberFormatException e) {
+
+            return;
+        }
+
+
+        String categoria =
+                datos[5];
+
+        String rutaImagen =
+                datos[6];
+
+
         synchronized (inventarioServidor) {
-            inventarioServidor.sincronizarProductoDesdeServidor(id, nombre, precio, stock, categoria, rutaImagen);
+
+            inventarioServidor
+                    .sincronizarProductoDesdeServidor(
+                            id,
+                            nombre,
+                            precio,
+                            stock,
+                            categoria,
+                            rutaImagen
+                    );
+
+
             inventarioServidor.guardarEnCSV();
 
-            // --- RESPUESTA: Avisamos a los clientes que un producto cambió ---
-            enviarATodos("PRODUCTO_ACTUALIZADO;" + id + ";" + nombre + ";" + precio + ";" + stock + ";" + categoria + ";" + rutaImagen, admin);
+
+            enviarATodos(
+                    "PRODUCTO_ACTUALIZADO;"
+                            + id + ";"
+                            + nombre + ";"
+                            + precio + ";"
+                            + stock + ";"
+                            + categoria + ";"
+                            + rutaImagen,
+                    admin
+            );
         }
-        System.out.println("Producto actualizado por ADMIN: " + id);
+
+
+        System.out.println(
+                "Producto actualizado por ADMIN: "
+                        + id
+        );
     }
 
-    // --- ACCIÓN: ADMIN ELIMINA PRODUCTO ---
-    private static void procesarEliminarProductoAdmin(String mensaje, PrintWriter admin) {
-        String[] datos = mensaje.split(";");
-        if (datos.length != 2) return;
 
-        String idProducto = datos[1];
+    // =====================================================
+    // ADMIN ELIMINA PRODUCTO
+    // =====================================================
+
+    private static void procesarEliminarProductoAdmin(
+            String mensaje,
+            PrintWriter admin
+    ) {
+
+        String[] datos =
+                mensaje.split(";");
+
+
+        if (datos.length != 2) {
+            return;
+        }
+
+
+        String idProducto =
+                datos[1];
+
 
         synchronized (inventarioServidor) {
-            boolean eliminado = inventarioServidor.eliminarProductoPorId(idProducto);
+
+            boolean eliminado =
+                    inventarioServidor
+                            .eliminarProductoPorId(
+                                    idProducto
+                            );
+
+
             if (eliminado) {
-                enviarATodos("PRODUCTO_ELIMINADO;" + idProducto, admin);
+
+                enviarATodos(
+                        "PRODUCTO_ELIMINADO;"
+                                + idProducto,
+                        admin
+                );
             }
         }
-        System.out.println("ADMIN eliminó producto: " + idProducto);
+
+
+        System.out.println(
+                "ADMIN eliminó producto: "
+                        + idProducto
+        );
     }
 
-    // --- ACCIÓN: ENVIAR STOCK ACTUAL INICIAL ---
-    private static void enviarStockActual(PrintWriter cliente) {
+
+    // =====================================================
+    // ENVIAR STOCK ACTUAL
+    // =====================================================
+
+    private static void enviarStockActual(
+            PrintWriter cliente
+    ) {
+
         synchronized (inventarioServidor) {
-            for (Producto producto : inventarioServidor.getProductos()) {
-                cliente.println("STOCK;" + producto.getId() + ";" + producto.getStock());
+
+            for (Producto producto :
+                    inventarioServidor.getProductos()) {
+
+                cliente.println(
+                        "STOCK;"
+                                + producto.getId()
+                                + ";"
+                                + producto.getStock()
+                );
             }
         }
+
+        cliente.println("TIEMPO_RESERVA;" + tiempoReservaSegundos);
         System.out.println("Stock actual enviado a un cliente.");
     }
-    // --- ACCIÓN: ADMIN ANULA UN CARRITO ACTIVO ---
-    private static void procesarVaciarCarritoAdmin(String mensaje, PrintWriter admin) {
-        String[] datos = mensaje.split(";");
-        if (datos.length != 2) return;
-        String nombreObjetivo = datos[1];
+
+
+    // =====================================================
+    // ADMIN VACÍA CARRITO
+    // =====================================================
+
+    private static void procesarVaciarCarritoAdmin(
+            String mensaje,
+            PrintWriter admin
+    ) {
+
+        String[] datos =
+                mensaje.split(";");
+
+
+        if (datos.length != 2) {
+            return;
+        }
+
+
+        String nombreObjetivo =
+                datos[1];
+
 
         synchronized (inventarioServidor) {
+
             int contadorCliente = 1;
-            for (Map.Entry<PrintWriter, Map<String, Integer>> entrada : reservasClientes.entrySet()) {
-                Map<String, Integer> reservas = entrada.getValue();
 
-                if (reservas != null && !reservas.isEmpty()) {
-                    String nombreActual = "Cliente " + contadorCliente;
 
-                    if (nombreActual.equals(nombreObjetivo)) {
+            for (Map.Entry<PrintWriter,
+                    Map<String, Integer>> entrada :
+                    reservasClientes.entrySet()) {
 
-                        for (Map.Entry<String, Integer> prod : reservas.entrySet()) {
-                            Producto p = inventarioServidor.buscarProductoPorId(prod.getKey());
-                            if (p != null) {
-                                inventarioServidor.devolverStock(p, prod.getValue());
-                                enviarATodos("STOCK;" + p.getId() + ";" + p.getStock(), null);
+
+                Map<String, Integer> reservas =
+                        entrada.getValue();
+
+
+                if (reservas != null &&
+                        !reservas.isEmpty()) {
+
+
+                    String nombreActual =
+                            "Cliente "
+                                    + contadorCliente;
+
+
+                    if (nombreActual.equals(
+                            nombreObjetivo)) {
+
+
+                        for (Map.Entry<String, Integer> prod :
+                                reservas.entrySet()) {
+
+
+                            Producto producto =
+                                    inventarioServidor
+                                            .buscarProductoPorId(
+                                                    prod.getKey()
+                                            );
+
+
+                            if (producto != null) {
+
+                                inventarioServidor
+                                        .devolverStock(
+                                                producto,
+                                                prod.getValue()
+                                        );
+
+
+                                enviarATodos(
+                                        "STOCK;"
+                                                + producto.getId()
+                                                + ";"
+                                                + producto.getStock(),
+                                        null
+                                );
                             }
                         }
 
 
                         reservas.clear();
-                        inventarioServidor.guardarEnCSV();
 
 
-                        entrada.getKey().println("CARRITO_VACIADO_POR_ADMIN");
+                        inventarioServidor
+                                .guardarEnCSV();
+
+
+                        entrada.getKey().println(
+                                "CARRITO_VACIADO_POR_ADMIN"
+                        );
+
+
                         break;
                     }
                 }
+
+
                 contadorCliente++;
             }
         }
+
+
         notificarCarritosActivosATodos();
     }
-    // --- ACCIÓN: RESERVAR PRODUCTO (AGREGAR AL CARRITO) ---
-    private static void procesarReserva(String mensaje, PrintWriter cliente) {
-        String[] datos = mensaje.split(";");
+
+
+    // =====================================================
+    // RESERVAR PRODUCTO
+    // =====================================================
+
+    private static void procesarReserva(
+            String mensaje,
+            PrintWriter cliente
+    ) {
+
+        String[] datos =
+                mensaje.split(";");
+
+
         if (datos.length != 3) {
-            cliente.println("ERROR;Formato de reserva incorrecto");
+
+            cliente.println(
+                    "ERROR;Formato de reserva incorrecto"
+            );
+
             return;
         }
 
-        String idProducto = datos[1];
+
+        String idProducto =
+                datos[1];
+
+
         int cantidad;
 
+
         try {
-            cantidad = Integer.parseInt(datos[2]);
+
+            cantidad =
+                    Integer.parseInt(
+                            datos[2]
+                    );
+
         } catch (NumberFormatException e) {
-            cliente.println("ERROR;Cantidad incorrecta");
+
+            cliente.println(
+                    "ERROR;Cantidad incorrecta"
+            );
+
             return;
         }
+
 
         if (cantidad <= 0) {
-            cliente.println("ERROR;Cantidad incorrecta");
+
+            cliente.println(
+                    "ERROR;Cantidad incorrecta"
+            );
+
             return;
         }
 
-        // --- CONCURRENCIA: Modificamos stock apartando unidades ---
+
         synchronized (inventarioServidor) {
-            Producto producto = inventarioServidor.buscarProductoPorId(idProducto);
+
+            Producto producto =
+                    inventarioServidor
+                            .buscarProductoPorId(
+                                    idProducto
+                            );
+
 
             if (producto == null) {
-                cliente.println("ERROR;Producto no encontrado");
+
+                cliente.println(
+                        "ERROR;Producto no encontrado"
+                );
+
                 return;
             }
 
-            // Intentamos reservar
-            boolean reservado = inventarioServidor.reservarUnidades(producto, cantidad);
+
+            boolean reservado =
+                    inventarioServidor
+                            .reservarUnidades(
+                                    producto,
+                                    cantidad
+                            );
+
 
             if (!reservado) {
-                // No hay suficiente stock
-                cliente.println("ERROR_STOCK;" + idProducto + ";" + producto.getStock());
+
+                cliente.println(
+                        "ERROR_STOCK;"
+                                + idProducto
+                                + ";"
+                                + producto.getStock()
+                );
+
                 return;
             }
 
-            // --- REGISTRO: Anotamos la reserva en la cuenta de este cliente ---
-            Map<String, Integer> reservasCliente = reservasClientes.get(cliente);
+
+            Map<String, Integer> reservasCliente =
+                    reservasClientes.get(
+                            cliente
+                    );
+
+
             if (reservasCliente != null) {
-                int cantidadActual = reservasCliente.getOrDefault(idProducto, 0);
-                reservasCliente.put(idProducto, cantidadActual + cantidad);
+
+                int cantidadActual =
+                        reservasCliente
+                                .getOrDefault(
+                                        idProducto,
+                                        0
+                                );
+
+
+                reservasCliente.put(
+                        idProducto,
+                        cantidadActual
+                                + cantidad
+                );
             }
 
-            inventarioServidor.guardarEnCSV();
-            int nuevoStock = producto.getStock();
 
-            System.out.println(producto.getNombre() + " - Reservado: " + cantidad + " - Stock nuevo: " + nuevoStock);
+            inventarioServidor
+                    .guardarEnCSV();
 
-            // --- RESPUESTA: Confirmamos al que reservó ---
-            cliente.println("RESERVA_OK;" + idProducto + ";" + cantidad + ";" + nuevoStock);
 
-            // --- RESPUESTA: Avisamos a los demás del nuevo stock ---
-            enviarATodos("STOCK;" + idProducto + ";" + nuevoStock, cliente);
+            int nuevoStock =
+                    producto.getStock();
+
+
+            System.out.println(
+                    producto.getNombre()
+                            + " - Reservado: "
+                            + cantidad
+                            + " - Stock nuevo: "
+                            + nuevoStock
+            );
+
+
+            cliente.println(
+                    "RESERVA_OK;"
+                            + idProducto
+                            + ";"
+                            + cantidad
+                            + ";"
+                            + nuevoStock
+            );
+
+
+            enviarATodos(
+                    "STOCK;"
+                            + idProducto
+                            + ";"
+                            + nuevoStock,
+                    cliente
+            );
+
+
             notificarCarritosActivosATodos();
         }
     }
 
-    // --- ACCIÓN: DEVOLVER PRODUCTO (QUITAR DEL CARRITO) ---
-    private static void procesarDevolucion(String mensaje, PrintWriter cliente) {
-        String[] datos = mensaje.split(";");
+
+    // =====================================================
+    // DEVOLVER PRODUCTO
+    // =====================================================
+
+    private static void procesarDevolucion(
+            String mensaje,
+            PrintWriter cliente
+    ) {
+
+        String[] datos =
+                mensaje.split(";");
+
 
         if (datos.length != 3) {
-            cliente.println("ERROR;Formato de devolución incorrecto");
+
+            cliente.println(
+                    "ERROR;Formato de devolución incorrecto"
+            );
+
             return;
         }
 
-        String idProducto = datos[1];
+
+        String idProducto =
+                datos[1];
+
+
         int cantidad;
 
+
         try {
-            cantidad = Integer.parseInt(datos[2]);
+
+            cantidad =
+                    Integer.parseInt(
+                            datos[2]
+                    );
+
         } catch (NumberFormatException e) {
-            cliente.println("ERROR;Cantidad incorrecta");
+
+            cliente.println(
+                    "ERROR;Cantidad incorrecta"
+            );
+
             return;
         }
+
 
         if (cantidad <= 0) {
-            cliente.println("ERROR_DEVOLUCION;" + idProducto);
+
+            cliente.println(
+                    "ERROR_DEVOLUCION;"
+                            + idProducto
+            );
+
             return;
         }
 
+
         synchronized (inventarioServidor) {
-            Producto producto = inventarioServidor.buscarProductoPorId(idProducto);
+
+            Producto producto =
+                    inventarioServidor
+                            .buscarProductoPorId(
+                                    idProducto
+                            );
+
 
             if (producto == null) {
-                cliente.println("ERROR;Producto no encontrado");
+
+                cliente.println(
+                        "ERROR;Producto no encontrado"
+                );
+
                 return;
             }
 
-            // Verificamos cuánto tiene realmente reservado este cliente
-            Map<String, Integer> reservasCliente = reservasClientes.get(cliente);
+
+            Map<String, Integer> reservasCliente =
+                    reservasClientes.get(
+                            cliente
+                    );
+
+
             if (reservasCliente == null) {
-                cliente.println("ERROR_DEVOLUCION;" + idProducto);
+
+                cliente.println(
+                        "ERROR_DEVOLUCION;"
+                                + idProducto
+                );
+
                 return;
             }
 
-            int cantidadReservada = reservasCliente.getOrDefault(idProducto, 0);
 
-            // No puede devolver más de lo que reservó
-            if (cantidad > cantidadReservada) {
-                cliente.println("ERROR_DEVOLUCION;" + idProducto);
+            int cantidadReservada =
+                    reservasCliente
+                            .getOrDefault(
+                                    idProducto,
+                                    0
+                            );
+
+
+            if (cantidad >
+                    cantidadReservada) {
+
+                cliente.println(
+                        "ERROR_DEVOLUCION;"
+                                + idProducto
+                );
+
                 return;
             }
 
-            // Devolver stock real al inventario
-            inventarioServidor.devolverStock(producto, cantidad);
 
-            // Actualizar la lista de reservas
-            int nuevaCantidadReservada = cantidadReservada - cantidad;
+            inventarioServidor
+                    .devolverStock(
+                            producto,
+                            cantidad
+                    );
+
+
+            int nuevaCantidadReservada =
+                    cantidadReservada
+                            - cantidad;
+
+
             if (nuevaCantidadReservada == 0) {
-                reservasCliente.remove(idProducto);
+
+                reservasCliente.remove(
+                        idProducto
+                );
+
             } else {
-                reservasCliente.put(idProducto, nuevaCantidadReservada);
+
+                reservasCliente.put(
+                        idProducto,
+                        nuevaCantidadReservada
+                );
             }
 
-            inventarioServidor.guardarEnCSV();
-            int nuevoStock = producto.getStock();
 
-            System.out.println(producto.getNombre() + " - Devuelto: " + cantidad + " - Stock nuevo: " + nuevoStock);
+            inventarioServidor
+                    .guardarEnCSV();
 
-            // --- RESPUESTA: Confirmar devolución ---
-            cliente.println("DEVOLUCION_OK;" + idProducto + ";" + cantidad + ";" + nuevoStock);
 
-            // --- RESPUESTA: Avisar a los demás del stock recuperado ---
-            enviarATodos("STOCK;" + idProducto + ";" + nuevoStock, cliente);
+            int nuevoStock =
+                    producto.getStock();
+
+
+            System.out.println(
+                    producto.getNombre()
+                            + " - Devuelto: "
+                            + cantidad
+                            + " - Stock nuevo: "
+                            + nuevoStock
+            );
+
+
+            cliente.println(
+                    "DEVOLUCION_OK;"
+                            + idProducto
+                            + ";"
+                            + cantidad
+                            + ";"
+                            + nuevoStock
+            );
+
+
+            enviarATodos(
+                    "STOCK;"
+                            + idProducto
+                            + ";"
+                            + nuevoStock,
+                    cliente
+            );
+
+
             notificarCarritosActivosATodos();
         }
     }
 
-    // --- ACCIÓN (NUEVA): ENVIAR CARRITOS EN VIVO AL ADMIN ---
-    private static void enviarCarritosActivos(PrintWriter admin) {
-        StringBuilder datosCarritos = new StringBuilder();
+
+    // =====================================================
+    // ENVIAR CARRITOS ACTIVOS AL ADMIN
+    // =====================================================
+
+    private static void enviarCarritosActivos(
+            PrintWriter admin
+    ) {
+
+        StringBuilder datosCarritos =
+                new StringBuilder();
+
         int contadorCliente = 1;
+
         boolean hayCarritos = false;
 
-        // --- CONCURRENCIA: Leemos las reservas actuales ---
+
         synchronized (inventarioServidor) {
-            for (Map.Entry<PrintWriter, Map<String, Integer>> entradaCliente : reservasClientes.entrySet()) {
-                Map<String, Integer> reservas = entradaCliente.getValue();
 
-                if (reservas != null && !reservas.isEmpty()) {
-                    if (hayCarritos) datosCarritos.append("|");
+            for (Map.Entry<PrintWriter,
+                    Map<String, Integer>> entradaCliente :
+                    reservasClientes.entrySet()) {
 
-                    datosCarritos.append("Cliente ").append(contadorCliente).append(":");
+
+                Map<String, Integer> reservas =
+                        entradaCliente.getValue();
+
+
+                if (reservas != null &&
+                        !reservas.isEmpty()) {
+
+
+                    if (hayCarritos) {
+                        datosCarritos.append("|");
+                    }
+
+
+                    datosCarritos
+                            .append("Cliente ")
+                            .append(contadorCliente)
+                            .append(":");
+
+
                     boolean primerProducto = true;
 
-                    for (Map.Entry<String, Integer> producto : reservas.entrySet()) {
-                        if (!primerProducto) datosCarritos.append("-");
 
-                        datosCarritos.append(producto.getKey()).append(",").append(producto.getValue());
+                    for (Map.Entry<String, Integer> producto :
+                            reservas.entrySet()) {
+
+
+                        if (!primerProducto) {
+                            datosCarritos.append("-");
+                        }
+
+
+                        datosCarritos
+                                .append(producto.getKey())
+                                .append(",")
+                                .append(producto.getValue());
+
+
                         primerProducto = false;
                     }
+
+
                     hayCarritos = true;
                 }
+
+
                 contadorCliente++;
             }
         }
 
-        // --- RESPUESTA: Mandamos la lista al Admin ---
+
         if (!hayCarritos) {
-            admin.println("CARRITOS_ACTIVOS;VACIO");
+
+            admin.println(
+                    "CARRITOS_ACTIVOS;VACIO"
+            );
+
         } else {
-            admin.println("CARRITOS_ACTIVOS;" + datosCarritos.toString());
+
+            admin.println(
+                    "CARRITOS_ACTIVOS;"
+                            + datosCarritos
+            );
         }
-        System.out.println("Lista de carritos activos enviada al ADMIN.");
+
+
+        System.out.println(
+                "Lista de carritos activos enviada al ADMIN."
+        );
     }
 
+
     // =====================================================
-    // MÉTODOS DE GESTIÓN DE CONEXIONES
+    // AGREGAR CLIENTE
     // =====================================================
 
-    // --- MÉTODO: Agregar nuevo cliente a la lista ---
-    private static synchronized void agregarCliente(PrintWriter cliente) {
-        clientes.add(cliente);
-        reservasClientes.put(cliente, new HashMap<>());
-        System.out.println("Clientes conectados: " + clientes.size());
+    private static synchronized void agregarCliente(
+            PrintWriter cliente
+    ) {
+
+        clientes.add(
+                cliente
+        );
+
+
+        reservasClientes.put(
+                cliente,
+                new HashMap<>()
+        );
+
+
+        System.out.println(
+                "Clientes conectados: "
+                        + clientes.size()
+        );
     }
 
-    // --- MÉTODO: Eliminar cliente y liberar sus reservas ---
-    private static synchronized void eliminarCliente(PrintWriter cliente) {
-        Map<String, Integer> reservas = reservasClientes.get(cliente);
+
+    // =====================================================
+    // ELIMINAR CLIENTE
+    // =====================================================
+
+    private static synchronized void eliminarCliente(
+            PrintWriter cliente
+    ) {
+
+        Map<String, Integer> reservas =
+                reservasClientes.get(
+                        cliente
+                );
+
 
         if (reservas != null) {
-            // --- CONCURRENCIA: Devolvemos todo lo que tenía en el carrito ---
-            synchronized (inventarioServidor) {
-                for (Map.Entry<String, Integer> entrada : reservas.entrySet()) {
-                    String idProducto = entrada.getKey();
-                    int cantidad = entrada.getValue();
 
-                    Producto producto = inventarioServidor.buscarProductoPorId(idProducto);
+            synchronized (inventarioServidor) {
+
+                for (Map.Entry<String, Integer> entrada :
+                        reservas.entrySet()) {
+
+
+                    String idProducto =
+                            entrada.getKey();
+
+
+                    int cantidad =
+                            entrada.getValue();
+
+
+                    Producto producto =
+                            inventarioServidor
+                                    .buscarProductoPorId(
+                                            idProducto
+                                    );
+
+
                     if (producto != null) {
-                        inventarioServidor.devolverStock(producto, cantidad);
-                        System.out.println("Cliente desconectado: se devolvieron " + cantidad + " unidades de " + producto.getNombre());
-                        enviarATodos("STOCK;" + idProducto + ";" + producto.getStock(), cliente);
+
+                        inventarioServidor
+                                .devolverStock(
+                                        producto,
+                                        cantidad
+                                );
+
+
+                        System.out.println(
+                                "Cliente desconectado: "
+                                        + "se devolvieron "
+                                        + cantidad
+                                        + " unidades de "
+                                        + producto.getNombre()
+                        );
+
+
+                        enviarATodos(
+                                "STOCK;"
+                                        + idProducto
+                                        + ";"
+                                        + producto.getStock(),
+                                cliente
+                        );
                     }
                 }
-                inventarioServidor.guardarEnCSV();
+
+
+                inventarioServidor
+                        .guardarEnCSV();
             }
         }
+
+
+        reservasClientes.remove(
+                cliente
+        );
+
+        clientes.remove(
+                cliente
+        );
+
+
         notificarCarritosActivosATodos();
-        reservasClientes.remove(cliente);
-        clientes.remove(cliente);
-        System.out.println("Clientes conectados: " + clientes.size());
+
+
+        System.out.println(
+                "Clientes conectados: "
+                        + clientes.size()
+        );
     }
 
-    // --- MÉTODO: Difundir mensaje a todos menos al emisor ---
-    private static synchronized void enviarATodos(String mensaje, PrintWriter emisor) {
-        for (PrintWriter cliente : clientes) {
+
+    // =====================================================
+    // ENVIAR MENSAJE A TODOS
+    // =====================================================
+
+    private static synchronized void enviarATodos(
+            String mensaje,
+            PrintWriter emisor
+    ) {
+
+        for (PrintWriter cliente :
+                clientes) {
+
             if (cliente != emisor) {
-                cliente.println(mensaje);
+
+                cliente.println(
+                        mensaje
+                );
             }
         }
     }
+
+
+    // =====================================================
+    // ACTUALIZAR CARRITOS EN TODOS LOS CLIENTES/ADMIN
+    // =====================================================
+
     private static void notificarCarritosActivosATodos() {
-        StringBuilder datosCarritos = new StringBuilder();
+
+        StringBuilder datosCarritos =
+                new StringBuilder();
+
         int contadorCliente = 1;
+
         boolean hayCarritos = false;
 
-        synchronized (inventarioServidor) {
-            for (Map.Entry<PrintWriter, Map<String, Integer>> entradaCliente : reservasClientes.entrySet()) {
-                Map<String, Integer> reservas = entradaCliente.getValue();
-                if (reservas != null && !reservas.isEmpty()) {
-                    if (hayCarritos) datosCarritos.append("|");
 
-                    datosCarritos.append("Cliente ").append(contadorCliente).append(":");
+        synchronized (inventarioServidor) {
+
+            for (Map.Entry<PrintWriter,
+                    Map<String, Integer>> entradaCliente :
+                    reservasClientes.entrySet()) {
+
+
+                Map<String, Integer> reservas =
+                        entradaCliente.getValue();
+
+
+                if (reservas != null &&
+                        !reservas.isEmpty()) {
+
+
+                    if (hayCarritos) {
+                        datosCarritos.append("|");
+                    }
+
+
+                    datosCarritos
+                            .append("Cliente ")
+                            .append(contadorCliente)
+                            .append(":");
+
+
                     boolean primerProducto = true;
 
-                    for (Map.Entry<String, Integer> producto : reservas.entrySet()) {
-                        if (!primerProducto) datosCarritos.append("-");
-                        datosCarritos.append(producto.getKey()).append(",").append(producto.getValue());
+
+                    for (Map.Entry<String, Integer> producto :
+                            reservas.entrySet()) {
+
+
+                        if (!primerProducto) {
+                            datosCarritos.append("-");
+                        }
+
+
+                        datosCarritos
+                                .append(producto.getKey())
+                                .append(",")
+                                .append(producto.getValue());
+
+
                         primerProducto = false;
                     }
+
+
                     hayCarritos = true;
                 }
+
+
                 contadorCliente++;
             }
         }
 
-        String mensaje = !hayCarritos ? "CARRITOS_ACTIVOS;VACIO" : "CARRITOS_ACTIVOS;" + datosCarritos.toString();
-        // Al enviar 'null' como emisor, el servidor le envía la actualización a todos los sockets conectados
-        enviarATodos(mensaje, null);
+
+        String mensaje;
+
+
+        if (hayCarritos) {
+
+            mensaje =
+                    "CARRITOS_ACTIVOS;"
+                            + datosCarritos;
+
+        } else {
+
+            mensaje =
+                    "CARRITOS_ACTIVOS;VACIO";
+        }
+
+
+        enviarATodos(
+                mensaje,
+                null
+        );
     }
 }

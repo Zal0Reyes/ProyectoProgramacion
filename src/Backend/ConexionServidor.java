@@ -161,7 +161,22 @@ public class ConexionServidor {
                         + idProducto
         );
     }
-
+    public void crearOfertaAdmin(
+            String codigo,
+            String descripcion,
+            double descuento,
+            long inicioEpoch,
+            long finEpoch
+    ) {
+        enviarMensaje(
+                "ADMIN_CREAR_OFERTA;"
+                        + limpiarCampo(codigo) + ";"
+                        + limpiarCampo(descripcion) + ";"
+                        + descuento + ";"
+                        + inicioEpoch + ";"
+                        + finEpoch
+        );
+    }
 
     private String limpiarCampo(
             String texto

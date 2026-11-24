@@ -62,6 +62,8 @@ public class VistaCliente extends BaseFrame {
     private final Carrito carrito;
     private final ConexionServidor conexionServidor;
     private final GestorCupones gestorCupones;
+    private final Backend.GestorDespacho gestorDespacho = new Backend.GestorDespacho();
+    private String infoDespachoCompraPendiente = "";
     private Cupon cuponAplicado;
     private Backend.Compra compraPendiente;
     private java.util.List<String> articulosCompraPendiente;
@@ -1504,8 +1506,8 @@ public class VistaCliente extends BaseFrame {
         }
 
 
-        // =========================================
-        // 3. CALCULAR DESCUENTO Y TOTAL REAL
+// =========================================
+        // 3. CALCULAR DESCUENTO, ENVÍO Y TOTAL REAL
         // =========================================
 
         double subtotalCompra =
@@ -1528,13 +1530,30 @@ public class VistaCliente extends BaseFrame {
                 subtotalCompra - descuentoCompra;
 
 
+        DialogoDespacho dialogoDespacho =
+                new DialogoDespacho(
+                        this,
+                        gestorDespacho,
+                        subtotalNetoCompra,
+                        sistema.getUsuarioActual()
+                );
+        dialogoDespacho.mostrar();
+
+        if (!dialogoDespacho.isConfirmado()) {
+            return;
+        }
+
+        double costoEnvioCompra = dialogoDespacho.getCostoEnvioSeleccionado();
+        String infoDespacho = dialogoDespacho.getResumenEntrega();
+        carrito.setCostoEnvio(costoEnvioCompra);
+
+
         double ivaCompra =
-                subtotalNetoCompra * 0.19;
+                (subtotalNetoCompra + costoEnvioCompra) * 0.19;
 
 
         double totalCompra =
-                subtotalNetoCompra + ivaCompra;
-
+                subtotalNetoCompra + costoEnvioCompra + ivaCompra;
 
         // =========================================
         // 4. RESUMEN DE LA COMPRA
@@ -1558,7 +1577,11 @@ public class VistaCliente extends BaseFrame {
 
 
         resumen +=
-                "\nIVA (19%): "
+                "\nEntrega: "
+                        + infoDespacho
+                        + "\nEnvío: "
+                        + formatearPesos(costoEnvioCompra)
+                        + "\nIVA (19%): "
                         + formatearPesos(ivaCompra)
                         + "\nTotal: "
                         + formatearPesos(totalCompra)
@@ -1654,6 +1677,10 @@ public class VistaCliente extends BaseFrame {
                 codigoCupon;
 
 
+        infoDespachoCompraPendiente =
+                infoDespacho;
+
+
         // =========================================
         // 8. ENVIAR COMPRA AL SERVIDOR
         // =========================================
@@ -1711,6 +1738,8 @@ public class VistaCliente extends BaseFrame {
                         subtotalOriginalCompraPendiente,
                         descuentoCompraPendiente,
                         subtotalCompraPendiente,
+                        carrito.getCostoEnvio(),
+                        infoDespachoCompraPendiente,
                         ivaCompraPendiente,
                         totalCompraPendiente
                 );
@@ -1751,6 +1780,7 @@ public class VistaCliente extends BaseFrame {
         totalCompraPendiente = 0;
 
         codigoCuponCompraPendiente = "";
+        infoDespachoCompraPendiente = "";
 
         compraEnProceso = false;
 

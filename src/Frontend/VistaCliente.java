@@ -9,6 +9,8 @@ import Backend.ConexionServidor;
 import Backend.GeminiAPIClient;
 import Backend.Cupon;
 import Backend.GestorCupones;
+import Backend.GestorDespacho;
+import Backend.TarifaEnvio;
 import Backend.TemporizadorCarrito;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -55,13 +57,17 @@ public class VistaCliente extends BaseFrame {
 
     private JButton btnComprar;
     private JButton btnVaciarCarrito;
-
-
+    private JRadioButton rbRetiroTienda;
+    private JRadioButton rbDespachoDomicilio;
+    private JComboBox<String> cbRegionDespacho;
+    private JLabel lblInfoDiasEnvio;
+    private JLabel lblEnvioCarrito;
 
     // --- LÓGICA DE NEGOCIO Y RED ---
     private final Carrito carrito;
     private final ConexionServidor conexionServidor;
     private final GestorCupones gestorCupones;
+    private final GestorDespacho gestorDespacho;
     private Cupon cuponAplicado;
     private Backend.Compra compraPendiente;
     private java.util.List<String> articulosCompraPendiente;
@@ -70,9 +76,10 @@ public class VistaCliente extends BaseFrame {
     private double subtotalOriginalCompraPendiente;
     private double descuentoCompraPendiente;
     private double subtotalCompraPendiente;
+    private double costoEnvioCompraPendiente;
+    private String infoDespachoCompraPendiente = "";
     private double ivaCompraPendiente;
     private double totalCompraPendiente;
-
     private String codigoCuponCompraPendiente = "";
 
     private boolean compraEnProceso = false;
@@ -93,6 +100,7 @@ public class VistaCliente extends BaseFrame {
         this.carrito = new Carrito(inventario);
         this.conexionServidor = new ConexionServidor();
         this.gestorCupones = new GestorCupones();
+        this.gestorDespacho = new GestorDespacho();
         this.cuponAplicado = null;
 
 
@@ -630,14 +638,14 @@ public class VistaCliente extends BaseFrame {
         panelIzquierdo.add(cabeceraLista, BorderLayout.NORTH);
         panelIzquierdo.add(scrollCarrito, BorderLayout.CENTER);
 
-        // ==========================================
-        // COLUMNA DERECHA: CUPÓN Y RESUMEN FINANCIERO
+// ==========================================
+        // COLUMNA DERECHA: CUPÓN, DESPACHO Y RESUMEN
         // ==========================================
         PanelRedondeado panelDerecho = new PanelRedondeado(18);
         panelDerecho.setBackground(Color.WHITE);
-        panelDerecho.setPreferredSize(new Dimension(360, 0));
+        panelDerecho.setPreferredSize(new Dimension(390, 0));
         panelDerecho.setLayout(new BorderLayout());
-        panelDerecho.setBorder(new EmptyBorder(18, 18, 18, 18));
+        panelDerecho.setBorder(new EmptyBorder(15, 18, 15, 18));
 
         JPanel contenidoResumen = new JPanel();
         contenidoResumen.setOpaque(false);
@@ -657,50 +665,105 @@ public class VistaCliente extends BaseFrame {
         JPanel filaCupon = new JPanel(new BorderLayout(8, 0));
         filaCupon.setOpaque(false);
         filaCupon.setAlignmentX(Component.LEFT_ALIGNMENT);
-        filaCupon.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
+        filaCupon.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
 
         txtCupon = new JTextField();
         txtCupon.setFont(new Font("SansSerif", Font.PLAIN, 14));
         txtCupon.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(new Color(200, 210, 222)),
-                new EmptyBorder(6, 10, 6, 10)
+                new EmptyBorder(5, 10, 5, 10)
         ));
 
         btnAplicarCupon = crearBoton("Aplicar", NAVY);
-        btnAplicarCupon.setPreferredSize(new Dimension(90, 36));
+        btnAplicarCupon.setPreferredSize(new Dimension(90, 34));
         btnAplicarCupon.addActionListener(e -> aplicarCupon());
 
         filaCupon.add(txtCupon, BorderLayout.CENTER);
         filaCupon.add(btnAplicarCupon, BorderLayout.EAST);
 
+        // Modalidad de entrega y despacho
+        JLabel lblEntrega = new JLabel("🚚 Modalidad de entrega");
+        lblEntrega.setFont(new Font("SansSerif", Font.BOLD, 13));
+        lblEntrega.setForeground(GRIS);
+        lblEntrega.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        rbRetiroTienda = new JRadioButton("Retiro en tienda ($0)", true);
+        rbRetiroTienda.setOpaque(false);
+        rbRetiroTienda.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        rbRetiroTienda.setForeground(NAVY);
+
+        rbDespachoDomicilio = new JRadioButton("Despacho a domicilio");
+        rbDespachoDomicilio.setOpaque(false);
+        rbDespachoDomicilio.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        rbDespachoDomicilio.setForeground(NAVY);
+
+        ButtonGroup grupoEntrega = new ButtonGroup();
+        grupoEntrega.add(rbRetiroTienda);
+        grupoEntrega.add(rbDespachoDomicilio);
+
+        JPanel panelRadiosEntrega = new JPanel(new GridLayout(1, 2, 5, 0));
+        panelRadiosEntrega.setOpaque(false);
+        panelRadiosEntrega.setAlignmentX(Component.LEFT_ALIGNMENT);
+        panelRadiosEntrega.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26));
+        panelRadiosEntrega.add(rbRetiroTienda);
+        panelRadiosEntrega.add(rbDespachoDomicilio);
+
+        cbRegionDespacho = new JComboBox<>();
+        for (TarifaEnvio tarifa : gestorDespacho.getListaTarifas()) {
+            cbRegionDespacho.addItem(tarifa.getRegion());
+        }
+        cbRegionDespacho.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        cbRegionDespacho.setBackground(Color.WHITE);
+        cbRegionDespacho.setAlignmentX(Component.LEFT_ALIGNMENT);
+        cbRegionDespacho.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
+        cbRegionDespacho.setEnabled(false);
+
+        lblInfoDiasEnvio = new JLabel("Retiro sin costo • Envío gratis sobre " + formatearPesos(gestorDespacho.getMontoMinimoEnvioGratis()));
+        lblInfoDiasEnvio.setFont(new Font("SansSerif", Font.ITALIC, 11));
+        lblInfoDiasEnvio.setForeground(new Color(35, 145, 85));
+        lblInfoDiasEnvio.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        rbRetiroTienda.addActionListener(e -> {
+            cbRegionDespacho.setEnabled(false);
+            actualizarCarrito();
+        });
+        rbDespachoDomicilio.addActionListener(e -> {
+            cbRegionDespacho.setEnabled(true);
+            actualizarCarrito();
+        });
+        cbRegionDespacho.addActionListener(e -> actualizarCarrito());
+
         // Caja de desglose
         PanelRedondeado cajaResumen = new PanelRedondeado(14);
         cajaResumen.setBackground(new Color(246, 249, 253));
         cajaResumen.setLayout(new BoxLayout(cajaResumen, BoxLayout.Y_AXIS));
-        cajaResumen.setBorder(new EmptyBorder(14, 15, 14, 15));
+        cajaResumen.setBorder(new EmptyBorder(12, 15, 12, 15));
         cajaResumen.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         lblSubtotalCarrito = new JLabel("$0");
         lblDescuentoCarrito = new JLabel("-$0");
         lblDescuentoCarrito.setForeground(new Color(35, 145, 85));
         lblSubtotalNetoCarrito = new JLabel("$0");
+        lblEnvioCarrito = new JLabel("$0");
         lblIvaCarrito = new JLabel("$0");
         lblTotalCarrito = new JLabel("$0");
 
         cajaResumen.add(crearFilaResumen("Subtotal:", lblSubtotalCarrito, false));
-        cajaResumen.add(Box.createRigidArea(new Dimension(0, 7)));
+        cajaResumen.add(Box.createRigidArea(new Dimension(0, 6)));
         cajaResumen.add(crearFilaResumen("Descuento:", lblDescuentoCarrito, false));
-        cajaResumen.add(Box.createRigidArea(new Dimension(0, 7)));
+        cajaResumen.add(Box.createRigidArea(new Dimension(0, 6)));
         cajaResumen.add(crearFilaResumen("Subtotal neto:", lblSubtotalNetoCarrito, false));
-        cajaResumen.add(Box.createRigidArea(new Dimension(0, 7)));
+        cajaResumen.add(Box.createRigidArea(new Dimension(0, 6)));
+        cajaResumen.add(crearFilaResumen("Costo de envío:", lblEnvioCarrito, false));
+        cajaResumen.add(Box.createRigidArea(new Dimension(0, 6)));
         cajaResumen.add(crearFilaResumen("IVA (19%):", lblIvaCarrito, false));
-        cajaResumen.add(Box.createRigidArea(new Dimension(0, 10)));
+        cajaResumen.add(Box.createRigidArea(new Dimension(0, 8)));
 
         JSeparator separador = new JSeparator();
         separador.setForeground(new Color(215, 223, 234));
         separador.setMaximumSize(new Dimension(Integer.MAX_VALUE, 2));
         cajaResumen.add(separador);
-        cajaResumen.add(Box.createRigidArea(new Dimension(0, 10)));
+        cajaResumen.add(Box.createRigidArea(new Dimension(0, 8)));
 
         cajaResumen.add(crearFilaResumen("Total a pagar:", lblTotalCarrito, true));
 
@@ -708,38 +771,46 @@ public class VistaCliente extends BaseFrame {
         btnComprar = crearBoton("Confirmar compra  →", AZUL);
         btnComprar.setFont(new Font("SansSerif", Font.BOLD, 15));
         btnComprar.setAlignmentX(Component.LEFT_ALIGNMENT);
-        btnComprar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 44));
-        btnComprar.setPreferredSize(new Dimension(0, 44));
+        btnComprar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
+        btnComprar.setPreferredSize(new Dimension(0, 42));
         btnComprar.setEnabled(false);
         btnComprar.addActionListener(e -> procederCompra());
 
         btnVaciarCarrito = crearBoton("Vaciar carrito", new Color(235, 87, 87));
         btnVaciarCarrito.setFont(new Font("SansSerif", Font.BOLD, 13));
         btnVaciarCarrito.setAlignmentX(Component.LEFT_ALIGNMENT);
-        btnVaciarCarrito.setMaximumSize(new Dimension(Integer.MAX_VALUE, 35));
-        btnVaciarCarrito.setPreferredSize(new Dimension(0, 35));
+        btnVaciarCarrito.setMaximumSize(new Dimension(Integer.MAX_VALUE, 33));
+        btnVaciarCarrito.setPreferredSize(new Dimension(0, 33));
         btnVaciarCarrito.setEnabled(false);
         btnVaciarCarrito.addActionListener(e -> vaciarCarrito());
 
         JButton btnSeguirComprando = crearBoton("← Seguir comprando", new Color(100, 110, 125));
         btnSeguirComprando.setFont(new Font("SansSerif", Font.BOLD, 13));
         btnSeguirComprando.setAlignmentX(Component.LEFT_ALIGNMENT);
-        btnSeguirComprando.setMaximumSize(new Dimension(Integer.MAX_VALUE, 35));
-        btnSeguirComprando.setPreferredSize(new Dimension(0, 35));
+        btnSeguirComprando.setMaximumSize(new Dimension(Integer.MAX_VALUE, 33));
+        btnSeguirComprando.setPreferredSize(new Dimension(0, 33));
         btnSeguirComprando.addActionListener(e -> cambiarVistaCliente("VISTA_TIENDA"));
 
         contenidoResumen.add(lblResumenTitulo);
-        contenidoResumen.add(Box.createRigidArea(new Dimension(0, 14)));
+        contenidoResumen.add(Box.createRigidArea(new Dimension(0, 10)));
         contenidoResumen.add(lblCupon);
-        contenidoResumen.add(Box.createRigidArea(new Dimension(0, 5)));
+        contenidoResumen.add(Box.createRigidArea(new Dimension(0, 4)));
         contenidoResumen.add(filaCupon);
-        contenidoResumen.add(Box.createRigidArea(new Dimension(0, 16)));
+        contenidoResumen.add(Box.createRigidArea(new Dimension(0, 10)));
+        contenidoResumen.add(lblEntrega);
+        contenidoResumen.add(Box.createRigidArea(new Dimension(0, 4)));
+        contenidoResumen.add(panelRadiosEntrega);
+        contenidoResumen.add(Box.createRigidArea(new Dimension(0, 4)));
+        contenidoResumen.add(cbRegionDespacho);
+        contenidoResumen.add(Box.createRigidArea(new Dimension(0, 3)));
+        contenidoResumen.add(lblInfoDiasEnvio);
+        contenidoResumen.add(Box.createRigidArea(new Dimension(0, 12)));
         contenidoResumen.add(cajaResumen);
-        contenidoResumen.add(Box.createRigidArea(new Dimension(0, 16)));
+        contenidoResumen.add(Box.createRigidArea(new Dimension(0, 12)));
         contenidoResumen.add(btnComprar);
-        contenidoResumen.add(Box.createRigidArea(new Dimension(0, 8)));
+        contenidoResumen.add(Box.createRigidArea(new Dimension(0, 6)));
         contenidoResumen.add(btnVaciarCarrito);
-        contenidoResumen.add(Box.createRigidArea(new Dimension(0, 8)));
+        contenidoResumen.add(Box.createRigidArea(new Dimension(0, 6)));
         contenidoResumen.add(btnSeguirComprando);
 
         panelDerecho.add(contenidoResumen, BorderLayout.NORTH);
@@ -1198,93 +1269,72 @@ public class VistaCliente extends BaseFrame {
             panelArticulosCarrito.add(Box.createVerticalGlue());
         }
 
-        // --- ACTUALIZAR TOTALES ---
-        double subtotal =
-                carrito.calcularSubtotal();
+// --- ACTUALIZAR TOTALES ---
+        double subtotal = carrito.calcularSubtotal();
+        double descuento = (cuponAplicado != null) ? cuponAplicado.calcularDescuento(subtotal) : 0;
+        double subtotalNeto = subtotal - descuento;
 
+        boolean esDomicilio = rbDespachoDomicilio != null && rbDespachoDomicilio.isSelected();
+        String regionSeleccionada = (cbRegionDespacho != null && cbRegionDespacho.getSelectedItem() != null)
+                ? cbRegionDespacho.getSelectedItem().toString()
+                : "";
 
-        double descuento = 0;
+        double costoEnvio = gestorDespacho.calcularCostoEnvio(esDomicilio, regionSeleccionada, subtotalNeto);
+        carrito.setCostoEnvio(costoEnvio);
 
+        double iva = (subtotalNeto + costoEnvio) * 0.19;
+        double total = subtotalNeto + costoEnvio + iva;
 
-        if (cuponAplicado != null) {
-
-            descuento =
-                    cuponAplicado.calcularDescuento(
-                            subtotal
-                    );
-        }
-
-
-        double subtotalNeto =
-                subtotal - descuento;
-
-
-        double iva =
-                subtotalNeto * 0.19;
-
-
-        double total =
-                subtotalNeto + iva;
-
-        lblCarritoTitulo.setText(
-                "Mi Carrito (" + carrito.getCantidadTotal() + ")"
-        );
+        lblCarritoTitulo.setText("Mi Carrito (" + carrito.getCantidadTotal() + ")");
         if (btnTabCarrito != null) {
             btnTabCarrito.setText("🛒 Mi Carrito (" + carrito.getCantidadTotal() + ")");
         }
 
+        lblSubtotalCarrito.setText(formatearPesos(subtotal));
+        lblDescuentoCarrito.setText("-" + formatearPesos(descuento));
+        lblSubtotalNetoCarrito.setText(formatearPesos(subtotalNeto));
 
-        lblSubtotalCarrito.setText(
-                "Subtotal: "
-                        + formatearPesos(subtotal)
-        );
+        if (lblEnvioCarrito != null) {
+            if (esDomicilio && costoEnvio == 0 && !carrito.estaVacio()) {
+                lblEnvioCarrito.setText("GRATIS ($0)");
+                lblEnvioCarrito.setForeground(new Color(35, 145, 85));
+            } else {
+                lblEnvioCarrito.setText(formatearPesos(costoEnvio));
+                lblEnvioCarrito.setForeground(NAVY);
+            }
+        }
 
+        if (lblInfoDiasEnvio != null) {
+            String minimoGratisTxt = formatearPesos(gestorDespacho.getMontoMinimoEnvioGratis());
+            if (!esDomicilio) {
+                lblInfoDiasEnvio.setText("Retiro sin costo • Envío gratis sobre " + minimoGratisTxt);
+            } else {
+                TarifaEnvio tarifa = gestorDespacho.buscarPorRegion(regionSeleccionada);
+                String diasTxt = (tarifa != null) ? "Tiempo estimado: " + tarifa.getDiasEstimados() + " días hábiles" : "";
+                if (subtotalNeto >= gestorDespacho.getMontoMinimoEnvioGratis()) {
+                    lblInfoDiasEnvio.setText("¡Envío GRATIS aplicado! • " + diasTxt);
+                } else {
+                    lblInfoDiasEnvio.setText(diasTxt + " (Gratis sobre " + minimoGratisTxt + ")");
+                }
+            }
+        }
 
-        lblDescuentoCarrito.setText(
-                "Descuento: -"
-                        + formatearPesos(descuento)
-        );
-
-
-        lblSubtotalNetoCarrito.setText(
-                "Subtotal neto: "
-                        + formatearPesos(subtotalNeto)
-        );
-
-
-        lblIvaCarrito.setText(
-                "IVA (19%): "
-                        + formatearPesos(iva)
-        );
-
-
-        lblTotalCarrito.setText(
-                "Total: "
-                        + formatearPesos(total)
-        );
+        lblIvaCarrito.setText(formatearPesos(iva));
+        lblTotalCarrito.setText(formatearPesos(total));
 
         if (lblTemporizadorCarrito != null) {
             lblTemporizadorCarrito.setVisible(!carrito.estaVacio());
         }
 
-        boolean tieneProductos =
-                !carrito.estaVacio();
+        boolean tieneProductos = !carrito.estaVacio();
+        boolean puedeModificar = tieneProductos && !compraEnProceso;
 
-        boolean puedeModificar =
-                tieneProductos && !compraEnProceso;
-
-
-        btnComprar.setEnabled(
-                puedeModificar
-        );
-
-        btnVaciarCarrito.setEnabled(
-                puedeModificar
-        );
-
-        btnAplicarCupon.setEnabled(
-                puedeModificar
-        );
+        btnComprar.setEnabled(puedeModificar);
+        btnVaciarCarrito.setEnabled(puedeModificar);
+        btnAplicarCupon.setEnabled(puedeModificar);
+        if (rbRetiroTienda != null) rbRetiroTienda.setEnabled(puedeModificar);
+        if (rbDespachoDomicilio != null) rbDespachoDomicilio.setEnabled(puedeModificar);
+        if (cbRegionDespacho != null) cbRegionDespacho.setEnabled(puedeModificar && esDomicilio);
 
         panelArticulosCarrito.revalidate();
         panelArticulosCarrito.repaint();
@@ -1505,64 +1555,47 @@ public class VistaCliente extends BaseFrame {
 
 
         // =========================================
-        // 3. CALCULAR DESCUENTO Y TOTAL REAL
+        // 3. CALCULAR DESCUENTO, ENVÍO Y TOTAL REAL
         // =========================================
+        double subtotalCompra = carrito.calcularSubtotal();
+        double descuentoCompra = (cuponAplicado != null) ? cuponAplicado.calcularDescuento(subtotalCompra) : 0;
+        double subtotalNetoCompra = subtotalCompra - descuentoCompra;
 
-        double subtotalCompra =
-                carrito.calcularSubtotal();
+        DialogoDespacho dialogoDespacho = new DialogoDespacho(
+                this,
+                gestorDespacho,
+                subtotalNetoCompra,
+                sistema.getUsuarioActual()
+        );
+        dialogoDespacho.mostrar();
 
-
-        double descuentoCompra = 0;
-
-
-        if (cuponAplicado != null) {
-
-            descuentoCompra =
-                    cuponAplicado.calcularDescuento(
-                            subtotalCompra
-                    );
+        if (!dialogoDespacho.isConfirmado()) {
+            return;
         }
 
+        double costoEnvioCompra = dialogoDespacho.getCostoEnvioSeleccionado();
+        String infoDespacho = dialogoDespacho.getResumenEntrega();
+        carrito.setCostoEnvio(costoEnvioCompra);
 
-        double subtotalNetoCompra =
-                subtotalCompra - descuentoCompra;
-
-
-        double ivaCompra =
-                subtotalNetoCompra * 0.19;
-
-
-        double totalCompra =
-                subtotalNetoCompra + ivaCompra;
-
+        double ivaCompra = (subtotalNetoCompra + costoEnvioCompra) * 0.19;
+        double totalCompra = subtotalNetoCompra + costoEnvioCompra + ivaCompra;
 
         // =========================================
         // 4. RESUMEN DE LA COMPRA
         // =========================================
-
-        String resumen =
-                "Subtotal: "
-                        + formatearPesos(subtotalCompra);
-
+        String resumen = "Subtotal: " + formatearPesos(subtotalCompra);
 
         if (cuponAplicado != null) {
-
-            resumen +=
-                    "\nCupón: "
-                            + cuponAplicado.getCodigo()
-                            + "\nDescuento: -"
-                            + formatearPesos(descuentoCompra)
-                            + "\nSubtotal neto: "
-                            + formatearPesos(subtotalNetoCompra);
+            resumen += "\nCupón: " + cuponAplicado.getCodigo()
+                    + "\nDescuento: -" + formatearPesos(descuentoCompra)
+                    + "\nSubtotal neto: " + formatearPesos(subtotalNetoCompra);
         }
 
-
-        resumen +=
-                "\nIVA (19%): "
-                        + formatearPesos(ivaCompra)
-                        + "\nTotal: "
-                        + formatearPesos(totalCompra)
-                        + "\n\n¿Desea confirmar la compra?";
+        resumen += "\nEntrega: " + infoDespacho
+                + "\nCosto de envío: " + (costoEnvioCompra == 0 ? "GRATIS ($0)" : formatearPesos(costoEnvioCompra))
+                + "\nIVA (19%): " + formatearPesos(ivaCompra)
+                + "\nTotal: " + formatearPesos(totalCompra)
+                + "\n\n¿Desea confirmar la compra?";
 
 
         int confirmar =
@@ -1638,8 +1671,17 @@ public class VistaCliente extends BaseFrame {
 
 
         // Este es el subtotal DESPUÉS del descuento
+// Este es el subtotal DESPUÉS del descuento
         subtotalCompraPendiente =
                 subtotalNetoCompra;
+
+
+        costoEnvioCompraPendiente =
+                costoEnvioCompra;
+
+
+        infoDespachoCompraPendiente =
+                infoDespacho;
 
 
         ivaCompraPendiente =
@@ -1711,10 +1753,11 @@ public class VistaCliente extends BaseFrame {
                         subtotalOriginalCompraPendiente,
                         descuentoCompraPendiente,
                         subtotalCompraPendiente,
+                        costoEnvioCompraPendiente,
+                        infoDespachoCompraPendiente,
                         ivaCompraPendiente,
                         totalCompraPendiente
                 );
-
 
         dialogoComprobante.mostrar();
 
@@ -1969,6 +2012,18 @@ public class VistaCliente extends BaseFrame {
         JOptionPane.showMessageDialog(this, mensaje, "Error", JOptionPane.ERROR_MESSAGE);
     }
     private void cambiarVistaCliente(String nombreVista) {
+        if (nombreVista.equals("VISTA_CARRITO") && gestorDespacho != null && cbRegionDespacho != null) {
+            gestorDespacho.cargarDesdeCSV();
+            Object seleccionPrevia = cbRegionDespacho.getSelectedItem();
+            cbRegionDespacho.removeAllItems();
+            for (TarifaEnvio tarifa : gestorDespacho.getListaTarifas()) {
+                cbRegionDespacho.addItem(tarifa.getRegion());
+            }
+            if (seleccionPrevia != null) {
+                cbRegionDespacho.setSelectedItem(seleccionPrevia);
+            }
+            actualizarCarrito();
+        }
         gestorVistas.show(panelContenedorVistas, nombreVista);
         boolean enTienda = nombreVista.equals("VISTA_TIENDA");
         estilizarPestana(btnTabTienda, enTienda);

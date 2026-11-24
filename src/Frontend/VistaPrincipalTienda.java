@@ -35,6 +35,7 @@ public class VistaPrincipalTienda extends BaseFrame {
     // --- PANELES INTERNOS ---
     private JPanel gridProductos;
     private final GestorCupones gestorCupones;
+    private final Backend.GestorDespacho gestorDespacho = new Backend.GestorDespacho();
     private JPanel panelCarritosGrid;
     private JPanel panelPedidosGrid;
     private final java.util.Map<String, ImageIcon> cacheImagenes = new java.util.HashMap<>();
@@ -264,6 +265,15 @@ public class VistaPrincipalTienda extends BaseFrame {
                         new Dimension(0, 30)
                 )
         );
+        // ==========================================
+        // BOTÓN CONFIGURAR TARIFAS DE ENVÍO
+        // ==========================================
+        JButton btnTarifasEnvio = crearBotonMenu("\uD83D\uDE9A", e -> {
+            new DialogoConfigurarTarifas(VistaPrincipalTienda.this, gestorDespacho).mostrar();
+        });
+        btnTarifasEnvio.setToolTipText("Configurar tarifas de envío");
+        barraLateral.add(btnTarifasEnvio);
+        barraLateral.add(Box.createRigidArea(new Dimension(0, 30)));
 
 
 // --- BOTÓN AGREGAR ADMINISTRADOR ---

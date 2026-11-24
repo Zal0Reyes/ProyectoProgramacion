@@ -32,7 +32,7 @@ public class ServidorNexoMarket {
     // Cliente -> (ID producto -> cantidad reservada)
     private static final Map<PrintWriter, Map<String, Integer>> reservasClientes = new HashMap<>();
 
-    private static int tiempoReservaSegundos = 180;
+    private static int tiempoReservaSegundos = 60;
     // =====================================================
     // INICIO DEL SERVIDOR
     // =====================================================

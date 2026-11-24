@@ -17,7 +17,7 @@ public final class GeminiAPIClient {
     }
 
     public static String callGeminiAPI(String prompt) throws IOException {
-        return callGeminiAPI(prompt, null, List.of());
+        return callGeminiAPI(prompt, null);
     }
 
     public static String callStoreAssistant(
@@ -25,20 +25,8 @@ public final class GeminiAPIClient {
             List<Producto> productos,
             String[] categorias
     ) throws IOException {
-        return callStoreAssistant(prompt, productos, categorias, List.of());
-    }
-
-    public static String callStoreAssistant(
-            String prompt,
-            List<Producto> productos,
-            String[] categorias,
-            List<ConversationTurn> history
-    ) throws IOException {
         if (productos == null || categorias == null) {
             throw new IllegalArgumentException("El catálogo de la tienda no puede ser nulo.");
-        }
-        if (history == null) {
-            throw new IllegalArgumentException("El historial de conversación no puede ser nulo.");
         }
 
         StringBuilder context = new StringBuilder();
@@ -56,40 +44,7 @@ public final class GeminiAPIClient {
                     .append('\n');
         }
 
-        return callGeminiAPI(
-                prompt,
-                loadStoreAssistantPrompt() + "\n\n" + context,
-                history
-        );
-    }
-
-    public static final class ConversationTurn {
-        private final String role;
-        private final String text;
-
-        private ConversationTurn(String role, String text) {
-            if (text == null || text.trim().isEmpty()) {
-                throw new IllegalArgumentException("El mensaje del historial no puede estar vacío.");
-            }
-            this.role = role;
-            this.text = text;
-        }
-
-        public static ConversationTurn user(String text) {
-            return new ConversationTurn("user", text);
-        }
-
-        public static ConversationTurn assistant(String text) {
-            return new ConversationTurn("model", text);
-        }
-
-        public boolean isUser() {
-            return "user".equals(role);
-        }
-
-        public String getText() {
-            return text;
-        }
+        return callGeminiAPI(prompt, loadStoreAssistantPrompt() + "\n\n" + context);
     }
 
     private static String loadStoreAssistantPrompt() throws IOException {
@@ -104,11 +59,7 @@ public final class GeminiAPIClient {
         return instruction;
     }
 
-    private static String callGeminiAPI(
-            String prompt,
-            String systemInstruction,
-            List<ConversationTurn> history
-    )
+    private static String callGeminiAPI(String prompt, String systemInstruction)
             throws IOException {
         if (prompt == null || prompt.trim().isEmpty()) {
             throw new IllegalArgumentException("El mensaje no puede estar vacío.");
@@ -135,12 +86,7 @@ public final class GeminiAPIClient {
                     .append(escapeJson(systemInstruction))
                     .append("\"}]},");
         }
-        requestBody.append("\"contents\":[");
-        for (ConversationTurn turn : history) {
-            appendConversationTurn(requestBody, turn.role, turn.text);
-            requestBody.append(',');
-        }
-        requestBody.append("{\"role\":\"user\",\"parts\":[{\"text\":\"")
+        requestBody.append("\"contents\":[{\"parts\":[{\"text\":\"")
                 .append(escapeJson(prompt))
                 .append("\"}]}]}");
 
@@ -170,18 +116,6 @@ public final class GeminiAPIClient {
         } finally {
             connection.disconnect();
         }
-    }
-
-    private static void appendConversationTurn(
-            StringBuilder requestBody,
-            String role,
-            String text
-    ) {
-        requestBody.append("{\"role\":\"")
-                .append(role)
-                .append("\",\"parts\":[{\"text\":\"")
-                .append(escapeJson(text))
-                .append("\"}]}");
     }
 
     private static String escapeJson(String input) {

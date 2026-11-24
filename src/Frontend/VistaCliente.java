@@ -62,6 +62,7 @@ public class VistaCliente extends BaseFrame {
     private final Carrito carrito;
     private final ConexionServidor conexionServidor;
     private final GestorCupones gestorCupones;
+    private final List<GeminiAPIClient.ConversationTurn> historialChat = new ArrayList<>();
     private Cupon cuponAplicado;
     private Backend.Compra compraPendiente;
     private java.util.List<String> articulosCompraPendiente;
@@ -255,6 +256,13 @@ public class VistaCliente extends BaseFrame {
         JScrollPane scroll = new JScrollPane(mensajes);
         scroll.setBorder(BorderFactory.createEmptyBorder(10, 10, 0, 10));
         scroll.getVerticalScrollBar().setUnitIncrement(14);
+        for (GeminiAPIClient.ConversationTurn turno : historialChat) {
+            mensajes.add(crearBurbujaMensaje(
+                    turno.isUser() ? "Tú" : "Asistente",
+                    turno.getText(),
+                    turno.isUser()
+            ));
+        }
         dialogo.add(scroll, BorderLayout.CENTER);
 
         JTextField entrada = new JTextField();
@@ -286,6 +294,8 @@ public class VistaCliente extends BaseFrame {
             mensajes.add(cargando);
             mensajes.revalidate();
             desplazarChatAlFinal(scroll);
+            List<GeminiAPIClient.ConversationTurn> historialActual =
+                    new ArrayList<>(historialChat);
 
             new SwingWorker<String, Void>() {
                 @Override
@@ -293,7 +303,8 @@ public class VistaCliente extends BaseFrame {
                     return GeminiAPIClient.callStoreAssistant(
                             prompt,
                             inventario.getProductos(),
-                            inventario.getCategoriasDisponibles()
+                            inventario.getCategoriasDisponibles(),
+                            historialActual
                     );
                 }
 
@@ -301,6 +312,8 @@ public class VistaCliente extends BaseFrame {
                 protected void done() {
                     try {
                         String respuesta = get();
+                        historialChat.add(GeminiAPIClient.ConversationTurn.user(prompt));
+                        historialChat.add(GeminiAPIClient.ConversationTurn.assistant(respuesta));
                         mensajes.remove(cargando);
                         mensajes.add(crearBurbujaRespuesta(respuesta));
                     } catch (Exception exception) {

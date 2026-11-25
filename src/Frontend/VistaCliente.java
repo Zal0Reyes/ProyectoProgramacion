@@ -798,7 +798,12 @@ public class VistaCliente extends BaseFrame {
         for (Producto p : inventario.getProductos()) {
             boolean coincideBusqueda = p.getNombre().toLowerCase().contains(busqueda) || p.getCategoria().toLowerCase().contains(busqueda);
             boolean coincideCategoria = categoriaFiltro.equals("Todas") || p.getCategoria().equalsIgnoreCase(categoriaFiltro);
-            boolean coincidePrecio = (precioMinimo < 0 || p.getPrecio() >= precioMinimo) && (precioMaximo < 0 || p.getPrecio() <= precioMaximo);
+            double precioActual =
+                    gestorOfertas.obtenerPrecio(p);
+
+            boolean coincidePrecio =
+                    (precioMinimo < 0 || precioActual >= precioMinimo)
+                            && (precioMaximo < 0 || precioActual <= precioMaximo);
 
             if (coincideBusqueda && coincideCategoria && coincidePrecio) {
                 gridProductos.add(crearTarjeta(p));
@@ -845,8 +850,48 @@ public class VistaCliente extends BaseFrame {
         JLabel categoria = new JLabel(producto.getCategoria());
         categoria.setForeground(GRIS);
 
-        JLabel precio = new JLabel(formatearPesos(producto.getPrecio()));
-        precio.setFont(new Font("SansSerif", Font.BOLD, 16));
+        double precioOriginal =
+                producto.getPrecio();
+
+        double precioOferta =
+                gestorOfertas.obtenerPrecio(
+                        producto
+                );
+
+
+        JLabel precio =
+                new JLabel();
+
+
+        if (precioOferta < precioOriginal) {
+
+            precio.setText(
+                    "<html>"
+                            + "<strike>"
+                            + formatearPesos(precioOriginal)
+                            + "</strike>  "
+                            + "<font color='#D32F2F'><b>"
+                            + formatearPesos(precioOferta)
+                            + "</b></font>"
+                            + "</html>"
+            );
+
+        } else {
+
+            precio.setText(
+                    formatearPesos(precioOriginal)
+            );
+        }
+
+
+        precio.setFont(
+                new Font(
+                        "SansSerif",
+                        Font.BOLD,
+                        16
+                )
+        );
+
         precio.setForeground(NAVY);
 
         JLabel stock = crearStock(producto);
@@ -877,6 +922,67 @@ public class VistaCliente extends BaseFrame {
     // COMUNICACIÓN CON EL SERVIDOR (RED)
     // =========================================================
     private void procesarMensajeServidor(String mensaje) {
+
+        // --- ACCIÓN: Oferta creada o actualizada por ADMIN ---
+        if (mensaje.startsWith("OFERTA_ACTUALIZADA;")) {
+
+            String[] datos =
+                    mensaje.split(";", 6);
+
+            if (datos.length != 6) {
+                return;
+            }
+
+            try {
+
+                String tipo =
+                        datos[1];
+
+                String objetivo =
+                        datos[2];
+
+                double descuento =
+                        Double.parseDouble(
+                                datos[3]
+                        );
+
+                long inicio =
+                        Long.parseLong(
+                                datos[4]
+                        );
+
+                long fin =
+                        Long.parseLong(
+                                datos[5]
+                        );
+
+
+                gestorOfertas.agregarOferta(
+                        tipo,
+                        objetivo,
+                        descuento,
+                        inicio,
+                        fin
+                );
+
+
+                SwingUtilities.invokeLater(() -> {
+
+                    actualizarProductos();
+                    actualizarCarrito();
+
+                });
+
+
+            } catch (NumberFormatException e) {
+
+                System.out.println(
+                        "Error al recibir una oferta."
+                );
+            }
+
+            return;
+        }
 
         // --- ACCIÓN: Compra procesada correctamente ---
         if (mensaje.equals("COMPRA_OK")) {
@@ -1112,9 +1218,42 @@ public class VistaCliente extends BaseFrame {
         }
     }
 
+
+
     // =========================================================
     // GESTIÓN DEL CARRITO (LÓGICA)
     // =========================================================
+
+    private double calcularSubtotalConOfertas() {
+
+        double subtotal = 0;
+
+
+        for (Map.Entry<Producto, Integer> entrada
+                : carrito.getProductos().entrySet()) {
+
+            Producto producto =
+                    entrada.getKey();
+
+            int cantidad =
+                    entrada.getValue();
+
+
+            double precio =
+                    gestorOfertas.obtenerPrecio(
+                            producto
+                    );
+
+
+            subtotal +=
+                    precio * cantidad;
+        }
+
+
+        return subtotal;
+    }
+
+
     private void actualizarCarrito() {
         if (panelArticulosCarrito == null) return;
 
@@ -1137,7 +1276,17 @@ public class VistaCliente extends BaseFrame {
             nombre.setFont(new Font("SansSerif", Font.BOLD, 12));
             nombre.setForeground(NAVY);
 
-            JLabel precio = new JLabel(formatearPesos(producto.getPrecio() * cantidad));
+            double precioUnitario =
+                    gestorOfertas.obtenerPrecio(
+                            producto
+                    );
+
+            JLabel precio =
+                    new JLabel(
+                            formatearPesos(
+                                    precioUnitario * cantidad
+                            )
+                    );
             precio.setFont(new Font("SansSerif", Font.PLAIN, 12));
             precio.setForeground(GRIS);
 
@@ -1206,7 +1355,7 @@ public class VistaCliente extends BaseFrame {
 
         // --- ACTUALIZAR TOTALES ---
         double subtotal =
-                carrito.calcularSubtotal();
+                calcularSubtotalConOfertas();
 
 
         double descuento = 0;
@@ -1515,7 +1664,7 @@ public class VistaCliente extends BaseFrame {
         // =========================================
 
         double subtotalCompra =
-                carrito.calcularSubtotal();
+                calcularSubtotalConOfertas();
 
 
         double descuentoCompra = 0;
@@ -1705,6 +1854,46 @@ public class VistaCliente extends BaseFrame {
         );
     }
 
+    private Map<Producto, Integer> obtenerProductosParaComprobante() {
+
+        Map<Producto, Integer> productos =
+                new java.util.LinkedHashMap<>();
+
+
+        for (Map.Entry<Producto, Integer> entrada
+                : carrito.getProductos().entrySet()) {
+
+            Producto original =
+                    entrada.getKey();
+
+
+            double precioFinal =
+                    gestorOfertas.obtenerPrecio(
+                            original
+                    );
+
+
+            Producto productoComprobante =
+                    new Producto(
+                            original.getNombre(),
+                            precioFinal,
+                            original.getStock(),
+                            original.getCategoria(),
+                            original.getId(),
+                            original.getRutaImagen()
+                    );
+
+
+            productos.put(
+                    productoComprobante,
+                    entrada.getValue()
+            );
+        }
+
+
+        return productos;
+    }
+
     private void finalizarCompraConfirmada() {
 
         if (!compraEnProceso ||
@@ -1734,11 +1923,13 @@ public class VistaCliente extends BaseFrame {
         // MOSTRAR COMPROBANTE
         // =========================================
 
+
+
         DialogoComprobante dialogoComprobante =
                 new DialogoComprobante(
                         this,
                         compraPendiente,
-                        carrito.getProductos(),
+                        obtenerProductosParaComprobante(),
                         subtotalOriginalCompraPendiente,
                         descuentoCompraPendiente,
                         subtotalCompraPendiente,
@@ -1868,6 +2059,7 @@ public class VistaCliente extends BaseFrame {
 
         if (conexionServidor.conectar(host)) {
             conexionServidor.solicitarStockActual();
+            conexionServidor.solicitarOfertas();
             JOptionPane.showMessageDialog(this, "Conectado al host " + host + ".", "Conexión exitosa", JOptionPane.INFORMATION_MESSAGE);
         } else {
             mostrarError("No se pudo conectar al host " + host + " en el puerto 65432.");

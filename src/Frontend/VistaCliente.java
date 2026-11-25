@@ -38,6 +38,7 @@ public class VistaCliente extends BaseFrame {
     private JLabel lblCantidad;
     private JPanel panelArticulosCarrito;
     private JLabel lblTemporizadorCarrito;
+    private javax.swing.Timer timerOfertas;
 
     private CardLayout gestorVistas;
     private JPanel panelContenedorVistas;
@@ -69,6 +70,9 @@ public class VistaCliente extends BaseFrame {
     private Cupon cuponAplicado;
     private Backend.Compra compraPendiente;
     private java.util.List<String> articulosCompraPendiente;
+
+    private Map<Producto, Integer> productosComprobantePendiente;
+
     private TemporizadorCarrito temporizadorCarrito;
 
     private double subtotalOriginalCompraPendiente;
@@ -98,6 +102,16 @@ public class VistaCliente extends BaseFrame {
         this.conexionServidor = new ConexionServidor();
         this.gestorCupones = new GestorCupones();
         this.gestorOfertas = new GestorOfertas(false);
+        this.timerOfertas =
+                new javax.swing.Timer(
+                        5000,
+                        e -> {
+                            actualizarProductos();
+                            actualizarCarrito();
+                        }
+                );
+
+        this.timerOfertas.start();
         this.cuponAplicado = null;
 
 
@@ -1020,6 +1034,7 @@ public class VistaCliente extends BaseFrame {
 
                 compraPendiente = null;
                 articulosCompraPendiente = null;
+                productosComprobantePendiente = null;
 
                 subtotalOriginalCompraPendiente = 0;
                 descuentoCompraPendiente = 0;
@@ -1838,10 +1853,12 @@ public class VistaCliente extends BaseFrame {
         // 8. ENVIAR COMPRA AL SERVIDOR
         // =========================================
 
+        productosComprobantePendiente =
+                obtenerProductosParaComprobante();
+
         compraEnProceso = true;
 
         actualizarCarrito();
-
 
         conexionServidor.confirmarCompra(
                 rutCompra,
@@ -1929,7 +1946,7 @@ public class VistaCliente extends BaseFrame {
                 new DialogoComprobante(
                         this,
                         compraPendiente,
-                        obtenerProductosParaComprobante(),
+                        productosComprobantePendiente,
                         subtotalOriginalCompraPendiente,
                         descuentoCompraPendiente,
                         subtotalCompraPendiente,
@@ -1967,6 +1984,7 @@ public class VistaCliente extends BaseFrame {
         compraPendiente = null;
 
         articulosCompraPendiente = null;
+        productosComprobantePendiente = null;
 
         subtotalOriginalCompraPendiente = 0;
         descuentoCompraPendiente = 0;

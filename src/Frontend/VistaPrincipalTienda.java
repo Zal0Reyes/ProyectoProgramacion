@@ -5,6 +5,7 @@ import Backend.Producto;
 import Backend.Sistema;
 import Backend.ConexionServidor;
 import Backend.GestorCupones;
+import Backend.GestorOfertas;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -26,6 +27,8 @@ public class VistaPrincipalTienda extends BaseFrame {
     // --- GESTIÓN DE VISTAS (DASHBOARD) ---
     private CardLayout gestorVistas;
     private JPanel panelContenedorVistas;
+    private javax.swing.Timer timerOfertas;
+
 
     // --- BOTONES DE PESTAÑAS (NAVEGACIÓN SUPERIOR) ---
     private JButton btnNavProductos;
@@ -35,11 +38,14 @@ public class VistaPrincipalTienda extends BaseFrame {
     // --- PANELES INTERNOS ---
     private JPanel gridProductos;
     private final GestorCupones gestorCupones;
-    private final Backend.GestorDespacho gestorDespacho = new Backend.GestorDespacho();
+    private final GestorOfertas gestorOfertas;
+    private final Backend.GestorDespacho gestorDespacho =
+            new Backend.GestorDespacho();
     private JPanel panelCarritosGrid;
     private JPanel panelPedidosGrid;
     private final java.util.Map<String, ImageIcon> cacheImagenes = new java.util.HashMap<>();
     private javax.swing.Timer timerRefrescoProductos;
+
 
     // =========================================================
     // CONSTRUCTOR
@@ -50,6 +56,15 @@ public class VistaPrincipalTienda extends BaseFrame {
 
         gestorCupones =
                 new GestorCupones();
+        gestorOfertas =
+                new GestorOfertas(false);
+        timerOfertas =
+                new javax.swing.Timer(
+                        5000,
+                        e -> actualizarVistaProductos("")
+                );
+
+        timerOfertas.start();
         // --- CONEXIÓN: Configurar recepción de mensajes ---
         conexionServidor.setReceptorMensajes(this::procesarMensajeServidor);
         conexionServidor.conectar();
@@ -92,6 +107,7 @@ public class VistaPrincipalTienda extends BaseFrame {
         actualizarVistaProductos("");
         if (conexionServidor.estaConectado()) {
             conexionServidor.solicitarStockActual();
+            conexionServidor.solicitarOfertas();
         }
 
         setVisible(true);
@@ -528,6 +544,60 @@ public class VistaPrincipalTienda extends BaseFrame {
     private void procesarMensajeServidor(String mensaje) {
 
         // =========================================================
+// OFERTA CREADA O ACTUALIZADA
+// =========================================================
+        if (mensaje.startsWith("OFERTA_ACTUALIZADA;")) {
+
+            String[] datos =
+                    mensaje.split(";", 6);
+
+            if (datos.length != 6) {
+                return;
+            }
+
+            try {
+
+                String tipo =
+                        datos[1];
+
+                String objetivo =
+                        datos[2];
+
+                double descuento =
+                        Double.parseDouble(datos[3]);
+
+                long inicio =
+                        Long.parseLong(datos[4]);
+
+                long fin =
+                        Long.parseLong(datos[5]);
+
+
+                gestorOfertas.agregarOferta(
+                        tipo,
+                        objetivo,
+                        descuento,
+                        inicio,
+                        fin
+                );
+
+
+                SwingUtilities.invokeLater(() ->
+                        actualizarVistaProductos("")
+                );
+
+
+            } catch (NumberFormatException e) {
+
+                System.out.println(
+                        "Error al recibir oferta en ADMIN."
+                );
+            }
+
+            return;
+        }
+
+        // =========================================================
 // OFERTA CREADA CORRECTAMENTE
 // =========================================================
 
@@ -742,10 +812,26 @@ public class VistaPrincipalTienda extends BaseFrame {
                 }
             }
 
+            double precioActual =
+                    gestorOfertas.obtenerPrecio(p);
+
             boolean pasaPrecio = true;
-            if (minimo >= 0 && maximo >= 0) pasaPrecio = (p.getPrecio() >= minimo && p.getPrecio() <= maximo);
-            else if (minimo >= 0) pasaPrecio = (p.getPrecio() >= minimo);
-            else if (maximo >= 0) pasaPrecio = (p.getPrecio() <= maximo);
+
+            if (minimo >= 0 && maximo >= 0) {
+                pasaPrecio =
+                        precioActual >= minimo
+                                && precioActual <= maximo;
+
+            } else if (minimo >= 0) {
+
+                pasaPrecio =
+                        precioActual >= minimo;
+
+            } else if (maximo >= 0) {
+
+                pasaPrecio =
+                        precioActual <= maximo;
+            }
 
             if (pasaCategoria && pasaPrecio) gridProductos.add(crearTarjetaProducto(p));
         }
@@ -909,9 +995,55 @@ public class VistaPrincipalTienda extends BaseFrame {
         panelPrecioStock.setOpaque(false);
         panelPrecioStock.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
 
-        JLabel lblPrecio = new JLabel(formatearPesos(producto.getPrecio()));
-        lblPrecio.setFont(new Font("SansSerif", Font.BOLD, 15));
-        lblPrecio.setForeground(new Color(46, 139, 87));
+        double precioOriginal =
+                producto.getPrecio();
+
+        double precioOferta =
+                gestorOfertas.obtenerPrecio(
+                        producto
+                );
+
+
+        JLabel lblPrecio =
+                new JLabel();
+
+
+        if (precioOferta < precioOriginal) {
+
+            lblPrecio.setText(
+                    "<html>"
+                            + "<strike>"
+                            + formatearPesos(precioOriginal)
+                            + "</strike>  "
+                            + "<font color='#D32F2F'><b>"
+                            + formatearPesos(precioOferta)
+                            + "</b></font>"
+                            + "</html>"
+            );
+
+            lblPrecio.setToolTipText(
+                    "Producto con oferta temporal activa"
+            );
+
+        } else {
+
+            lblPrecio.setText(
+                    formatearPesos(precioOriginal)
+            );
+        }
+
+
+        lblPrecio.setFont(
+                new Font(
+                        "SansSerif",
+                        Font.BOLD,
+                        15
+                )
+        );
+
+        lblPrecio.setForeground(
+                new Color(46, 139, 87)
+        );
 
         JLabel lblStock = new JLabel();
         lblStock.setFont(new Font("SansSerif", Font.BOLD, 12));
@@ -963,7 +1095,14 @@ public class VistaPrincipalTienda extends BaseFrame {
                 Producto p = inventario.buscarProductoPorId(info[0]);
                 int cantidad = Integer.parseInt(info[1]);
                 String nombreProd = (p != null) ? p.getNombre() : "Producto Eliminado";
-                totalCarrito += (p != null) ? p.getPrecio() * cantidad : 0;
+                if (p != null) {
+
+                    double precioActual =
+                            gestorOfertas.obtenerPrecio(p);
+
+                    totalCarrito +=
+                            precioActual * cantidad;
+                }
 
                 JLabel lblItem = new JLabel(" • " + cantidad + "x " + nombreProd);
                 lblItem.setFont(new Font("SansSerif", Font.PLAIN, 14));

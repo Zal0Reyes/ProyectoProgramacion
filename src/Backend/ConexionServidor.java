@@ -11,6 +11,7 @@ public class ConexionServidor {
     private static final int PUERTO = 65432;
 
     private String host = HOST_PREDETERMINADO;
+
     private Socket socket;
     private BufferedReader entrada;
     private PrintWriter salida;
@@ -20,33 +21,50 @@ public class ConexionServidor {
     private Consumer<String> receptorMensajes;
 
 
+    // =====================================================
+    // CONEXIÓN
+    // =====================================================
+
     public boolean conectar() {
         return conectar(host);
     }
 
+
     public boolean conectar(String host) {
+
         if (host == null || host.trim().isEmpty()) {
-            System.out.println("La IP del servidor no puede estar vacía.");
+
+            System.out.println(
+                    "La IP del servidor no puede estar vacía."
+            );
+
             return false;
         }
 
         cerrarConexion();
+
         this.host = host.trim();
 
         try {
 
-            socket = new Socket(this.host, PUERTO);
+            socket =
+                    new Socket(
+                            this.host,
+                            PUERTO
+                    );
 
-            entrada = new BufferedReader(
-                    new InputStreamReader(
-                            socket.getInputStream()
-                    )
-            );
+            entrada =
+                    new BufferedReader(
+                            new InputStreamReader(
+                                    socket.getInputStream()
+                            )
+                    );
 
-            salida = new PrintWriter(
-                    socket.getOutputStream(),
-                    true
-            );
+            salida =
+                    new PrintWriter(
+                            socket.getOutputStream(),
+                            true
+                    );
 
             conectado = true;
 
@@ -71,52 +89,67 @@ public class ConexionServidor {
         }
     }
 
+
     public String getHost() {
         return host;
     }
 
 
+    // =====================================================
+    // RECEPCIÓN DE MENSAJES
+    // =====================================================
+
     private void iniciarRecepcion() {
+
         Socket socketConexion = socket;
         BufferedReader entradaConexion = entrada;
 
-        Thread hiloRecepcion = new Thread(() -> {
+        Thread hiloRecepcion =
+                new Thread(() -> {
 
-            try {
+                    try {
 
-                String mensaje;
+                        String mensaje;
 
-                while ((mensaje = entradaConexion.readLine()) != null) {
+                        while (
+                                (mensaje =
+                                        entradaConexion.readLine())
+                                        != null
+                        ) {
 
-                    System.out.println(
-                            "[Servidor] "
-                                    + mensaje
-                    );
+                            System.out.println(
+                                    "[Servidor] "
+                                            + mensaje
+                            );
 
-                    if (receptorMensajes != null) {
+                            if (receptorMensajes != null) {
 
-                        receptorMensajes.accept(
-                                mensaje
-                        );
+                                receptorMensajes.accept(
+                                        mensaje
+                                );
+                            }
+                        }
+
+                    } catch (IOException e) {
+
+                        if (
+                                conectado
+                                        && socket == socketConexion
+                        ) {
+
+                            System.out.println(
+                                    "Se perdió la conexión con el servidor."
+                            );
+                        }
+
+                    } finally {
+
+                        if (socket == socketConexion) {
+
+                            conectado = false;
+                        }
                     }
-                }
-
-            } catch (IOException e) {
-
-                if (conectado && socket == socketConexion) {
-
-                    System.out.println(
-                            "Se perdió la conexión con el servidor."
-                    );
-                }
-
-            } finally {
-
-                if (socket == socketConexion) {
-                    conectado = false;
-                }
-            }
-        });
+                });
 
         hiloRecepcion.setDaemon(true);
         hiloRecepcion.start();
@@ -131,6 +164,11 @@ public class ConexionServidor {
                 receptorMensajes;
     }
 
+
+    // =====================================================
+    // PRODUCTOS ADMIN
+    // =====================================================
+
     public void enviarProductoAdmin(
             Producto producto
     ) {
@@ -139,15 +177,20 @@ public class ConexionServidor {
             return;
         }
 
-
         enviarMensaje(
                 "ADMIN_GUARDAR_PRODUCTO;"
                         + producto.getId() + ";"
-                        + limpiarCampo(producto.getNombre()) + ";"
+                        + limpiarCampo(
+                        producto.getNombre()
+                ) + ";"
                         + producto.getPrecio() + ";"
                         + producto.getStock() + ";"
-                        + limpiarCampo(producto.getCategoria()) + ";"
-                        + limpiarCampo(producto.getRutaImagen())
+                        + limpiarCampo(
+                        producto.getCategoria()
+                ) + ";"
+                        + limpiarCampo(
+                        producto.getRutaImagen()
+                )
         );
     }
 
@@ -161,22 +204,42 @@ public class ConexionServidor {
                         + idProducto
         );
     }
+
+
+    // =====================================================
+    // OFERTAS
+    // =====================================================
+
     public void crearOfertaAdmin(
-            String codigo,
-            String descripcion,
+            String tipo,
+            String objetivo,
             double descuento,
-            long inicioEpoch,
-            long finEpoch
+            long inicio,
+            long fin
     ) {
+
         enviarMensaje(
                 "ADMIN_CREAR_OFERTA;"
-                        + limpiarCampo(codigo) + ";"
-                        + limpiarCampo(descripcion) + ";"
+                        + limpiarCampo(tipo) + ";"
+                        + limpiarCampo(objetivo) + ";"
                         + descuento + ";"
-                        + inicioEpoch + ";"
-                        + finEpoch
+                        + inicio + ";"
+                        + fin
         );
     }
+
+
+    public void solicitarOfertas() {
+
+        enviarMensaje(
+                "PEDIR_OFERTAS"
+        );
+    }
+
+
+    // =====================================================
+    // UTILIDADES DE MENSAJES
+    // =====================================================
 
     private String limpiarCampo(
             String texto
@@ -196,7 +259,10 @@ public class ConexionServidor {
             String mensaje
     ) {
 
-        if (conectado && salida != null) {
+        if (
+                conectado
+                        && salida != null
+        ) {
 
             salida.println(
                     mensaje
@@ -204,6 +270,10 @@ public class ConexionServidor {
         }
     }
 
+
+    // =====================================================
+    // CARRITO / RESERVAS
+    // =====================================================
 
     public void solicitarReserva(
             String idProducto,
@@ -218,6 +288,33 @@ public class ConexionServidor {
         );
     }
 
+
+    public void solicitarDevolucion(
+            String idProducto,
+            int cantidad
+    ) {
+
+        enviarMensaje(
+                "DEVOLVER;"
+                        + idProducto
+                        + ";"
+                        + cantidad
+        );
+    }
+
+
+    public void solicitarCarritosActivos() {
+
+        enviarMensaje(
+                "PEDIR_CARRITOS"
+        );
+    }
+
+
+    // =====================================================
+    // COMPRA
+    // =====================================================
+
     public void confirmarCompra(
             String rut,
             double subtotal,
@@ -229,19 +326,25 @@ public class ConexionServidor {
     ) {
 
         String rutEnviar =
-                rut == null ? "" : limpiarCampo(rut);
+                rut == null
+                        ? ""
+                        : limpiarCampo(rut);
 
         String cuponEnviar =
-                codigoCupon == null ? "" : limpiarCampo(codigoCupon);
+                codigoCupon == null
+                        ? ""
+                        : limpiarCampo(codigoCupon);
 
 
         StringBuilder productos =
                 new StringBuilder();
 
 
-        for (int i = 0;
-             i < articulos.size();
-             i++) {
+        for (
+                int i = 0;
+                i < articulos.size();
+                i++
+        ) {
 
             if (i > 0) {
                 productos.append("|");
@@ -267,6 +370,11 @@ public class ConexionServidor {
         );
     }
 
+
+    // =====================================================
+    // STOCK
+    // =====================================================
+
     public void solicitarStockActual() {
 
         enviarMensaje(
@@ -274,32 +382,20 @@ public class ConexionServidor {
         );
     }
 
-    public void solicitarCarritosActivos() {
 
-        enviarMensaje(
-                "PEDIR_CARRITOS"
-        );
-    }
-
-    public void solicitarDevolucion(
-            String idProducto,
-            int cantidad
-    ) {
-
-        enviarMensaje(
-                "DEVOLVER;"
-                        + idProducto
-                        + ";"
-                        + cantidad
-        );
-    }
-
+    // =====================================================
+    // ESTADO DE CONEXIÓN
+    // =====================================================
 
     public boolean estaConectado() {
 
         return conectado;
     }
 
+
+    // =====================================================
+    // CERRAR CONEXIÓN
+    // =====================================================
 
     public void cerrarConexion() {
 

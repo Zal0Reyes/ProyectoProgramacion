@@ -258,6 +258,40 @@ public class VistaPrincipalTienda extends BaseFrame {
 
         barraLateral.add(btnCupon);
 
+// ESPACIO
+        barraLateral.add(
+                Box.createRigidArea(
+                        new Dimension(0, 30)
+                )
+        );
+
+
+// ==========================================
+// BOTÓN CREAR OFERTA
+// ==========================================
+
+        JButton btnOferta =
+                crearBotonMenu(
+                        "🏷",
+                        e -> {
+
+                            DialogoCrearOferta dialogo =
+                                    new DialogoCrearOferta(
+                                            VistaPrincipalTienda.this,
+                                            inventario,
+                                            conexionServidor
+                                    );
+
+                            dialogo.mostrar();
+                        }
+                );
+
+        btnOferta.setToolTipText(
+                "Crear oferta temporal"
+        );
+
+        barraLateral.add(btnOferta);
+
 
 // ESPACIO
         barraLateral.add(
@@ -492,6 +526,50 @@ public class VistaPrincipalTienda extends BaseFrame {
     // COMUNICACIÓN CON EL SERVIDOR (RED)
     // =========================================================
     private void procesarMensajeServidor(String mensaje) {
+
+        // =========================================================
+// OFERTA CREADA CORRECTAMENTE
+// =========================================================
+
+        if (mensaje.equals("OFERTA_GUARDADA")) {
+
+            SwingUtilities.invokeLater(() -> {
+
+                JOptionPane.showMessageDialog(
+                        this,
+                        "La oferta fue creada correctamente.",
+                        "Oferta creada",
+                        JOptionPane.INFORMATION_MESSAGE
+                );
+            });
+
+            return;
+        }
+
+
+// =========================================================
+// ERROR AL CREAR OFERTA
+// =========================================================
+
+        if (mensaje.startsWith("ERROR_OFERTA;")) {
+
+            String error =
+                    mensaje.substring(
+                            "ERROR_OFERTA;".length()
+                    );
+
+            SwingUtilities.invokeLater(() -> {
+
+                JOptionPane.showMessageDialog(
+                        this,
+                        error,
+                        "Error al crear oferta",
+                        JOptionPane.ERROR_MESSAGE
+                );
+            });
+
+            return;
+        }
 
         // --- ACCIÓN: Recepción de carritos activos en tiempo real ---
         if (mensaje.startsWith("CARRITOS_ACTIVOS;")) {

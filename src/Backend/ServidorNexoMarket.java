@@ -24,7 +24,12 @@ public class ServidorNexoMarket {
     private static final Inventario inventarioServidor = new Inventario();
 
     // Gestor central de cupones
-    private static final GestorCupones gestorCuponesServidor = new GestorCupones();
+    private static final GestorCupones gestorCuponesServidor =
+            new GestorCupones();
+
+    // Gestor central de ofertas
+    private static final GestorOfertas gestorOfertasServidor =
+            new GestorOfertas();
 
     // Clientes conectados
     private static final List<PrintWriter> clientes = new ArrayList<>();
@@ -178,6 +183,22 @@ public class ServidorNexoMarket {
                     enviarCarritosActivos(
                             salida
                     );
+
+                } else if (mensaje.startsWith(
+                        "ADMIN_CREAR_OFERTA;")) {
+
+                    procesarCrearOferta(
+                            mensaje,
+                            salida
+                    );
+
+                } else if (mensaje.equals(
+                        "PEDIR_OFERTAS")) {
+
+                    enviarOfertasVigentes(
+                            salida
+                    );
+
 
                 } else if (mensaje.startsWith(
                         "ADMIN_VACIAR_CARRITO;")) {
@@ -527,6 +548,152 @@ public class ServidorNexoMarket {
         System.out.println("Stock actual enviado a un cliente.");
     }
 
+
+    // =====================================================
+    // ADMIN VACÍA CARRITO
+    // =====================================================
+
+    // =====================================================
+// ADMIN CREA OFERTA
+// =====================================================
+
+    private static void procesarCrearOferta(
+            String mensaje,
+            PrintWriter admin
+    ) {
+
+        String[] datos =
+                mensaje.split(";", 6);
+
+        /*
+         * 0 = ADMIN_CREAR_OFERTA
+         * 1 = tipo
+         * 2 = objetivo
+         * 3 = descuento
+         * 4 = inicio
+         * 5 = fin
+         */
+
+        if (datos.length != 6) {
+
+            admin.println(
+                    "ERROR_OFERTA;Datos incorrectos"
+            );
+
+            return;
+        }
+
+
+        try {
+
+            String tipo =
+                    datos[1];
+
+            String objetivo =
+                    datos[2];
+
+            double descuento =
+                    Double.parseDouble(
+                            datos[3]
+                    );
+
+            long inicio =
+                    Long.parseLong(
+                            datos[4]
+                    );
+
+            long fin =
+                    Long.parseLong(
+                            datos[5]
+                    );
+
+
+            boolean guardada =
+                    gestorOfertasServidor
+                            .agregarOferta(
+                                    tipo,
+                                    objetivo,
+                                    descuento,
+                                    inicio,
+                                    fin
+                            );
+
+
+            if (!guardada) {
+
+                admin.println(
+                        "ERROR_OFERTA;Los datos de la oferta son inválidos"
+                );
+
+                return;
+            }
+
+
+            String mensajeOferta =
+                    "OFERTA_ACTUALIZADA;"
+                            + tipo + ";"
+                            + objetivo + ";"
+                            + descuento + ";"
+                            + inicio + ";"
+                            + fin;
+
+
+            // Avisar a todos los clientes conectados
+            enviarATodos(
+                    mensajeOferta,
+                    null
+            );
+
+
+            admin.println(
+                    "OFERTA_GUARDADA"
+            );
+
+
+            System.out.println(
+                    "Oferta creada para "
+                            + tipo
+                            + ": "
+                            + objetivo
+            );
+
+
+        } catch (NumberFormatException e) {
+
+            admin.println(
+                    "ERROR_OFERTA;Datos numéricos incorrectos"
+            );
+        }
+    }
+
+
+// =====================================================
+// ENVIAR OFERTAS VIGENTES
+// =====================================================
+
+    private static void enviarOfertasVigentes(
+            PrintWriter cliente
+    ) {
+
+        for (Oferta oferta :
+                gestorOfertasServidor
+                        .obtenerOfertasVigentes()) {
+
+            cliente.println(
+                    "OFERTA_ACTUALIZADA;"
+                            + oferta.getTipo() + ";"
+                            + oferta.getObjetivo() + ";"
+                            + oferta.getPorcentajeDescuento() + ";"
+                            + oferta.getFechaInicio() + ";"
+                            + oferta.getFechaFin()
+            );
+        }
+
+
+        System.out.println(
+                "Ofertas vigentes enviadas a un cliente."
+        );
+    }
 
     // =====================================================
     // ADMIN VACÍA CARRITO

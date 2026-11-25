@@ -9,6 +9,7 @@ import Backend.ConexionServidor;
 import Backend.GeminiAPIClient;
 import Backend.Cupon;
 import Backend.GestorCupones;
+import Backend.GestorOfertas;
 import Backend.TemporizadorCarrito;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -62,6 +63,7 @@ public class VistaCliente extends BaseFrame {
     private final Carrito carrito;
     private final ConexionServidor conexionServidor;
     private final GestorCupones gestorCupones;
+    private final GestorOfertas gestorOfertas;
     private final Backend.GestorDespacho gestorDespacho = new Backend.GestorDespacho();
     private String infoDespachoCompraPendiente = "";
     private Cupon cuponAplicado;
@@ -95,6 +97,7 @@ public class VistaCliente extends BaseFrame {
         this.carrito = new Carrito(inventario);
         this.conexionServidor = new ConexionServidor();
         this.gestorCupones = new GestorCupones();
+        this.gestorOfertas = new GestorOfertas(false);
         this.cuponAplicado = null;
 
 
@@ -138,6 +141,7 @@ public class VistaCliente extends BaseFrame {
 
         if (conexionServidor.estaConectado()) {
             conexionServidor.solicitarStockActual();
+            conexionServidor.solicitarOfertas();
         }
     }
 

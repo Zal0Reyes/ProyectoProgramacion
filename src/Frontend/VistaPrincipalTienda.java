@@ -39,8 +39,8 @@ public class VistaPrincipalTienda extends BaseFrame {
     private JPanel gridProductos;
     private final GestorCupones gestorCupones;
     private final GestorOfertas gestorOfertas;
-    private final Backend.GestorDespacho gestorDespacho =
-            new Backend.GestorDespacho();
+    private final Backend.GestorDespacho gestorDespacho = new Backend.GestorDespacho();
+    private final Backend.GestorListaDeseos gestorDeseos = new Backend.GestorListaDeseos();
     private JPanel panelCarritosGrid;
     private JPanel panelPedidosGrid;
     private final java.util.Map<String, ImageIcon> cacheImagenes = new java.util.HashMap<>();
@@ -544,8 +544,8 @@ public class VistaPrincipalTienda extends BaseFrame {
     private void procesarMensajeServidor(String mensaje) {
 
         // =========================================================
-// OFERTA CREADA O ACTUALIZADA
-// =========================================================
+        // OFERTA CREADA O ACTUALIZADA
+        // =========================================================
         if (mensaje.startsWith("OFERTA_ACTUALIZADA;")) {
 
             String[] datos =
@@ -640,7 +640,14 @@ public class VistaPrincipalTienda extends BaseFrame {
 
             return;
         }
-
+        // --- ACCIÓN: Un cliente se suscribió a reposición ---
+        if (mensaje.startsWith("ACTUALIZAR_ESPERANDO;")) {
+            SwingUtilities.invokeLater(() -> {
+                gestorDeseos.recargarDesdeCSV();
+                programarActualizacionProductos();
+            });
+            return;
+        }
         // --- ACCIÓN: Recepción de carritos activos en tiempo real ---
         if (mensaje.startsWith("CARRITOS_ACTIVOS;")) {
             String datos = mensaje.substring(17);
@@ -1049,7 +1056,13 @@ public class VistaPrincipalTienda extends BaseFrame {
         lblStock.setFont(new Font("SansSerif", Font.BOLD, 12));
         int stock = producto.getStock();
         if (stock == 0) {
-            lblStock.setText("¡Agotado!"); lblStock.setForeground(new Color(220, 53, 69));
+            int esperando = gestorDeseos.contarClientesEsperando(producto.getId());
+            if (esperando > 0) {
+                lblStock.setText("¡Agotado! (" + esperando + " esperando)");
+            } else {
+                lblStock.setText("¡Agotado!");
+            }
+            lblStock.setForeground(new Color(220, 53, 69));
         } else if (stock <= 5) {
             lblStock.setText("Quedan: " + stock); lblStock.setForeground(new Color(255, 140, 0));
         } else {

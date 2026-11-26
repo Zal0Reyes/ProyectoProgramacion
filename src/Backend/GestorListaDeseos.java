@@ -9,15 +9,20 @@ public class GestorListaDeseos {
     private final Map<String, Set<String>> deseosPorUsuario;
     // idProducto -> Conjunto de usuarioIds suscritos a reposición
     private final Map<String, Set<String>> suscriptoresReposicion;
+    private final Map<String, List<String>> notificacionesPendientes;
 
+    private static final String ARCHIVO_PENDIENTES = "notificaciones_pendientes.csv";
     private static final String ARCHIVO_DESEOS = "lista_deseos.csv";
     private static final String ARCHIVO_SUSCRIPCIONES = "suscripciones_stock.csv";
 
     public GestorListaDeseos() {
         this.deseosPorUsuario = new HashMap<>();
         this.suscriptoresReposicion = new HashMap<>();
+        this.notificacionesPendientes = new HashMap<>();
+
         cargarDeseosDesdeCSV();
         cargarSuscripcionesDesdeCSV();
+        cargarPendientesDesdeCSV();
     }
 
     // =========================================================
@@ -121,8 +126,11 @@ public class GestorListaDeseos {
     public synchronized void recargarDesdeCSV() {
         deseosPorUsuario.clear();
         suscriptoresReposicion.clear();
+        notificacionesPendientes.clear();
+
         cargarDeseosDesdeCSV();
         cargarSuscripcionesDesdeCSV();
+        cargarPendientesDesdeCSV();
     }
 
     private void guardarDeseosEnCSV() {
@@ -184,7 +192,57 @@ public class GestorListaDeseos {
             System.out.println("Error leyendo suscripciones_stock.csv: " + e.getMessage());
         }
     }
+    // =========================================================
+    // 4. NOTIFICACIONES PENDIENTES (PARA USUARIOS OFFLINE)
+    // =========================================================
 
+    public synchronized void encolarNotificacion(String usuarioId, String mensajeProtocolo) {
+        if (esInvalido(usuarioId) || esInvalido(mensajeProtocolo)) return;
+        String keyUser = usuarioId.trim().toLowerCase();
+        notificacionesPendientes.computeIfAbsent(keyUser, k -> new ArrayList<>()).add(mensajeProtocolo);
+        guardarPendientesEnCSV();
+    }
+
+    public synchronized List<String> consumirNotificacionesPendientes(String usuarioId) {
+        if (esInvalido(usuarioId)) return new ArrayList<>();
+        String keyUser = usuarioId.trim().toLowerCase();
+        List<String> lista = notificacionesPendientes.remove(keyUser);
+        if (lista != null && !lista.isEmpty()) {
+            guardarPendientesEnCSV();
+            return lista;
+        }
+        return new ArrayList<>();
+    }
+
+    private void guardarPendientesEnCSV() {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(ARCHIVO_PENDIENTES))) {
+            writer.write("usuarioId,mensajes\n");
+            for (Map.Entry<String, List<String>> entry : notificacionesPendientes.entrySet()) {
+                if (!entry.getValue().isEmpty()) {
+                    writer.write(entry.getKey() + "," + String.join("||", entry.getValue()) + "\n");
+                }
+            }
+        } catch (IOException e) {
+            System.out.println("Error guardando notificaciones_pendientes.csv: " + e.getMessage());
+        }
+    }
+
+    private void cargarPendientesDesdeCSV() {
+        File archivo = new File(ARCHIVO_PENDIENTES);
+        if (!archivo.exists()) return;
+        try (BufferedReader reader = new BufferedReader(new FileReader(archivo))) {
+            reader.readLine();
+            String linea;
+            while ((linea = reader.readLine()) != null) {
+                String[] datos = linea.split(",", 2);
+                if (datos.length < 2 || datos[1].trim().isEmpty()) continue;
+                List<String> msgs = new ArrayList<>(Arrays.asList(datos[1].trim().split("\\|\\|")));
+                notificacionesPendientes.put(datos[0].trim().toLowerCase(), msgs);
+            }
+        } catch (IOException e) {
+            System.out.println("Error leyendo notificaciones_pendientes.csv: " + e.getMessage());
+        }
+    }
     private boolean esInvalido(String texto) {
         return texto == null || texto.trim().isEmpty();
     }

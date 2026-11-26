@@ -1,5 +1,5 @@
 package Frontend;
-
+import Backend.GestorListaDeseos;
 import Backend.Inventario;
 import Backend.Producto;
 import Backend.Sistema;
@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+
 public class VistaCliente extends BaseFrame {
 
     // =========================================================
@@ -39,8 +40,11 @@ public class VistaCliente extends BaseFrame {
     private JPanel panelArticulosCarrito;
     private JLabel lblTemporizadorCarrito;
     private javax.swing.Timer timerOfertas;
+    private JButton btnTabDeseos;
+    private JPanel gridDeseos;
 
     private CardLayout gestorVistas;
+    private final GestorListaDeseos gestorDeseos;
     private JPanel panelContenedorVistas;
     private JButton btnTabTienda;
     private JButton btnTabCarrito;
@@ -114,6 +118,7 @@ public class VistaCliente extends BaseFrame {
         this.timerOfertas.start();
         this.cuponAplicado = null;
 
+        this.gestorDeseos = new GestorListaDeseos();
 
         //Inicializar Temporizador
         this.temporizadorCarrito = new TemporizadorCarrito(new TemporizadorCarrito.EventoTemporizador() {
@@ -156,6 +161,9 @@ public class VistaCliente extends BaseFrame {
         if (conexionServidor.estaConectado()) {
             conexionServidor.solicitarStockActual();
             conexionServidor.solicitarOfertas();
+            if (obtenerIdentificadorUsuario() != null) {
+                conexionServidor.enviarMensaje("IDENTIFICAR_USUARIO;" + obtenerIdentificadorUsuario());
+            }
         }
     }
 
@@ -177,7 +185,7 @@ public class VistaCliente extends BaseFrame {
 
         panelContenedorVistas.add(crearCatalogo(), "VISTA_TIENDA");
         panelContenedorVistas.add(crearVistaCarritoDashboard(), "VISTA_CARRITO");
-
+        panelContenedorVistas.add(crearVistaDeseosDashboard(), "VISTA_DESEOS");
         add(panelContenedorVistas, BorderLayout.CENTER);
         add(crearAccesoChat(), BorderLayout.SOUTH);
 
@@ -500,6 +508,11 @@ public class VistaCliente extends BaseFrame {
                         adminVista.mostrar();
                     } else {
                         btnLogin.setText("👤 Hola, " + user.getNombre());
+                        if (conexionServidor.estaConectado() && obtenerIdentificadorUsuario() != null) {
+                            conexionServidor.enviarMensaje("IDENTIFICAR_USUARIO;" + obtenerIdentificadorUsuario());
+                        }
+                        actualizarProductos();
+                        actualizarVistaDeseos();
                     }
                 }
             } else {
@@ -508,6 +521,11 @@ public class VistaCliente extends BaseFrame {
                 dialogoPerfil.mostrar();
                 if (dialogoPerfil.isCerroSesion()) {
                     btnLogin.setText("Iniciar sesión");
+                    if (conexionServidor.estaConectado()) {
+                        conexionServidor.enviarMensaje("CERRAR_SESION_USUARIO");
+                    }
+                    actualizarProductos();
+                    actualizarVistaDeseos();
                 } else {
                     btnLogin.setText("👤 Hola, " + usuarioActual.getNombre());
                 }
@@ -542,9 +560,15 @@ public class VistaCliente extends BaseFrame {
 
         btnTabTienda.addActionListener(e -> cambiarVistaCliente("VISTA_TIENDA"));
         btnTabCarrito.addActionListener(e -> cambiarVistaCliente("VISTA_CARRITO"));
+        btnTabDeseos = crearBotonPestana("❤️ Lista de Deseos", false);
+        btnTabDeseos.addActionListener(e -> {
+            actualizarVistaDeseos();
+            cambiarVistaCliente("VISTA_DESEOS");
+        });
 
         barraPestanas.add(btnTabTienda);
         barraPestanas.add(btnTabCarrito);
+        barraPestanas.add(btnTabDeseos);
 
         JPanel centroCabecera = new JPanel(new BorderLayout());
         centroCabecera.setOpaque(false);
@@ -836,7 +860,7 @@ public class VistaCliente extends BaseFrame {
         tarjeta.setBackground(Color.WHITE);
         tarjeta.setLayout(new BorderLayout());
         tarjeta.setBorder(new EmptyBorder(10, 10, 10, 10));
-        tarjeta.setPreferredSize(new Dimension(215, 255));
+        tarjeta.setPreferredSize(new Dimension(215, 260));
 
         JLabel imagen = new JLabel();
         imagen.setOpaque(true);
@@ -860,63 +884,62 @@ public class VistaCliente extends BaseFrame {
         nombre.setFont(new Font("SansSerif", Font.BOLD, 13));
         nombre.setForeground(NAVY);
         nombre.setToolTipText(producto.getNombre());
+        nombre.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         JLabel categoria = new JLabel(producto.getCategoria());
         categoria.setForeground(GRIS);
+        categoria.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        double precioOriginal =
-                producto.getPrecio();
+        double precioOriginal = producto.getPrecio();
+        double precioOferta = gestorOfertas.obtenerPrecio(producto);
 
-        double precioOferta =
-                gestorOfertas.obtenerPrecio(
-                        producto
-                );
-
-
-        JLabel precio =
-                new JLabel();
-
-
+        JLabel precio = new JLabel();
         if (precioOferta < precioOriginal) {
-
-            precio.setText(
-                    "<html>"
-                            + "<strike>"
-                            + formatearPesos(precioOriginal)
-                            + "</strike>  "
-                            + "<font color='#D32F2F'><b>"
-                            + formatearPesos(precioOferta)
-                            + "</b></font>"
-                            + "</html>"
-            );
-
+            precio.setText("<html><strike>" + formatearPesos(precioOriginal) + "</strike>  <font color='#D32F2F'><b>" + formatearPesos(precioOferta) + "</b></font></html>");
         } else {
-
-            precio.setText(
-                    formatearPesos(precioOriginal)
-            );
+            precio.setText(formatearPesos(precioOriginal));
         }
-
-
-        precio.setFont(
-                new Font(
-                        "SansSerif",
-                        Font.BOLD,
-                        16
-                )
-        );
-
+        precio.setFont(new Font("SansSerif", Font.BOLD, 16));
         precio.setForeground(NAVY);
+        precio.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         JLabel stock = crearStock(producto);
+        stock.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        // --- BOTÓN: Agregar al Carrito ---
-        JButton agregar = crearBoton("Agregar al carrito", AZUL);
+        // --- FILA INFERIOR: Botón Principal + Corazón abajo a la derecha ---
+        String userId = obtenerIdentificadorUsuario();
+        boolean esFavorito = userId != null && gestorDeseos.estaEnListaDeseos(userId, producto.getId());
+
+        JPanel filaBotones = new JPanel(new BorderLayout(6, 0));
+        filaBotones.setOpaque(false);
+        filaBotones.setAlignmentX(Component.LEFT_ALIGNMENT);
+        filaBotones.setMaximumSize(new Dimension(Integer.MAX_VALUE, 32));
+
+        JButton btnAccion;
         if (producto.getStock() == 0) {
-            agregar.setText("Sin stock");
-            agregar.setEnabled(false);
+            boolean yaSuscrito = userId != null && gestorDeseos.estaSuscrito(userId, producto.getId());
+            btnAccion = crearBoton(yaSuscrito ? "🔔 Suscrito" : "🔔 Avísame", yaSuscrito ? GRIS : new Color(230, 135, 30));
+            btnAccion.setEnabled(!yaSuscrito);
+            btnAccion.addActionListener(e -> suscribirAvisoStock(producto));
+        } else {
+            btnAccion = crearBoton("Agregar al carrito", AZUL);
+            btnAccion.addActionListener(e -> agregarAlCarrito(producto));
         }
-        agregar.addActionListener(e -> agregarAlCarrito(producto));
+
+        JButton btnFavorito = new JButton(esFavorito ? "♥" : "♡");
+        btnFavorito.setFont(new Font("SansSerif", Font.BOLD, 17));
+        btnFavorito.setForeground(esFavorito ? new Color(225, 55, 75) : GRIS);
+        btnFavorito.setBackground(new Color(245, 248, 252));
+        btnFavorito.setBorder(BorderFactory.createLineBorder(new Color(215, 223, 234)));
+        btnFavorito.setFocusPainted(false);
+        btnFavorito.setPreferredSize(new Dimension(36, 30));
+        btnFavorito.setMargin(new Insets(0, 0, 0, 0));
+        btnFavorito.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnFavorito.setToolTipText(esFavorito ? "Quitar de Lista de Deseos" : "Guardar en Lista de Deseos");
+        btnFavorito.addActionListener(e -> alternarFavorito(producto));
+
+        filaBotones.add(btnAccion, BorderLayout.CENTER);
+        filaBotones.add(btnFavorito, BorderLayout.EAST);
 
         info.add(nombre);
         info.add(categoria);
@@ -924,7 +947,7 @@ public class VistaCliente extends BaseFrame {
         info.add(precio);
         info.add(stock);
         info.add(Box.createRigidArea(new Dimension(0, 6)));
-        info.add(agregar);
+        info.add(filaBotones);
 
         tarjeta.add(imagen, BorderLayout.CENTER);
         tarjeta.add(info, BorderLayout.SOUTH);
@@ -939,62 +962,66 @@ public class VistaCliente extends BaseFrame {
 
         // --- ACCIÓN: Oferta creada o actualizada por ADMIN ---
         if (mensaje.startsWith("OFERTA_ACTUALIZADA;")) {
-
-            String[] datos =
-                    mensaje.split(";", 6);
-
-            if (datos.length != 6) {
-                return;
-            }
+            String[] datos = mensaje.split(";", 6);
+            if (datos.length != 6) return;
 
             try {
+                String tipo = datos[1];
+                String objetivo = datos[2];
+                double descuento = Double.parseDouble(datos[3]);
+                long inicio = Long.parseLong(datos[4]);
+                long fin = Long.parseLong(datos[5]);
 
-                String tipo =
-                        datos[1];
-
-                String objetivo =
-                        datos[2];
-
-                double descuento =
-                        Double.parseDouble(
-                                datos[3]
-                        );
-
-                long inicio =
-                        Long.parseLong(
-                                datos[4]
-                        );
-
-                long fin =
-                        Long.parseLong(
-                                datos[5]
-                        );
-
-
-                gestorOfertas.agregarOferta(
-                        tipo,
-                        objetivo,
-                        descuento,
-                        inicio,
-                        fin
-                );
-
+                gestorOfertas.agregarOferta(tipo, objetivo, descuento, inicio, fin);
 
                 SwingUtilities.invokeLater(() -> {
-
                     actualizarProductos();
                     actualizarCarrito();
+                    actualizarVistaDeseos();
 
+                    long ahora = System.currentTimeMillis();
+                    String userId = obtenerIdentificadorUsuario();
+
+                    // Solo mostramos ventanas emergentes si la oferta está vigente Y hay un usuario logueado
+                    if (ahora >= inicio && ahora <= fin && userId != null) {
+                        List<String> afectados = new ArrayList<>();
+
+                        for (String idDeseo : gestorDeseos.obtenerIdsDeseosUsuario(userId)) {
+                            Producto p = buscarProductoLocal(idDeseo);
+                            if (p != null) {
+                                boolean coincide = tipo.equalsIgnoreCase("PRODUCTO")
+                                        ? p.getId().equalsIgnoreCase(objetivo)
+                                        : p.getCategoria().equalsIgnoreCase(objetivo);
+                                if (coincide) {
+                                    afectados.add(p.getNombre() + " (" + (int) descuento + "% OFF)");
+                                }
+                            }
+                        }
+
+                        if (!afectados.isEmpty()) {
+                            JOptionPane.showMessageDialog(
+                                    this,
+                                    "¡Oferta aplicada a productos de tu Lista de Deseos!\n• "
+                                            + String.join("\n• ", afectados),
+                                    "🏷️ ¡Oferta en tus Favoritos!",
+                                    JOptionPane.INFORMATION_MESSAGE
+                            );
+                        } else {
+                            String detalle = tipo.equalsIgnoreCase("PRODUCTO")
+                                    ? "un producto seleccionado"
+                                    : "la categoría " + objetivo;
+                            JOptionPane.showMessageDialog(
+                                    this,
+                                    "¡Nueva oferta activa! " + (int) descuento + "% de descuento en " + detalle + ".",
+                                    "🏷️ Nueva Oferta Disponible",
+                                    JOptionPane.INFORMATION_MESSAGE
+                            );
+                        }
+                    }
                 });
-
-
             } catch (NumberFormatException e) {
-
-                System.out.println(
-                        "Error al recibir una oferta."
-                );
+                System.out.println("Error al recibir una oferta.");
             }
-
             return;
         }
 
@@ -1016,6 +1043,49 @@ public class VistaCliente extends BaseFrame {
                     temporizadorCarrito.iniciarOReiniciar();
                 }
             } catch (Exception ignored) {}
+            return;
+        }
+        // --- ACCIÓN: Notificación de reposición de stock ---
+        if (mensaje.startsWith("AVISO_REPOSICION;")) {
+            if (obtenerIdentificadorUsuario() == null) return;
+            String[] datos = mensaje.split(";", 3);
+            if (datos.length == 3) {
+                SwingUtilities.invokeLater(() -> {
+                    gestorDeseos.recargarDesdeCSV();
+                    actualizarProductos();
+                    actualizarVistaDeseos();
+                    JOptionPane.showMessageDialog(
+                            this,
+                            "¡Buenas noticias! El producto '" + datos[2] + "' ya tiene stock disponible nuevamente.",
+                            "🔔 Producto Repuesto",
+                            JOptionPane.INFORMATION_MESSAGE
+                    );
+                });
+            }
+            return;
+        }
+
+        // --- ACCIÓN: Notificación de baja de precio en Lista de Deseos ---
+        if (mensaje.startsWith("AVISO_BAJA_PRECIO;")) {
+            if (obtenerIdentificadorUsuario() == null) return;
+            String[] datos = mensaje.split(";", 5);
+            if (datos.length == 5) {
+                SwingUtilities.invokeLater(() -> {
+                    try {
+                        double anterior = Double.parseDouble(datos[3]);
+                        double nuevo = Double.parseDouble(datos[4]);
+                        actualizarVistaDeseos();
+                        JOptionPane.showMessageDialog(
+                                this,
+                                "¡Bajó de precio un producto de tu Lista de Deseos!\n"
+                                        + datos[2] + "\nAntes: " + formatearPesos(anterior)
+                                        + "  →  Ahora: " + formatearPesos(nuevo),
+                                "📉 Baja de Precio",
+                                JOptionPane.INFORMATION_MESSAGE
+                        );
+                    } catch (NumberFormatException ignored) {}
+                });
+            }
             return;
         }
 
@@ -1071,7 +1141,9 @@ public class VistaCliente extends BaseFrame {
 
 
                 actualizarCarrito();
-
+                if (!carrito.estaVacio() && temporizadorCarrito != null) {
+                    temporizadorCarrito.iniciarOReiniciar();
+                }
                 mostrarError(motivo);
             });
 
@@ -1159,6 +1231,7 @@ public class VistaCliente extends BaseFrame {
                     inventario.sincronizarProductoDesdeServidor(id, nombre, precio, stock, categoria, rutaImagen);
                     actualizarCarrito();
                     actualizarProductos();
+                    actualizarVistaDeseos();
                 });
             } catch (NumberFormatException e) {
                 return;
@@ -1599,115 +1672,83 @@ public class VistaCliente extends BaseFrame {
             return;
         }
 
+        // Detenemos el reloj desde el primer segundo al hacer clic en Comprar
+        if (temporizadorCarrito != null) {
+            temporizadorCarrito.detener();
+        }
+
         // =========================================
         // 1. RUT DEL CLIENTE
         // =========================================
-
         if (sistema.getUsuarioActual() != null) {
-
-            rutCompra =
-                    sistema.getUsuarioActual().getRut();
-
+            rutCompra = sistema.getUsuarioActual().getRut();
         } else {
-
-            int opcionRut =
-                    JOptionPane.showConfirmDialog(
-                            this,
-                            "¿Desea ingresar su RUT para asociarlo a la compra?",
-                            "RUT opcional",
-                            JOptionPane.YES_NO_OPTION,
-                            JOptionPane.QUESTION_MESSAGE
-                    );
-
+            int opcionRut = JOptionPane.showConfirmDialog(
+                    this,
+                    "¿Desea ingresar su RUT para asociarlo a la compra?",
+                    "RUT opcional",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.QUESTION_MESSAGE
+            );
 
             if (opcionRut == JOptionPane.YES_OPTION) {
-
-                String rutIngresado =
-                        JOptionPane.showInputDialog(
-                                this,
-                                "Ingrese su RUT:",
-                                "Ingresar RUT",
-                                JOptionPane.PLAIN_MESSAGE
-                        );
-
+                String rutIngresado = JOptionPane.showInputDialog(
+                        this,
+                        "Ingrese su RUT:",
+                        "Ingresar RUT",
+                        JOptionPane.PLAIN_MESSAGE
+                );
 
                 if (rutIngresado == null) {
+                    reanudarTemporizadorSiHayProductos();
                     return;
                 }
 
-
-                rutIngresado =
-                        rutIngresado.trim();
-
+                rutIngresado = rutIngresado.trim();
 
                 if (rutIngresado.isEmpty()) {
-
-                    mostrarError(
-                            "Debe ingresar un RUT o elegir comprar sin RUT."
-                    );
-
+                    reanudarTemporizadorSiHayProductos();
+                    mostrarError("Debe ingresar un RUT o elegir comprar sin RUT.");
                     return;
                 }
 
-
-                rutCompra =
-                        rutIngresado;
-
+                rutCompra = rutIngresado;
             } else {
-
                 rutCompra = "";
             }
         }
 
-
         // =========================================
         // 2. COMPROBAR CONEXIÓN
         // =========================================
-
         if (!conexionServidor.estaConectado()) {
-
-            mostrarError(
-                    "No se puede confirmar la compra porque no hay conexión con el servidor."
-            );
-
+            reanudarTemporizadorSiHayProductos();
+            mostrarError("No se puede confirmar la compra porque no hay conexión con el servidor.");
             return;
         }
 
-
-// =========================================
+        // =========================================
         // 3. CALCULAR DESCUENTO, ENVÍO Y TOTAL REAL
         // =========================================
-
-        double subtotalCompra =
-                calcularSubtotalConOfertas();
-
-
+        double subtotalCompra = calcularSubtotalConOfertas();
         double descuentoCompra = 0;
 
-
         if (cuponAplicado != null) {
-
-            descuentoCompra =
-                    cuponAplicado.calcularDescuento(
-                            subtotalCompra
-                    );
+            descuentoCompra = cuponAplicado.calcularDescuento(subtotalCompra);
         }
 
+        double subtotalNetoCompra = subtotalCompra - descuentoCompra;
 
-        double subtotalNetoCompra =
-                subtotalCompra - descuentoCompra;
-
-
-        DialogoDespacho dialogoDespacho =
-                new DialogoDespacho(
-                        this,
-                        gestorDespacho,
-                        subtotalNetoCompra,
-                        sistema.getUsuarioActual()
-                );
+        DialogoDespacho dialogoDespacho = new DialogoDespacho(
+                this,
+                gestorDespacho,
+                subtotalNetoCompra,
+                sistema.getUsuarioActual()
+        );
         dialogoDespacho.mostrar();
 
         if (!dialogoDespacho.isConfirmado()) {
+            reanudarTemporizadorSiHayProductos();
             return;
         }
 
@@ -1715,58 +1756,36 @@ public class VistaCliente extends BaseFrame {
         String infoDespacho = dialogoDespacho.getResumenEntrega();
         carrito.setCostoEnvio(costoEnvioCompra);
 
-
-        double ivaCompra =
-                (subtotalNetoCompra + costoEnvioCompra) * 0.19;
-
-
-        double totalCompra =
-                subtotalNetoCompra + costoEnvioCompra + ivaCompra;
+        double ivaCompra = (subtotalNetoCompra + costoEnvioCompra) * 0.19;
+        double totalCompra = subtotalNetoCompra + costoEnvioCompra + ivaCompra;
 
         // =========================================
         // 4. RESUMEN DE LA COMPRA
         // =========================================
-
-        String resumen =
-                "Subtotal: "
-                        + formatearPesos(subtotalCompra);
-
+        String resumen = "Subtotal: " + formatearPesos(subtotalCompra);
 
         if (cuponAplicado != null) {
-
-            resumen +=
-                    "\nCupón: "
-                            + cuponAplicado.getCodigo()
-                            + "\nDescuento: -"
-                            + formatearPesos(descuentoCompra)
-                            + "\nSubtotal neto: "
-                            + formatearPesos(subtotalNetoCompra);
+            resumen += "\nCupón: " + cuponAplicado.getCodigo()
+                    + "\nDescuento: -" + formatearPesos(descuentoCompra)
+                    + "\nSubtotal neto: " + formatearPesos(subtotalNetoCompra);
         }
 
+        resumen += "\nEntrega: " + infoDespacho
+                + "\nEnvío: " + formatearPesos(costoEnvioCompra)
+                + "\nIVA (19%): " + formatearPesos(ivaCompra)
+                + "\nTotal: " + formatearPesos(totalCompra)
+                + "\n\n¿Desea confirmar la compra?";
 
-        resumen +=
-                "\nEntrega: "
-                        + infoDespacho
-                        + "\nEnvío: "
-                        + formatearPesos(costoEnvioCompra)
-                        + "\nIVA (19%): "
-                        + formatearPesos(ivaCompra)
-                        + "\nTotal: "
-                        + formatearPesos(totalCompra)
-                        + "\n\n¿Desea confirmar la compra?";
-
-
-        int confirmar =
-                JOptionPane.showConfirmDialog(
-                        this,
-                        resumen,
-                        "Confirmar compra",
-                        JOptionPane.YES_NO_OPTION,
-                        JOptionPane.QUESTION_MESSAGE
-                );
-
+        int confirmar = JOptionPane.showConfirmDialog(
+                this,
+                resumen,
+                "Confirmar compra",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.QUESTION_MESSAGE
+        );
 
         if (confirmar != JOptionPane.YES_OPTION) {
+            reanudarTemporizadorSiHayProductos();
             return;
         }
 
@@ -1870,7 +1889,11 @@ public class VistaCliente extends BaseFrame {
                 codigoCupon
         );
     }
-
+    private void reanudarTemporizadorSiHayProductos() {
+        if (!carrito.estaVacio() && temporizadorCarrito != null) {
+            temporizadorCarrito.iniciarOReiniciar();
+        }
+    }
     private Map<Producto, Integer> obtenerProductosParaComprobante() {
 
         Map<Producto, Integer> productos =
@@ -2078,6 +2101,9 @@ public class VistaCliente extends BaseFrame {
         if (conexionServidor.conectar(host)) {
             conexionServidor.solicitarStockActual();
             conexionServidor.solicitarOfertas();
+            if (obtenerIdentificadorUsuario() != null) {
+                conexionServidor.enviarMensaje("IDENTIFICAR_USUARIO;" + obtenerIdentificadorUsuario());
+            }
             JOptionPane.showMessageDialog(this, "Conectado al host " + host + ".", "Conexión exitosa", JOptionPane.INFORMATION_MESSAGE);
         } else {
             mostrarError("No se pudo conectar al host " + host + " en el puerto 65432.");
@@ -2214,9 +2240,9 @@ public class VistaCliente extends BaseFrame {
     }
     private void cambiarVistaCliente(String nombreVista) {
         gestorVistas.show(panelContenedorVistas, nombreVista);
-        boolean enTienda = nombreVista.equals("VISTA_TIENDA");
-        estilizarPestana(btnTabTienda, enTienda);
-        estilizarPestana(btnTabCarrito, !enTienda);
+        estilizarPestana(btnTabTienda, nombreVista.equals("VISTA_TIENDA"));
+        estilizarPestana(btnTabCarrito, nombreVista.equals("VISTA_CARRITO"));
+        estilizarPestana(btnTabDeseos, nombreVista.equals("VISTA_DESEOS"));
     }
 
     private JButton crearBotonPestana(String texto, boolean activa) {
@@ -2267,5 +2293,165 @@ public class VistaCliente extends BaseFrame {
                 "Carrito Expirado",
                 JOptionPane.INFORMATION_MESSAGE
         );
+    }
+    // =========================================================
+    // GESTIÓN Y VISTA DE LISTA DE DESEOS
+    // =========================================================
+    private String obtenerIdentificadorUsuario() {
+        Usuario u = sistema.getUsuarioActual();
+        if (u == null) return null;
+        return (u.getRut() != null && !u.getRut().trim().isEmpty()) ? u.getRut().trim() : u.getNombre().trim();
+    }
+
+    private void alternarFavorito(Producto producto) {
+        String userId = obtenerIdentificadorUsuario();
+        if (userId == null) {
+            JOptionPane.showMessageDialog(this, "Inicia sesión para guardar productos en tu Lista de Deseos.", "Sesión requerida", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        if (gestorDeseos.estaEnListaDeseos(userId, producto.getId())) {
+            gestorDeseos.eliminarDeseo(userId, producto.getId());
+        } else {
+            gestorDeseos.agregarDeseo(userId, producto.getId());
+        }
+
+        if (conexionServidor.estaConectado()) {
+            conexionServidor.enviarMensaje("DESEO_TOGGLE;" + userId + ";" + producto.getId());
+        }
+
+        actualizarProductos();
+        actualizarVistaDeseos();
+    }
+
+    private void suscribirAvisoStock(Producto producto) {
+        String userId = obtenerIdentificadorUsuario();
+        if (userId == null) {
+            JOptionPane.showMessageDialog(this, "Inicia sesión para suscribirte al aviso de reposición.", "Sesión requerida", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        gestorDeseos.suscribirReposicion(userId, producto.getId());
+        if (conexionServidor.estaConectado()) {
+            conexionServidor.enviarMensaje("SUSCRIBIR_STOCK;" + userId + ";" + producto.getId());
+        }
+
+        actualizarProductos();
+        JOptionPane.showMessageDialog(this, "Te avisaremos en cuanto vuelva a haber stock de " + producto.getNombre() + ".", "Suscripción activada", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    private JPanel crearVistaDeseosDashboard() {
+        JPanel panel = new JPanel(new BorderLayout(0, 12));
+        panel.setOpaque(false);
+
+        PanelRedondeado encabezado = new PanelRedondeado(12);
+        encabezado.setBackground(NAVY);
+        encabezado.setLayout(new BorderLayout());
+        encabezado.setBorder(new EmptyBorder(10, 14, 10, 14));
+
+        JLabel titulo = new JLabel("❤️ Mi Lista de Deseos");
+        titulo.setFont(new Font("SansSerif", Font.BOLD, 19));
+        titulo.setForeground(Color.WHITE);
+        encabezado.add(titulo, BorderLayout.WEST);
+
+        gridDeseos = new JPanel();
+        gridDeseos.setOpaque(false);
+        gridDeseos.setLayout(new BoxLayout(gridDeseos, BoxLayout.Y_AXIS));
+
+        JScrollPane scroll = new JScrollPane(gridDeseos);
+        scroll.setBorder(null);
+        scroll.setOpaque(false);
+        scroll.getViewport().setOpaque(false);
+        scroll.getVerticalScrollBar().setUnitIncrement(14);
+
+        panel.add(encabezado, BorderLayout.NORTH);
+        panel.add(scroll, BorderLayout.CENTER);
+
+        actualizarVistaDeseos();
+        return panel;
+    }
+
+    private void actualizarVistaDeseos() {
+        if (gridDeseos == null) return;
+        gridDeseos.removeAll();
+
+        String userId = obtenerIdentificadorUsuario();
+        if (userId == null) {
+            JLabel msg = new JLabel("<html><center><b>Inicia sesión para ver tu Lista de Deseos</b><br><br>Guarda tus productos favoritos y recibe avisos si bajan de precio o vuelven a estar en stock.</center></html>");
+            msg.setForeground(GRIS);
+            msg.setAlignmentX(Component.CENTER_ALIGNMENT);
+            gridDeseos.add(Box.createVerticalGlue());
+            gridDeseos.add(msg);
+            gridDeseos.add(Box.createVerticalGlue());
+        } else {
+            List<String> ids = gestorDeseos.obtenerIdsDeseosUsuario(userId);
+            if (ids.isEmpty()) {
+                JLabel vacio = new JLabel("<html><center><b>Tu Lista de Deseos está vacía</b><br><br>Haz clic en el corazón (♡) de cualquier producto para guardarlo aquí.</center></html>");
+                vacio.setForeground(GRIS);
+                vacio.setAlignmentX(Component.CENTER_ALIGNMENT);
+                gridDeseos.add(Box.createVerticalGlue());
+                gridDeseos.add(vacio);
+                gridDeseos.add(Box.createVerticalGlue());
+            } else {
+                for (String idProd : ids) {
+                    Producto p = buscarProductoLocal(idProd);
+                    if (p != null) {
+                        gridDeseos.add(crearFilaDeseo(p));
+                        gridDeseos.add(Box.createRigidArea(new Dimension(0, 10)));
+                    }
+                }
+            }
+        }
+
+        gridDeseos.revalidate();
+        gridDeseos.repaint();
+    }
+
+    private JPanel crearFilaDeseo(Producto p) {
+        PanelRedondeado fila = new PanelRedondeado(14);
+        fila.setBackground(Color.WHITE);
+        fila.setLayout(new BorderLayout(15, 0));
+        fila.setBorder(new EmptyBorder(12, 16, 12, 16));
+        fila.setMaximumSize(new Dimension(Integer.MAX_VALUE, 82));
+
+        JPanel info = new JPanel();
+        info.setOpaque(false);
+        info.setLayout(new BoxLayout(info, BoxLayout.Y_AXIS));
+
+        JLabel lblNombre = new JLabel(p.getNombre() + "  (" + p.getCategoria() + ")");
+        lblNombre.setFont(new Font("SansSerif", Font.BOLD, 15));
+        lblNombre.setForeground(NAVY);
+
+        double precioActual = gestorOfertas.obtenerPrecio(p);
+        String estadoStock = p.getStock() > 0 ? "Disponible (" + p.getStock() + " unid.)" : "Sin stock actualmente";
+        JLabel lblDetalle = new JLabel(formatearPesos(precioActual) + "  •  " + estadoStock);
+        lblDetalle.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        lblDetalle.setForeground(p.getStock() > 0 ? new Color(35, 145, 85) : new Color(215, 60, 70));
+
+        info.add(lblNombre);
+        info.add(Box.createRigidArea(new Dimension(0, 4)));
+        info.add(lblDetalle);
+
+        JPanel acciones = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 8));
+        acciones.setOpaque(false);
+
+        JButton btnMoverCarrito = crearBoton(p.getStock() > 0 ? "🛒 Mover al carrito" : "Sin stock", p.getStock() > 0 ? AZUL : GRIS);
+        btnMoverCarrito.setPreferredSize(new Dimension(155, 34));
+        btnMoverCarrito.setEnabled(p.getStock() > 0);
+        btnMoverCarrito.addActionListener(e -> {
+            agregarAlCarrito(p);
+            alternarFavorito(p);
+        });
+
+        JButton btnQuitar = crearBoton("Quitar", new Color(235, 87, 87));
+        btnQuitar.setPreferredSize(new Dimension(80, 34));
+        btnQuitar.addActionListener(e -> alternarFavorito(p));
+
+        acciones.add(btnMoverCarrito);
+        acciones.add(btnQuitar);
+
+        fila.add(info, BorderLayout.CENTER);
+        fila.add(acciones, BorderLayout.EAST);
+        return fila;
     }
 }

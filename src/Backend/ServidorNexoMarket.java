@@ -6,10 +6,7 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class ServidorNexoMarket {
 
@@ -36,6 +33,9 @@ public class ServidorNexoMarket {
 
     // Cliente -> (ID producto -> cantidad reservada)
     private static final Map<PrintWriter, Map<String, Integer>> reservasClientes = new HashMap<>();
+
+    private static final GestorListaDeseos gestorDeseos = new GestorListaDeseos();
+    private static final Map<PrintWriter, String> usuariosConectados = new HashMap<>();
 
     private static int tiempoReservaSegundos = 180;
     // =====================================================
@@ -219,7 +219,47 @@ public class ServidorNexoMarket {
                         }
                     } catch (Exception ignored) {}
                 }
+                else if (mensaje.startsWith("IDENTIFICAR_USUARIO;")) {
+                    String[] datos = mensaje.split(";", 2);
+                    if (datos.length == 2 && !datos[1].trim().isEmpty()) {
+                        String userId = datos[1].trim().toLowerCase();
+                        usuariosConectados.put(salida, userId);
 
+                        // Enviar notificaciones que ocurrieron mientras estaba desconectado
+                        List<String> pendientes = gestorDeseos.consumirNotificacionesPendientes(userId);
+                        for (String aviso : pendientes) {
+                            salida.println(aviso);
+                        }
+                    }
+                }
+                // --- COMANDO: Cliente cierra sesión (deja de recibir alertas de esa cuenta) ---
+                else if (mensaje.equals("CERRAR_SESION_USUARIO")) {
+                    usuariosConectados.remove(salida);
+                }
+                // --- COMANDO: Cliente guarda/quita favorito ---
+                else if (mensaje.startsWith("DESEO_TOGGLE;")) {
+                    String[] datos = mensaje.split(";", 3);
+                    if (datos.length == 3) {
+                        String user = datos[1].trim();
+                        String idProd = datos[2].trim();
+                        if (gestorDeseos.estaEnListaDeseos(user, idProd)) {
+                            gestorDeseos.eliminarDeseo(user, idProd);
+                        } else {
+                            gestorDeseos.agregarDeseo(user, idProd);
+                        }
+                    }
+                }
+                // --- COMANDO: Cliente se suscribe a reposición ---
+                else if (mensaje.startsWith("SUSCRIBIR_STOCK;")) {
+                    String[] datos = mensaje.split(";", 3);
+                    if (datos.length == 3) {
+                        String user = datos[1].trim();
+                        String idProd = datos[2].trim();
+                        gestorDeseos.suscribirReposicion(user, idProd);
+                        int totalEsperando = gestorDeseos.contarClientesEsperando(idProd);
+                        enviarATodos("ACTUALIZAR_ESPERANDO;" + idProd + ";" + totalEsperando, null);
+                    }
+                }
                 else {
 
                     enviarATodos(
@@ -238,10 +278,8 @@ public class ServidorNexoMarket {
         } finally {
 
             if (salida != null) {
-
-                eliminarCliente(
-                        salida
-                );
+                usuariosConectados.remove(salida);
+                eliminarCliente(salida);
             }
 
 
@@ -436,7 +474,33 @@ public class ServidorNexoMarket {
         String rutaImagen =
                 datos[6];
 
+        synchronized (inventarioServidor) {
+            Producto existente = inventarioServidor.buscarProductoPorId(id);
+            int stockAnterior = (existente != null) ? existente.getStock() : 0;
+            double precioAnterior = (existente != null) ? existente.getPrecio() : precio;
 
+            inventarioServidor.sincronizarProductoDesdeServidor(id, nombre, precio, stock, categoria, rutaImagen);
+            inventarioServidor.guardarEnCSV();
+
+            enviarATodos("PRODUCTO_ACTUALIZADO;" + id + ";" + nombre + ";" + precio + ";" + stock + ";" + categoria + ";" + rutaImagen, admin);
+
+            // 1. Aviso de reposición (si estaba en 0 y ahora tiene stock > 0)
+            if (stockAnterior == 0 && stock > 0) {
+                Set<String> suscritos = gestorDeseos.consumirSuscriptoresReposicion(id);
+                if (!suscritos.isEmpty()) {
+                    notificarUsuariosEspecificos(suscritos, "AVISO_REPOSICION;" + id + ";" + nombre);
+                    enviarATodos("ACTUALIZAR_ESPERANDO;" + id + ";0", null);
+                }
+            }
+
+            // 2. Aviso de baja de precio (si bajó respecto al precio anterior)
+            if (existente != null && precio < precioAnterior) {
+                Set<String> interesados = gestorDeseos.obtenerUsuariosConProductoEnDeseos(id);
+                if (!interesados.isEmpty()) {
+                    notificarUsuariosEspecificos(interesados, "AVISO_BAJA_PRECIO;" + id + ";" + nombre + ";" + precioAnterior + ";" + precio);
+                }
+            }
+        }
         synchronized (inventarioServidor) {
 
             inventarioServidor
@@ -1469,5 +1533,22 @@ public class ServidorNexoMarket {
                 mensaje,
                 null
         );
+    }
+    private static synchronized void notificarUsuariosEspecificos(Set<String> usuariosObjetivo, String mensaje) {
+        Set<String> notificadosEnVivo = new HashSet<>();
+
+        for (Map.Entry<PrintWriter, String> entry : usuariosConectados.entrySet()) {
+            if (usuariosObjetivo.contains(entry.getValue())) {
+                entry.getKey().println(mensaje);
+                notificadosEnVivo.add(entry.getValue());
+            }
+        }
+
+        // Quienes no estaban conectados reciben la notificación al iniciar sesión
+        for (String usuarioId : usuariosObjetivo) {
+            if (!notificadosEnVivo.contains(usuarioId)) {
+                gestorDeseos.encolarNotificacion(usuarioId, mensaje);
+            }
+        }
     }
 }

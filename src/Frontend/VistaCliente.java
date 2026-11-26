@@ -283,6 +283,7 @@ public class VistaCliente extends BaseFrame {
         JScrollPane scroll = new JScrollPane(mensajes);
         scroll.setBorder(BorderFactory.createEmptyBorder(10, 10, 0, 10));
         scroll.getVerticalScrollBar().setUnitIncrement(14);
+        configurarBarraScroll(scroll);
         dialogo.add(scroll, BorderLayout.CENTER);
 
         JTextField entrada = new JTextField();
@@ -622,6 +623,7 @@ public class VistaCliente extends BaseFrame {
         scroll.setOpaque(false);
         scroll.getViewport().setOpaque(false);
         scroll.getVerticalScrollBar().setUnitIncrement(16);
+        configurarBarraScroll(scroll);
 
         panel.add(encabezado, BorderLayout.NORTH);
         panel.add(scroll, BorderLayout.CENTER);
@@ -670,6 +672,7 @@ public class VistaCliente extends BaseFrame {
         scrollCarrito.setOpaque(false);
         scrollCarrito.getViewport().setOpaque(false);
         scrollCarrito.getVerticalScrollBar().setUnitIncrement(14);
+        configurarBarraScroll(scrollCarrito);
 
         panelIzquierdo.add(cabeceraLista, BorderLayout.NORTH);
         panelIzquierdo.add(scrollCarrito, BorderLayout.CENTER);
@@ -2154,6 +2157,31 @@ public class VistaCliente extends BaseFrame {
     // =========================================================
     // UTILIDADES GRÁFICAS Y TEXTO
     // =========================================================
+    private void configurarBarraScroll(JScrollPane scroll) {
+        scroll.getVerticalScrollBar().setPreferredSize(new Dimension(8, 0));
+        scroll.getVerticalScrollBar().setUnitIncrement(16);
+        scroll.getVerticalScrollBar().setUI(new javax.swing.plaf.basic.BasicScrollBarUI() {
+            @Override
+            protected void configureScrollBarColors() {
+                thumbColor = new Color(190, 198, 205);
+                trackColor = new Color(245, 247, 250);
+            }
+
+            @Override
+            protected JButton createDecreaseButton(int orientation) {
+                JButton b = new JButton();
+                b.setPreferredSize(new Dimension(0, 0));
+                return b;
+            }
+
+            @Override
+            protected JButton createIncreaseButton(int orientation) {
+                JButton b = new JButton();
+                b.setPreferredSize(new Dimension(0, 0));
+                return b;
+            }
+        });
+    }
     private Producto buscarProductoLocal(String idProducto) {
         for (Producto producto : inventario.getProductos()) {
             if (producto.getId().equalsIgnoreCase(idProducto)) return producto;
@@ -2363,6 +2391,7 @@ public class VistaCliente extends BaseFrame {
         scroll.setOpaque(false);
         scroll.getViewport().setOpaque(false);
         scroll.getVerticalScrollBar().setUnitIncrement(14);
+        configurarBarraScroll(scroll);
 
         panel.add(encabezado, BorderLayout.NORTH);
         panel.add(scroll, BorderLayout.CENTER);
@@ -2377,18 +2406,30 @@ public class VistaCliente extends BaseFrame {
 
         String userId = obtenerIdentificadorUsuario();
         if (userId == null) {
-            JLabel msg = new JLabel("<html><center><b>Inicia sesión para ver tu Lista de Deseos</b><br><br>Guarda tus productos favoritos y recibe avisos si bajan de precio o vuelven a estar en stock.</center></html>");
+            JLabel msg = new JLabel(
+                    "<html><center><b>Inicia sesión para ver tu Lista de Deseos</b><br><br>Guarda tus productos favoritos y recibe avisos si bajan de precio o vuelven a estar en stock.</center></html>",
+                    SwingConstants.CENTER
+            );
+            msg.setFont(new Font("SansSerif", Font.PLAIN, 15));
             msg.setForeground(GRIS);
             msg.setAlignmentX(Component.CENTER_ALIGNMENT);
+            msg.setMaximumSize(new Dimension(Integer.MAX_VALUE, 120));
+
             gridDeseos.add(Box.createVerticalGlue());
             gridDeseos.add(msg);
             gridDeseos.add(Box.createVerticalGlue());
         } else {
             List<String> ids = gestorDeseos.obtenerIdsDeseosUsuario(userId);
             if (ids.isEmpty()) {
-                JLabel vacio = new JLabel("<html><center><b>Tu Lista de Deseos está vacía</b><br><br>Haz clic en el corazón (♡) de cualquier producto para guardarlo aquí.</center></html>");
+                JLabel vacio = new JLabel(
+                        "<html><center><b>Tu Lista de Deseos está vacía</b><br><br>Haz clic en el corazón (♡) de cualquier producto para guardarlo aquí.</center></html>",
+                        SwingConstants.CENTER
+                );
+                vacio.setFont(new Font("SansSerif", Font.PLAIN, 15));
                 vacio.setForeground(GRIS);
                 vacio.setAlignmentX(Component.CENTER_ALIGNMENT);
+                vacio.setMaximumSize(new Dimension(Integer.MAX_VALUE, 120));
+
                 gridDeseos.add(Box.createVerticalGlue());
                 gridDeseos.add(vacio);
                 gridDeseos.add(Box.createVerticalGlue());

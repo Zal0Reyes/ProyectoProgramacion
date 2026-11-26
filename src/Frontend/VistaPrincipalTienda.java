@@ -34,6 +34,7 @@ public class VistaPrincipalTienda extends BaseFrame {
     private JButton btnNavProductos;
     private JButton btnNavCarritos;
     private JButton btnNavPedidos;
+    private JButton btnNavEstadisticas;
 
     // --- PANELES INTERNOS ---
     private JPanel gridProductos;
@@ -100,6 +101,7 @@ public class VistaPrincipalTienda extends BaseFrame {
         panelContenedorVistas.add(crearVistaProductos(), "VISTA_PRODUCTOS");
         panelContenedorVistas.add(crearVistaCarritos(), "VISTA_CARRITOS");
         panelContenedorVistas.add(crearVistaPedidos(), "VISTA_PEDIDOS");
+        panelContenedorVistas.add(crearVistaEstadisticas(), "VISTA_ESTADISTICAS");
 
         add(panelContenedorVistas, BorderLayout.CENTER);
 
@@ -145,28 +147,37 @@ public class VistaPrincipalTienda extends BaseFrame {
         btnNavProductos = crearBotonPestana("📦 Catálogo de Productos", true);
         btnNavCarritos = crearBotonPestana("🛒 Carritos en Vivo", false);
         btnNavPedidos = crearBotonPestana("🚚 Gestión de Pedidos", false);
+        btnNavEstadisticas = crearBotonPestana("📊 Estadísticas", false);
 
         btnNavProductos.addActionListener(e -> {
             gestorVistas.show(panelContenedorVistas, "VISTA_PRODUCTOS");
-            activarPestana(btnNavProductos, btnNavCarritos,btnNavPedidos);
+            activarPestana(btnNavProductos);
             actualizarVistaProductos("");
         });
 
         btnNavCarritos.addActionListener(e -> {
             gestorVistas.show(panelContenedorVistas, "VISTA_CARRITOS");
-            activarPestana(btnNavCarritos, btnNavProductos,btnNavPedidos);
+            activarPestana(btnNavCarritos);
             if (conexionServidor.estaConectado()) conexionServidor.solicitarCarritosActivos();
         });
 
         btnNavPedidos.addActionListener(e -> {
             gestorVistas.show(panelContenedorVistas, "VISTA_PEDIDOS");
-            activarPestana(btnNavPedidos, btnNavProductos, btnNavCarritos);
+            activarPestana(btnNavPedidos);
             dibujarPedidosEnPanel();
+        });
+        btnNavEstadisticas.addActionListener(e -> {
+            // Reemplaza la carta de estadísticas con datos frescos cada vez que se abre
+            panelContenedorVistas.add(crearVistaEstadisticas(), "VISTA_ESTADISTICAS");
+            gestorVistas.show(panelContenedorVistas, "VISTA_ESTADISTICAS");
+            activarPestana(btnNavEstadisticas);
         });
 
         panelNavegacion.add(btnNavProductos);
         panelNavegacion.add(btnNavCarritos);
         panelNavegacion.add(btnNavPedidos);
+        panelNavegacion.add(btnNavEstadisticas);
+
         panelCabecera.add(panelNavegacion, BorderLayout.CENTER);
 
         // --- PERFIL ADMIN (Opcional a la derecha) ---
@@ -347,27 +358,8 @@ public class VistaPrincipalTienda extends BaseFrame {
         );
 
         barraLateral.add(btnAgregarAdmin);
-        barraLateral.add(
-                Box.createRigidArea(
-                        new Dimension(0, 30)
-                )
-        );
-
-        JButton btnEstadisticas =
-                crearBotonMenu(
-                        "📊",
-                        e -> mostrarDialogoEstadisticas()
-                );
-
-        btnEstadisticas.setToolTipText("Estadísticas");
-        barraLateral.add(btnEstadisticas);
-
         barraLateral.add(Box.createRigidArea(new Dimension(0, 30)));
 
-        JButton btnHistorial = crearBotonMenu("\uD83D\uDCCB", e -> new DialogoHistorialCompras(this, inventario).mostrar());
-        btnHistorial.setToolTipText("Historial de compras");
-        barraLateral.add(btnHistorial);
-        barraLateral.add(Box.createRigidArea(new Dimension(0, 30)));
 
         JButton btnVaciar = crearBotonMenu("🗑", e -> {
             DialogoVaciarInventario dialogoVaciar = new DialogoVaciarInventario(VistaPrincipalTienda.this, inventario);
@@ -888,14 +880,14 @@ public class VistaPrincipalTienda extends BaseFrame {
             btn.setForeground(new Color(30, 105, 210)); // Azul Primario
             btn.setBorder(BorderFactory.createCompoundBorder(
                     BorderFactory.createMatteBorder(0, 0, 4, 0, new Color(30, 105, 210)), // Línea inferior activa
-                    new EmptyBorder(15, 25, 15, 25)
+                    new EmptyBorder(15, 20, 15, 20)
             ));
             btn.setBackground(new Color(245, 248, 255));
         } else {
             btn.setForeground(new Color(130, 140, 150)); // Gris
             btn.setBorder(BorderFactory.createCompoundBorder(
                     BorderFactory.createMatteBorder(0, 0, 4, 0, Color.WHITE), // Invisible
-                    new EmptyBorder(15, 25, 15, 25)
+                    new EmptyBorder(15, 20, 15, 20)
             ));
             btn.setBackground(Color.WHITE);
         }
@@ -919,18 +911,25 @@ public class VistaPrincipalTienda extends BaseFrame {
         return btn;
     }
 
-    private void activarPestana(JButton activa, JButton inactiva1, JButton inactiva2 ) {
-        activa.setForeground(new Color(30, 105, 210));
-        activa.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createMatteBorder(0, 0, 4, 0, new Color(30, 105, 210)), new EmptyBorder(15, 25, 15, 25)));
-        activa.setBackground(new Color(245, 248, 255));
-
-        inactiva1.setForeground(new Color(130, 140, 150));
-        inactiva1.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createMatteBorder(0, 0, 4, 0, Color.WHITE), new EmptyBorder(15, 25, 15, 25)));
-        inactiva1.setBackground(Color.WHITE);
-
-        inactiva2.setForeground(new Color(130, 140, 150));
-        inactiva2.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createMatteBorder(0, 0, 4, 0, Color.WHITE), new EmptyBorder(15, 25, 15, 25)));
-        inactiva2.setBackground(Color.WHITE);
+    private void activarPestana(JButton activa) {
+        JButton[] todas = {btnNavProductos, btnNavCarritos, btnNavPedidos, btnNavEstadisticas};
+        for (JButton btn : todas) {
+            if (btn == activa) {
+                btn.setForeground(new Color(30, 105, 210));
+                btn.setBorder(BorderFactory.createCompoundBorder(
+                        BorderFactory.createMatteBorder(0, 0, 4, 0, new Color(30, 105, 210)),
+                        new EmptyBorder(15, 20, 15, 20)
+                ));
+                btn.setBackground(new Color(245, 248, 255));
+            } else {
+                btn.setForeground(new Color(130, 140, 150));
+                btn.setBorder(BorderFactory.createCompoundBorder(
+                        BorderFactory.createMatteBorder(0, 0, 4, 0, Color.WHITE),
+                        new EmptyBorder(15, 20, 15, 20)
+                ));
+                btn.setBackground(Color.WHITE);
+            }
+        }
     }
 
     private JPanel crearTarjetaProducto(Producto producto) {
@@ -1170,61 +1169,76 @@ public class VistaPrincipalTienda extends BaseFrame {
         } catch (Exception e) { }
     }
 
-    private void mostrarDialogoEstadisticas() {
-        JDialog dialog = new JDialog(this, "Estadísticas del Inventario", true);
-        dialog.setSize(800, 800);
-        dialog.setLocationRelativeTo(this);
-        dialog.setLayout(new BorderLayout());
-        dialog.getContentPane().setBackground(new Color(245, 247, 250));
+    private JPanel crearVistaEstadisticas() {
+        JPanel panel = new JPanel(new BorderLayout(15, 0));
+        panel.setOpaque(false);
+        panel.setBorder(new EmptyBorder(15, 18, 18, 18));
 
-        JPanel panelCabecera = new JPanel();
-        panelCabecera.setBackground(new Color(110, 216, 255));
-        panelCabecera.setBorder(new EmptyBorder(15, 0, 15, 0));
-        JLabel lblTitulo = new JLabel("📊 Estadísticas del Inventario");
-        lblTitulo.setFont(new Font("SansSerif", Font.BOLD, 20));
-        panelCabecera.add(lblTitulo);
-        dialog.add(panelCabecera, BorderLayout.NORTH);
+        PanelRedondeado encabezado = new PanelRedondeado(12);
+        encabezado.setBackground(new Color(19, 40, 72));
+        encabezado.setLayout(new BorderLayout());
+        encabezado.setBorder(new EmptyBorder(9, 12, 9, 12));
+
+        JLabel titulo = new JLabel("📊 Estadísticas del Inventario");
+        titulo.setFont(new Font("SansSerif", Font.BOLD, 20));
+        titulo.setForeground(Color.WHITE);
+        encabezado.add(titulo, BorderLayout.WEST);
+        panel.add(encabezado, BorderLayout.NORTH);
 
         JPanel panelEstadisticas = new JPanel();
         panelEstadisticas.setLayout(new BoxLayout(panelEstadisticas, BoxLayout.Y_AXIS));
         panelEstadisticas.setOpaque(false);
-        panelEstadisticas.setBorder(BorderFactory.createEmptyBorder(25, 30, 15, 30));
+        panelEstadisticas.setBorder(new EmptyBorder(15, 0, 15, 0));
 
         double valorTotal = inventario.calcularValorTotalInventario();
-        JPanel panelTotal = new JPanel(new BorderLayout());
+        PanelRedondeado panelTotal = new PanelRedondeado(15);
+        panelTotal.setLayout(new BorderLayout());
         panelTotal.setBackground(Color.WHITE);
-        panelTotal.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(new Color(200, 200, 200)), new EmptyBorder(15, 20, 15, 20)));
-        panelTotal.setMaximumSize(new Dimension(Integer.MAX_VALUE, 60));
+        panelTotal.setBorder(new EmptyBorder(18, 22, 18, 22));
+        panelTotal.setMaximumSize(new Dimension(Integer.MAX_VALUE, 65));
 
         JLabel lblTotalTexto = new JLabel("Valor total del inventario:");
-        lblTotalTexto.setFont(new Font("SansSerif", Font.BOLD, 14));
+        lblTotalTexto.setFont(new Font("SansSerif", Font.BOLD, 15));
+        lblTotalTexto.setForeground(new Color(19, 40, 72));
+
         JLabel lblTotalValor = new JLabel(formatearPesos(valorTotal));
-        lblTotalValor.setFont(new Font("SansSerif", Font.BOLD, 16));
-        lblTotalValor.setForeground(new Color(110, 216, 255));
+        lblTotalValor.setFont(new Font("SansSerif", Font.BOLD, 18));
+        lblTotalValor.setForeground(new Color(46, 139, 87));
+
         panelTotal.add(lblTotalTexto, BorderLayout.WEST);
         panelTotal.add(lblTotalValor, BorderLayout.EAST);
         panelEstadisticas.add(panelTotal);
-        panelEstadisticas.add(Box.createRigidArea(new Dimension(0, 25)));
+        panelEstadisticas.add(Box.createRigidArea(new Dimension(0, 18)));
 
         Set<String> categorias = new LinkedHashSet<>();
         for (Producto producto : inventario.getProductos()) {
-            if (producto.getCategoria() != null && !producto.getCategoria().trim().isEmpty()) categorias.add(producto.getCategoria());
+            if (producto.getCategoria() != null && !producto.getCategoria().trim().isEmpty()) {
+                categorias.add(producto.getCategoria());
+            }
         }
 
         for (String categoria : categorias) {
             double promedio = inventario.calcularPrecioPromedioPorCategoria(categoria);
             Producto productoMenorStock = inventario.buscarMenorStockPorCategoria(categoria);
 
-            JPanel panelCategoria = new JPanel(new GridLayout(3, 1, 0, 8));
+            PanelRedondeado panelCategoria = new PanelRedondeado(15);
+            panelCategoria.setLayout(new GridLayout(3, 1, 0, 6));
             panelCategoria.setBackground(Color.WHITE);
-            panelCategoria.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(new Color(200, 200, 200)), new EmptyBorder(15, 20, 15, 20)));
+            panelCategoria.setBorder(new EmptyBorder(15, 22, 15, 22));
             panelCategoria.setMaximumSize(new Dimension(Integer.MAX_VALUE, 110));
 
             JLabel lblCategoria = new JLabel("📁 " + categoria);
             lblCategoria.setFont(new Font("SansSerif", Font.BOLD, 15));
+            lblCategoria.setForeground(new Color(19, 40, 72));
+
             JLabel lblPromedio = new JLabel("Precio promedio: " + formatearPesos(promedio));
-            String menorStockTexto = (productoMenorStock == null) ? "Menor stock: sin productos" : "Menor stock: " + productoMenorStock.getNombre() + " (" + productoMenorStock.getStock() + " unids)";
+            lblPromedio.setFont(new Font("SansSerif", Font.PLAIN, 13));
+
+            String menorStockTexto = (productoMenorStock == null)
+                    ? "Menor stock: sin productos"
+                    : "Menor stock: " + productoMenorStock.getNombre() + " (" + productoMenorStock.getStock() + " unids)";
             JLabel lblMenorStock = new JLabel(menorStockTexto);
+            lblMenorStock.setFont(new Font("SansSerif", Font.BOLD, 13));
             lblMenorStock.setForeground(new Color(231, 76, 60));
 
             panelCategoria.add(lblCategoria);
@@ -1235,25 +1249,14 @@ public class VistaPrincipalTienda extends BaseFrame {
         }
 
         JScrollPane scroll = new JScrollPane(panelEstadisticas);
-        scroll.setBorder(BorderFactory.createEmptyBorder());
+        scroll.setBorder(null);
         scroll.setOpaque(false);
         scroll.getViewport().setOpaque(false);
+        scroll.getVerticalScrollBar().setUnitIncrement(16);
         configurarBarraScroll(scroll);
-        dialog.add(scroll, BorderLayout.CENTER);
+        panel.add(scroll, BorderLayout.CENTER);
 
-        JPanel panelBotones = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
-        panelBotones.setOpaque(false);
-        JButton btnCerrar = new JButton("Cerrar");
-        btnCerrar.setFont(new Font("SansSerif", Font.BOLD, 14));
-        btnCerrar.setBackground(new Color(149, 165, 166));
-        btnCerrar.setForeground(Color.WHITE);
-        btnCerrar.setFocusPainted(false);
-        btnCerrar.setBorderPainted(false);
-        btnCerrar.addActionListener(e -> dialog.dispose());
-        panelBotones.add(btnCerrar);
-        dialog.add(panelBotones, BorderLayout.SOUTH);
-
-        dialog.setVisible(true);
+        return panel;
     }
 
     private void mostrarDialogoFiltros() {
@@ -1376,6 +1379,7 @@ public class VistaPrincipalTienda extends BaseFrame {
 
         JScrollPane scroll = new JScrollPane(panelPedidosGrid);
         scroll.setBorder(null); scroll.setOpaque(false); scroll.getViewport().setOpaque(false);
+        scroll.getVerticalScrollBar().setUnitIncrement(16);
         configurarBarraScroll(scroll);
         panel.add(scroll, BorderLayout.CENTER);
 
@@ -1477,4 +1481,5 @@ public class VistaPrincipalTienda extends BaseFrame {
 
         return tarjeta;
     }
+
 }

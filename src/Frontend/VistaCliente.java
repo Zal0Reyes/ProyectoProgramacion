@@ -400,42 +400,76 @@ public class VistaCliente extends BaseFrame {
     private JPanel crearBurbujaRespuesta(String respuesta) {
         JPanel fila = crearBurbujaMensaje("Asistente", respuesta, false);
         JPanel burbuja = (JPanel) fila.getComponent(0);
-        List<Producto> recomendados = encontrarProductosEnTexto(respuesta);
+        burbuja.remove(((BorderLayout) burbuja.getLayout()).getLayoutComponent(BorderLayout.CENTER));
 
-        if (!recomendados.isEmpty()) {
-            JPanel acciones = new JPanel();
-            acciones.setOpaque(false);
-            acciones.setLayout(new BoxLayout(acciones, BoxLayout.Y_AXIS));
-            acciones.setBorder(new EmptyBorder(6, 0, 0, 0));
+        JPanel contenido = new JPanel();
+        contenido.setOpaque(false);
+        contenido.setLayout(new BoxLayout(contenido, BoxLayout.Y_AXIS));
+        contenido.setAlignmentX(Component.LEFT_ALIGNMENT);
+        burbuja.add(contenido, BorderLayout.CENTER);
 
-            for (Producto producto : recomendados) {
-                JButton agregar = crearBoton("Agregar al carrito", AZUL);
-                agregar.setAlignmentX(Component.LEFT_ALIGNMENT);
-                agregar.setPreferredSize(new Dimension(170, 32));
-                agregar.setMaximumSize(new Dimension(170, 32));
-                agregar.addActionListener(e -> agregarAlCarrito(producto));
-                acciones.add(agregar);
-                acciones.add(Box.createRigidArea(new Dimension(0, 4)));
+        List<Producto> pendientes = new ArrayList<>(inventario.getProductos());
+        String respuestaNormalizada = respuesta.toLowerCase();
+        int cursor = 0;
+        while (cursor < respuesta.length()) {
+            Producto siguiente = null;
+            int posicionSiguiente = -1;
+
+            for (Producto producto : pendientes) {
+                String nombre = producto.getNombre();
+                if (nombre == null || nombre.trim().isEmpty()) {
+                    continue;
+                }
+
+                int posicion = respuestaNormalizada.indexOf(nombre.toLowerCase(), cursor);
+                if (posicion >= 0 && (posicionSiguiente < 0
+                        || posicion < posicionSiguiente
+                        || (posicion == posicionSiguiente
+                        && nombre.length() > siguiente.getNombre().length()))) {
+                    siguiente = producto;
+                    posicionSiguiente = posicion;
+                }
             }
-            burbuja.add(acciones, BorderLayout.SOUTH);
+
+            if (siguiente == null) {
+                break;
+            }
+
+            agregarTextoBurbuja(contenido, respuesta.substring(cursor, posicionSiguiente));
+            JButton agregar = crearBoton("Agregar al carrito", AZUL);
+            agregar.setAlignmentX(Component.LEFT_ALIGNMENT);
+            agregar.setPreferredSize(new Dimension(170, 32));
+            agregar.setMaximumSize(new Dimension(170, 32));
+            Producto productoBoton = siguiente;
+            agregar.addActionListener(e -> agregarAlCarrito(productoBoton));
+            contenido.add(agregar);
+            contenido.add(Box.createRigidArea(new Dimension(0, 5)));
+
+            cursor = posicionSiguiente + siguiente.getNombre().length();
+            pendientes.remove(siguiente);
         }
+
+        agregarTextoBurbuja(contenido, respuesta.substring(cursor));
         return fila;
     }
 
-    private List<Producto> encontrarProductosEnTexto(String texto) {
-        List<Producto> encontrados = new ArrayList<>();
-        String respuestaNormalizada = texto.toLowerCase();
-        for (Producto producto : inventario.getProductos()) {
-            String nombre = producto.getNombre();
-            if (nombre != null
-                    && !nombre.trim().isEmpty()
-                    && respuestaNormalizada.contains(nombre.toLowerCase())
-                    && encontrados.stream().noneMatch(
-                            existente -> existente.getId().equals(producto.getId()))) {
-                encontrados.add(producto);
-            }
+    private void agregarTextoBurbuja(JPanel contenido, String texto) {
+        if (texto.isEmpty()) {
+            return;
         }
-        return encontrados;
+
+        JTextArea fragmento = new JTextArea(texto);
+        fragmento.setEditable(false);
+        fragmento.setLineWrap(true);
+        fragmento.setWrapStyleWord(true);
+        fragmento.setRows(Math.max(1, Math.min(8, (texto.length() / 36) + 1)));
+        fragmento.setColumns(25);
+        fragmento.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        fragmento.setForeground(NAVY);
+        fragmento.setBackground(new Color(238, 243, 249));
+        fragmento.setBorder(null);
+        fragmento.setAlignmentX(Component.LEFT_ALIGNMENT);
+        contenido.add(fragmento);
     }
 
     private void desplazarChatAlFinal(JScrollPane scroll) {
